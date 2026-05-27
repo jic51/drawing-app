@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SketchSend</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+
+    :root {
+      --bg:         #0f0f13;
+      --surface:    #1a1a24;
+      --surface2:   #22222f;
+      --border:     #2e2e40;
+      --accent:     #7c3aed;
+      --accent2:    #a855f7;
+      --glow:       rgba(124,58,237,0.35);
+      --text:       #e8e8f0;
+      --muted:      #7070a0;
+      --danger:     #ef4444;
+      --online:     #4ade80;
+      --canvas-bg:  #12121a;
+      --r: 14px;
+      --sans: 'DM Sans', sans-serif;
+      --display: 'Syne', sans-serif;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:        #f0f0f7;
+        --surface:   #ffffff;
+        --surface2:  #f5f5fb;
+        --border:    #d0d0e0;
+        --text:      #1a1a2e;
+        --muted:     #7070a0;
+        --canvas-bg: #ffffff;
+      }
+    }
+
+    /* TEMAS ESTACIONALES */
+    .season-spring { --accent:#16a34a; --accent2:#4ade80; --glow:rgba(22,163,74,0.3); }
+    .season-summer { --accent:#d97706; --accent2:#fbbf24; --glow:rgba(217,119,6,0.3); }
+    .season-autumn { --accent:#c2410c; --accent2:#fb923c; --glow:rgba(194,65,12,0.3); }
+    .season-winter { --accent:#1d4ed8; --accent2:#60a5fa; --glow:rgba(29,78,216,0.3); }
+
+    .season-badge {
+      font-size:0.68rem; font-weight:600; padding:3px 9px; border-radius:20px;
+      border:1px solid var(--border); background:var(--surface2); color:var(--accent2); white-space:nowrap;
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: var(--sans); background:var(--bg); color:var(--text);
+      height:100vh; overflow:hidden; display:flex; justify-content:center; align-items:center;
+    }
+
+    .titulo {
+      font-family:var(--display); font-size:2.25rem; font-weight:900;
+      background:linear-gradient(90deg,#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000);
+      background-size:200% auto; -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+      animation:mover 2s linear infinite;
+    }
+
+    @keyframes mover { from{background-position:0% center} to{background-position:200% center} }
+
+    #titulo-volador {
+      position:fixed; pointer-events:none; z-index:500; white-space:nowrap;
+      font-family:var(--display); font-weight:900;
+      background:linear-gradient(90deg,#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000);
+      background-size:200% auto; -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+      animation:mover 2s linear infinite; transform-origin:top left;
+      transition: top 0.65s cubic-bezier(0.4,0,0.2,1), left 0.65s cubic-bezier(0.4,0,0.2,1),
+                  font-size 0.65s cubic-bezier(0.4,0,0.2,1), opacity 0.3s ease;
+    }
+
+    #auth-screen {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      width:100%; height:100%; gap:24px; animation:aparecer 0.5s ease;
+    }
+    .tagline { color:var(--muted); font-size:0.95rem; margin-top:-14px; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:32px; width:100%; max-width:340px; display:flex; flex-direction:column; gap:12px; box-shadow:0 20px 60px rgba(0,0,0,0.3); }
+    .card h2 { font-family:var(--display); font-size:1.3rem; }
+    .card p  { font-size:0.875rem; color:var(--muted); }
+    .sep { display:flex; align-items:center; gap:10px; color:var(--muted); font-size:0.8rem; }
+    .sep::before,.sep::after { content:''; flex:1; height:1px; background:var(--border); }
+    .inp { width:100%; padding:12px 16px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; color:var(--text); font-family:var(--sans); font-size:0.95rem; outline:none; transition:border-color 0.2s,box-shadow 0.2s; }
+    .inp:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--glow); }
+    .btn { padding:12px 20px; border:none; border-radius:10px; font-family:var(--sans); font-size:0.95rem; font-weight:600; cursor:pointer; transition:all 0.2s; width:100%; }
+    .btn-p { background:linear-gradient(135deg,var(--accent),#6366f1); color:#fff; box-shadow:0 4px 20px var(--glow); }
+    .btn-p:hover { transform:translateY(-1px); box-shadow:0 8px 30px var(--glow); }
+    .btn-s { background:var(--surface2); border:1px solid var(--border); color:var(--text); }
+    .btn-s:hover { border-color:var(--accent); color:var(--accent2); }
+    .btn-g { background:none; border:none; color:var(--muted); font-size:0.875rem; cursor:pointer; width:auto; padding:6px; }
+    .btn-g:hover { color:var(--text); }
+
+    #app { display:none; width:100vw; height:100vh; flex-direction:column; animation:aparecer 0.4s ease; }
+
+    .hdr { display:flex; align-items:center; gap:10px; padding:9px 18px; border-bottom:1px solid var(--border); background:var(--surface); flex-shrink:0; }
+    .hdr-logo { font-family:var(--display); font-size:1.2rem; font-weight:800; background:linear-gradient(90deg,#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000); background-size:200% auto; -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    .hdr-sep { width:1px; height:22px; background:var(--border); margin:0 2px; }
+    .hdr-space { flex:1; }
+    .hbtn { display:flex; align-items:center; gap:5px; padding:6px 13px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--text); font-family:var(--sans); font-size:0.82rem; font-weight:500; cursor:pointer; transition:all 0.15s; }
+    .hbtn:hover { border-color:var(--accent); color:var(--accent2); }
+    .hbtn.danger:hover { border-color:var(--danger); color:var(--danger); }
+    .uinfo { display:flex; align-items:center; gap:8px; }
+    .avatar { width:30px; height:30px; border-radius:50%; border:2px solid var(--accent); object-fit:cover; }
+    .uname { font-weight:600; font-size:0.85rem; }
+
+    .body { display:flex; flex:1; overflow:hidden; }
+    .toolbar { display:flex; flex-direction:column; align-items:center; padding:14px 8px; background:var(--surface); border-right:1px solid var(--border); gap:4px; width:52px; flex-shrink:0; }
+    .tbtn { width:36px; height:36px; border-radius:9px; border:1px solid transparent; background:transparent; color:var(--muted); font-size:1.05rem; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+    .tbtn:hover { background:var(--surface2); color:var(--text); }
+    .tbtn.activo { background:var(--glow); border-color:var(--accent); color:var(--accent2); }
+    .tlabel { font-size:0.52rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; text-align:center; margin-top:-2px; }
+    .tsep { width:26px; height:1px; background:var(--border); margin:3px 0; }
+
+    .czone { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+    .carea { flex:1; display:flex; align-items:center; justify-content:center; position:relative; background:var(--bg); padding:18px; overflow:hidden; }
+    #canvas { touch-action:none; border-radius:5px; cursor:crosshair; display:block; box-shadow:0 0 0 1px var(--border),0 14px 40px rgba(0,0,0,0.4); }
+    #preview { position:absolute; border-radius:50%; border:1.5px solid rgba(255,255,255,0.5); pointer-events:none; transform:translate(-50%,-50%); transition:width 0.04s,height 0.04s; display:none; mix-blend-mode:difference; }
+
+    .fbtns { position:absolute; top:30px; left:30px; display:flex; gap:7px; z-index:10; opacity:0; pointer-events:none; transition:opacity 0.25s; }
+    .fbtns.visible { opacity:1; pointer-events:auto; }
+    .fbtn { display:flex; align-items:center; gap:5px; padding:6px 13px; border-radius:20px; border:1px solid rgba(255,255,255,0.12); background:rgba(26,26,36,0.8); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); color:var(--text); font-family:var(--sans); font-size:0.78rem; font-weight:500; cursor:pointer; transition:all 0.15s; }
+    .fbtn:hover { background:rgba(124,58,237,0.3); border-color:var(--accent); color:var(--accent2); }
+    .fbtn:disabled { opacity:0.3; cursor:not-allowed; }
+
+    @media (prefers-color-scheme: light) {
+      .fbtn { background:rgba(255,255,255,0.85); border-color:rgba(0,0,0,0.1); color:#1a1a2e; }
+      #preview { border-color:rgba(0,0,0,0.4); mix-blend-mode:normal; }
+    }
+
+    .strip { background:var(--surface); border-top:1px solid var(--border); padding:9px 14px 11px; flex-shrink:0; }
+    .strip-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; gap:8px; }
+    .clabel { font-size:0.67rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; }
+    .expiry-pill { display:none; align-items:center; gap:4px; font-size:0.72rem; font-weight:600; color:#ef4444; background:rgba(239,68,68,0.12); padding:3px 10px; border-radius:20px; border:1px solid rgba(239,68,68,0.3); white-space:nowrap; }
+    .sbtn { padding:6px 16px; border-radius:20px; border:none; background:linear-gradient(135deg,var(--accent),#6366f1); color:#fff; font-family:var(--sans); font-size:0.8rem; font-weight:600; cursor:pointer; box-shadow:0 3px 10px var(--glow); transition:all 0.2s; }
+    .sbtn:hover { transform:translateY(-1px); box-shadow:0 6px 18px var(--glow); }
+    .carousel { display:flex; gap:13px; overflow-x:auto; padding-bottom:3px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+    .carousel::-webkit-scrollbar { display:none; }
+    .citem { display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; flex-shrink:0; transition:transform 0.15s; }
+    .citem:hover { transform:translateY(-2px); }
+    .cwrap { position:relative; width:44px; height:44px; }
+    .cimg { width:44px; height:44px; border-radius:50%; border:2.5px solid transparent; object-fit:cover; transition:border-color 0.15s,box-shadow 0.15s; }
+    .citem.sel .cimg { border-color:var(--accent); box-shadow:0 0 0 3px var(--glow); }
+    .odot { position:absolute; bottom:1px; right:1px; width:11px; height:11px; background:var(--online); border-radius:50%; border:2px solid var(--surface); }
+    .ccheck { position:absolute; inset:0; border-radius:50%; background:rgba(124,58,237,0.5); display:none; align-items:center; justify-content:center; color:#fff; font-size:1rem; }
+    .citem.sel .ccheck { display:flex; }
+    .cname { font-size:0.63rem; color:var(--muted); max-width:44px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; }
+    .sharebtn { display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; flex-shrink:0; }
+    .sharecircle { width:44px; height:44px; border-radius:50%; border:2px dashed var(--border); display:flex; align-items:center; justify-content:center; font-size:1rem; color:var(--muted); transition:all 0.15s; }
+    .sharebtn:hover .sharecircle { border-color:var(--accent); color:var(--accent2); }
+
+    .overlay { position:fixed; inset:0; background:rgba(0,0,0,0.65); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; z-index:100; }
+    .overlay.open { display:flex; animation:aparecer 0.2s ease; }
+    .modal { background:var(--surface); border:1px solid var(--border); border-radius:var(--r); padding:26px; width:100%; max-width:290px; display:flex; flex-direction:column; gap:10px; box-shadow:0 24px 80px rgba(0,0,0,0.5); animation:subir 0.25s ease; }
+    .modal h3 { font-family:var(--display); font-size:1.1rem; }
+    .modal p  { font-size:0.82rem; color:var(--muted); }
+
+    #toast { position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(8px); background:var(--surface2); border:1px solid var(--border); border-radius:30px; padding:8px 18px; font-size:0.84rem; color:var(--text); opacity:0; transition:opacity 0.25s,transform 0.25s; pointer-events:none; z-index:200; white-space:nowrap; }
+    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+    /* OVERLAY DE REPLAY */
+    #replay-overlay {
+      position:fixed; inset:0; background:var(--bg); z-index:300;
+      display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+    }
+    #replay-overlay.activo { display:flex; animation:aparecer 0.3s ease; }
+
+    .replay-bar {
+      position:absolute; top:0; left:0; right:0; padding:14px 20px;
+      display:flex; align-items:center; justify-content:space-between;
+      background:linear-gradient(to bottom,var(--bg) 60%,transparent);
+    }
+    .replay-quien { display:flex; align-items:center; gap:10px; }
+    .replay-quien img { width:36px; height:36px; border-radius:50%; border:2px solid var(--accent); }
+    .replay-nombre { font-weight:600; font-size:0.9rem; color:var(--text); }
+    .replay-sub    { font-size:0.72rem; color:var(--muted); }
+    .replay-expiry { font-size:0.8rem; font-weight:600; color:#ef4444; background:rgba(239,68,68,0.12); padding:5px 12px; border-radius:20px; border:1px solid rgba(239,68,68,0.25); }
+    #replay-canvas { border-radius:8px; touch-action:none; cursor:pointer; box-shadow:0 0 0 1px var(--border),0 20px 60px rgba(0,0,0,0.5); }
+    .replay-hint { font-size:0.8rem; color:var(--muted); text-align:center; line-height:1.8; }
+    .replay-loop  { font-size:0.72rem; color:var(--accent2); }
+    .replay-cerrar { position:absolute; bottom:24px; padding:10px 26px; border-radius:20px; border:1px solid var(--border); background:var(--surface2); color:var(--muted); font-family:var(--sans); font-size:0.82rem; cursor:pointer; transition:all 0.15s; }
+    .replay-cerrar:hover { border-color:var(--accent); color:var(--accent2); }
+
+    @keyframes aparecer { from{opacity:0} to{opacity:1} }
+    @keyframes subir { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+
+  </style>
+</head>
+<body>
+
+<div id="auth-screen">
+  <div class="titulo" id="titulo-fantasma" style="visibility:hidden;">SketchSend ✏️</div>
+  <p class="tagline">Donde cada mensaje es un dibujo</p>
+  <div class="card">
+    <h2>Empezar a dibujar</h2>
+    <p>Elige un nombre para continuar.</p>
+    <input type="text" id="nombre-inp" class="inp" placeholder="Tu nombre">
+    <button id="entrar-btn" class="btn btn-p">Entrar →</button>
+    <div class="sep">o continúa con</div>
+    <button class="btn btn-s" onclick="toast('🚧 Firebase Auth — Paso 2')">🔵 Continuar con Google</button>
+    <button class="btn btn-s" onclick="toast('🚧 Firebase Auth — Paso 2')">🍎 Continuar con Apple</button>
+  </div>
+</div>
+
+<div id="app">
+  <header class="hdr">
+    <div class="hdr-logo" id="hdr-logo-placeholder" style="visibility:hidden;">SketchSend ✏️</div>
+    <div class="hdr-sep"></div>
+    <span class="season-badge" id="season-badge"></span>
+    <button class="hbtn" id="guardar-btn">💾 Guardar</button>
+    <button class="hbtn danger" id="limpiar-btn">🗑️ Limpiar</button>
+    <div class="hdr-space"></div>
+    <div class="uinfo">
+      <img id="av" class="avatar" src="" alt="">
+      <span id="uname" class="uname"></span>
+      <button class="btn-g" id="salir-btn">Salir</button>
+    </div>
+  </header>
+
+  <div class="body">
+    <aside class="toolbar">
+      <button class="tbtn activo" data-tool="rainbow">🌈</button>
+      <div class="tlabel">Rainbow</div>
+      <div class="tsep"></div>
+      <button class="tbtn" data-tool="pincel">🖌️</button>
+      <div class="tlabel">Pincel</div>
+      <div class="tsep"></div>
+      <button class="tbtn" data-tool="borrador">⬜</button>
+      <div class="tlabel">Borrar</div>
+    </aside>
+
+    <div class="czone">
+      <div class="carea" id="carea">
+        <canvas id="canvas"></canvas>
+        <div id="preview"></div>
+        <div class="fbtns" id="fbtns">
+          <button class="fbtn" id="undo-btn">↩ Deshacer</button>
+          <button class="fbtn" id="redo-btn" disabled>Rehacer ↪</button>
+        </div>
+      </div>
+      <div class="strip">
+        <div class="strip-hdr">
+          <span class="clabel">Enviar a <span id="sel-count" style="color:var(--accent2)"></span></span>
+          <span class="expiry-pill" id="expiry-pill">⏱ <span id="expiry-countdown">24:00:00</span></span>
+          <button class="sbtn" id="enviar-btn">Enviar ✉️</button>
+        </div>
+        <div class="carousel" id="carousel"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal">
+  <div class="modal">
+    <h3>💾 Guardar dibujo</h3>
+    <p>¿En qué formato?</p>
+    <button class="btn btn-p" id="png-btn">⬇️ Imagen (.PNG)</button>
+    <button class="btn btn-s" id="vid-btn">🎬 Video replay (.WEBM)</button>
+    <button class="btn-g" id="cerrar-btn" style="text-align:center;margin-top:2px">Cancelar</button>
+  </div>
+</div>
+
+<div id="replay-overlay">
+  <div class="replay-bar">
+    <div class="replay-quien">
+      <img id="replay-avatar" src="" alt="">
+      <div>
+        <div class="replay-nombre" id="replay-nombre">—</div>
+        <div class="replay-sub">te envió un dibujo</div>
+      </div>
+    </div>
+    <div class="replay-expiry">⏱ <span id="replay-timer">24:00:00</span></div>
+  </div>
+  <canvas id="replay-canvas"></canvas>
+  <div class="replay-hint">
+    Toca el canvas para responder
+    <div class="replay-loop" id="replay-loop">▶ reproduciendo...</div>
+  </div>
+  <button class="replay-cerrar" id="replay-cerrar">Cerrar</button>
+</div>
+
+<div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/ccapture.js@1.1.0/build/CCapture.all.min.js"></script>
+<script>
+
+/* REFERENCIAS */
+const authScreen = document.getElementById('auth-screen');
+const appEl      = document.getElementById('app');
+const nombreInp  = document.getElementById('nombre-inp');
+const entrarBtn  = document.getElementById('entrar-btn');
+const salirBtn   = document.getElementById('salir-btn');
+const avatarEl   = document.getElementById('av');
+const unameEl    = document.getElementById('uname');
+const cv         = document.getElementById('canvas');
+const ctx        = cv.getContext('2d');
+const carea      = document.getElementById('carea');
+const preview    = document.getElementById('preview');
+const fbtns      = document.getElementById('fbtns');
+const undoBtn    = document.getElementById('undo-btn');
+const redoBtn    = document.getElementById('redo-btn');
+const guardarBtn = document.getElementById('guardar-btn');
+const limpiarBtn = document.getElementById('limpiar-btn');
+const enviarBtn  = document.getElementById('enviar-btn');
+const modalEl    = document.getElementById('modal');
+const pngBtn     = document.getElementById('png-btn');
+const vidBtn     = document.getElementById('vid-btn');
+const cerrarBtn  = document.getElementById('cerrar-btn');
+const carouselEl = document.getElementById('carousel');
+const selCount   = document.getElementById('sel-count');
+const toolBtns   = document.querySelectorAll('.tbtn[data-tool]');
+
+/* ESTADO */
+let dibujando    = false;
+let hue          = 0;
+let herramienta  = 'rainbow';
+let tamBase      = 8;
+let ultimo       = null;
+let usuario      = null;
+let trazos       = [];
+let pilaRedo     = [];
+let seleccionados = new Set();
+const DPR        = window.devicePixelRatio || 1;
+
+/* MODO OSCURO */
+const modoOscuro = window.matchMedia('(prefers-color-scheme: dark)');
+const canvasBg   = () => modoOscuro.matches ? '#12121a' : '#ffffff';
+
+function fondoCanvas(targetCtx, w, h) {
+  targetCtx.save();
+  targetCtx.globalCompositeOperation = 'destination-over';
+  targetCtx.fillStyle = canvasBg();
+  targetCtx.fillRect(0, 0, w, h);
+  targetCtx.restore();
+}
+modoOscuro.addEventListener('change', () => redibujar());
+
+/* TEMAS ESTACIONALES */
+const SEASONS = [
+  { months:[2,3,4],  label:'🌸 Primavera', cls:'season-spring' },
+  { months:[5,6,7],  label:'☀️ Verano',    cls:'season-summer' },
+  { months:[8,9,10], label:'🍂 Otoño',     cls:'season-autumn' },
+  { months:[11,0,1], label:'❄️ Invierno',  cls:'season-winter' },
+];
+function applySeason() {
+  const m = new Date().getMonth();
+  const s = SEASONS.find(s => s.months.includes(m));
+  if (!s) return;
+  document.documentElement.classList.remove(...SEASONS.map(x => x.cls));
+  document.documentElement.classList.add(s.cls);
+  const badge = document.getElementById('season-badge');
+  if (badge) badge.textContent = s.label;
+}
+
+/* AUTENTICACIÓN — sin cambios respecto a v5 */
+function checkLogin() {
+  usuario = localStorage.getItem('ss_user');
+  if (usuario) {
+    unameEl.textContent = usuario;
+    avatarEl.src = genAvatar(usuario);
+    authScreen.style.display = 'none';
+    appEl.style.display = 'flex';
+    setupCanvas();
+    buildCarousel();
+    requestAnimationFrame(() => requestAnimationFrame(volarAlHeader));
+  } else {
+    authScreen.style.display = 'flex';
+    appEl.style.display = 'none';
+    const ph = document.getElementById('hdr-logo-placeholder');
+    if (ph) { ph.style.visibility='hidden'; ph.style.animation=''; ph.style.backgroundPosition=''; }
+    volador.style.opacity = '1';
+    volador.style.transition = 'none';
+    setTimeout(posicionarVoladorEnLogin, 50);
+  }
+}
+
+entrarBtn.addEventListener('click', () => {
+  const n = nombreInp.value.trim();
+  if (!n) { toast('⚠️ Escribe un nombre'); return; }
+  localStorage.setItem('ss_user', n);
+  checkLogin();
+});
+nombreInp.addEventListener('keydown', e => { if (e.key === 'Enter') entrarBtn.click(); });
+salirBtn.addEventListener('click', () => { localStorage.removeItem('ss_user'); checkLogin(); });
+
+/* CANVAS con HiDPI — elimina pixelación en exportar */
+function setupCanvas() {
+  const r = carea.getBoundingClientRect();
+  const pad = 28;
+  let w = r.width - pad, h = w / (16/10);
+  if (h > r.height - pad) { h = r.height - pad; w = h * (16/10); }
+  const cw = Math.floor(w), ch = Math.floor(h);
+  cv.style.width  = cw + 'px';
+  cv.style.height = ch + 'px';
+  cv.width  = Math.floor(cw * DPR);
+  cv.height = Math.floor(ch * DPR);
+  ctx.scale(DPR, DPR);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  fondoCanvas(ctx, cw, ch);
+}
+
+/* DIBUJO CON PRESIÓN */
+function coords(e) {
+  const r = cv.getBoundingClientRect();
+  let x, y, p;
+  if (e.touches && e.touches.length > 0) {
+    x = e.touches[0].clientX - r.left; y = e.touches[0].clientY - r.top; p = e.touches[0].force || 0.5;
+  } else {
+    x = e.clientX - r.left; y = e.clientY - r.top;
+    p = (e.pressure !== undefined && e.pressure > 0) ? e.pressure : 0.5;
+  }
+  return { x, y, p };
+}
+
+function grosor(p) {
+  const pn = p < 0.05 ? 0.3 : p;
+  return Math.max(1, Math.min(tamBase * pn * 2.8, tamBase * 3));
+}
+
+function iniciarDibujo(e) {
+  e.preventDefault(); dibujando = true; pilaRedo = [];
+  const { x, y } = coords(e); ultimo = { x, y };
+  trazos.push({ tipo:'inicio', x, y, h:herramienta }); actualizarBotones();
+}
+
+function dibujar(e) {
+  if (!dibujando) return; e.preventDefault();
+  const { x, y, p } = coords(e); const gw = grosor(p);
+  let color;
+  if (herramienta==='rainbow') { hue=(hue+1.2)%360; color=`hsl(${hue},100%,55%)`; }
+  else if (herramienta==='borrador') { color=canvasBg(); }
+  else { color = modoOscuro.matches ? '#ffffff' : '#1a1a2e'; }
+
+  ctx.beginPath(); ctx.moveTo(ultimo.x,ultimo.y);
+  ctx.strokeStyle=color; ctx.lineWidth=gw; ctx.lineTo(x,y); ctx.stroke();
+
+  const ar = carea.getBoundingClientRect();
+  const px = (e.clientX||(e.touches&&e.touches[0].clientX)||0)-ar.left;
+  const py = (e.clientY||(e.touches&&e.touches[0].clientY)||0)-ar.top;
+  preview.style.cssText=`display:block;left:${px}px;top:${py}px;width:${gw}px;height:${gw}px;`;
+
+  trazos.push({ tipo:'seg', de:{...ultimo}, a:{x,y}, color, gw });
+  ultimo = { x, y };
+}
+
+function pararDibujo() {
+  if (!dibujando) return; dibujando=false; ultimo=null;
+  preview.style.display='none'; trazos.push({tipo:'fin'}); actualizarBotones();
+}
+
+cv.addEventListener('pointerdown', iniciarDibujo); cv.addEventListener('pointermove', dibujar);
+cv.addEventListener('pointerup', pararDibujo);    cv.addEventListener('pointerout', pararDibujo);
+cv.addEventListener('touchstart', iniciarDibujo, {passive:false});
+cv.addEventListener('touchmove',  dibujar,        {passive:false});
+cv.addEventListener('touchend',   pararDibujo);
+
+carea.addEventListener('mousemove', e => {
+  if (dibujando) return;
+  const r = carea.getBoundingClientRect(); const pw = grosor(0.5);
+  preview.style.cssText=`display:block;left:${e.clientX-r.left}px;top:${e.clientY-r.top}px;width:${pw}px;height:${pw}px;`;
+});
+carea.addEventListener('mouseleave', () => { preview.style.display='none'; });
+
+function actualizarBotones() {
+  const hay = trazos.some(t => t.tipo==='inicio');
+  fbtns.classList.toggle('visible', hay && !dibujando);
+  undoBtn.disabled = !hay; redoBtn.disabled = pilaRedo.length===0;
+}
+
+toolBtns.forEach(b => b.addEventListener('click', () => {
+  toolBtns.forEach(x=>x.classList.remove('activo')); b.classList.add('activo'); herramienta=b.dataset.tool;
+}));
+
+function undo() {
+  let idx=-1;
+  for(let i=trazos.length-1;i>=0;i--) { if(trazos[i].tipo==='inicio'){idx=i;break;} }
+  if(idx===-1) return; pilaRedo.push(trazos.splice(idx)); redibujar(); actualizarBotones();
+}
+function redo() {
+  if(!pilaRedo.length) return; trazos.push(...pilaRedo.pop()); redibujar(); actualizarBotones();
+}
+undoBtn.addEventListener('click',undo); redoBtn.addEventListener('click',redo);
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'&&!e.shiftKey){e.preventDefault();undo();}
+  if((e.ctrlKey||e.metaKey)&&(e.key==='y'||(e.key==='z'&&e.shiftKey))){e.preventDefault();redo();}
+});
+
+function redibujar() {
+  const w=cv.width/DPR, h=cv.height/DPR;
+  ctx.clearRect(0,0,w,h); fondoCanvas(ctx,w,h);
+  for(const t of trazos) {
+    if(t.tipo==='seg') {
+      ctx.beginPath(); ctx.moveTo(t.de.x,t.de.y);
+      ctx.strokeStyle=t.color; ctx.lineWidth=t.gw; ctx.lineTo(t.a.x,t.a.y); ctx.stroke();
+    }
+  }
+}
+
+limpiarBtn.addEventListener('click',()=>{
+  if(!trazos.length){toast('El canvas ya está limpio');return;}
+  pilaRedo=[];trazos=[];
+  const w=cv.width/DPR,h=cv.height/DPR;
+  ctx.clearRect(0,0,w,h); fondoCanvas(ctx,w,h); actualizarBotones(); toast('🗑️ Canvas limpiado');
+});
+
+/* CARRUSEL */
+const CONTACTOS=[
+  {id:'1',nombre:'Ana',online:true},{id:'2',nombre:'Carlos',online:true},
+  {id:'3',nombre:'Sofía',online:false},{id:'4',nombre:'Miguel',online:true},
+  {id:'5',nombre:'Lucía',online:false},{id:'6',nombre:'Diego',online:true},
+  {id:'7',nombre:'Valentina',online:false},{id:'8',nombre:'Mateo',online:true},
+];
+
+function buildCarousel() {
+  carouselEl.innerHTML='';
+  CONTACTOS.forEach(c=>{
+    const el=document.createElement('div'); el.className='citem'; el.dataset.id=c.id;
+    el.innerHTML=`<div class="cwrap"><img class="cimg" src="${genAvatar(c.nombre)}" alt="${c.nombre}">${c.online?'<div class="odot"></div>':''}<div class="ccheck">✓</div></div><span class="cname">${c.nombre}</span>`;
+    el.addEventListener('click',()=>{
+      seleccionados.has(c.id)?seleccionados.delete(c.id):seleccionados.add(c.id);
+      el.classList.toggle('sel',seleccionados.has(c.id));
+      selCount.textContent=seleccionados.size>0?`(${seleccionados.size})`:'';
+    });
+    carouselEl.appendChild(el);
+  });
+  const share=document.createElement('div'); share.className='sharebtn';
+  share.innerHTML=`<div class="sharecircle">🔗</div><span class="cname" style="max-width:52px">Compartir</span>`;
+  share.addEventListener('click',()=>{
+    if(navigator.share) navigator.share({title:'SketchSend',text:'¡Te envié un dibujo!',url:location.href}).catch(()=>{});
+    else toast('🔗 Link disponible en el Paso 3');
+  });
+  carouselEl.appendChild(share);
+}
+
+/* ENVIAR → dispara replay automático */
+enviarBtn.addEventListener('click',()=>{
+  if(!trazos.length){toast('✏️ ¡Dibuja algo primero!');return;}
+  if(!seleccionados.size){toast('👆 Selecciona a quién enviar');return;}
+  const nombres=CONTACTOS.filter(c=>seleccionados.has(c.id)).map(c=>c.nombre).join(', ');
+  toast(`✉️ Enviado a: ${nombres}`);
+
+  /* Replay automático — el remitente ve exactamente lo que verá el receptor */
+  const snap=[...trazos];
+  const exp=Date.now()+24*60*60*1000;
+  iniciarCountdown(exp);
+  setTimeout(()=>iniciarReplay(snap, usuario||'Tú', exp), 500);
+
+  seleccionados.clear();
+  document.querySelectorAll('.citem.sel').forEach(el=>el.classList.remove('sel'));
+  selCount.textContent='';
+});
+
+/* GUARDAR */
+guardarBtn.addEventListener('click',()=>modalEl.classList.add('open'));
+cerrarBtn.addEventListener('click',()=>modalEl.classList.remove('open'));
+modalEl.addEventListener('click',e=>{if(e.target===modalEl)modalEl.classList.remove('open');});
+
+pngBtn.addEventListener('click',()=>{
+  const tmp=document.createElement('canvas');
+  tmp.width=cv.width; tmp.height=cv.height;
+  const tc=tmp.getContext('2d');
+  tc.fillStyle=canvasBg(); tc.fillRect(0,0,tmp.width,tmp.height); tc.drawImage(cv,0,0);
+  const a=document.createElement('a');
+  a.download=`sketchsend_${Date.now()}.png`; a.href=tmp.toDataURL('image/png'); a.click();
+  modalEl.classList.remove('open'); toast('🖼️ Imagen en alta resolución guardada');
+});
+
+vidBtn.addEventListener('click',async()=>{
+  if(!trazos.length){toast('✏️ ¡Dibuja algo primero!');return;}
+  modalEl.classList.remove('open'); toast('⏳ Preparando video...');
+  const capturer=new CCapture({format:'webm',framerate:60});
+  const tmp=document.createElement('canvas');
+  tmp.width=cv.width; tmp.height=cv.height;
+  const tc=tmp.getContext('2d');
+  tc.scale(DPR,DPR); tc.lineCap='round'; tc.lineJoin='round';
+  tc.fillStyle=canvasBg(); tc.fillRect(0,0,cv.width/DPR,cv.height/DPR);
+  capturer.start();
+  for(const t of trazos){
+    if(t.tipo==='seg'){
+      tc.beginPath();tc.moveTo(t.de.x,t.de.y);tc.strokeStyle=t.color;tc.lineWidth=t.gw;tc.lineTo(t.a.x,t.a.y);tc.stroke();
+    }
+    capturer.capture(tmp);
+  }
+  capturer.stop(); capturer.save(); toast('🎬 Video descargado');
+});
+
+/* ════════════════════════════════════════════════════
+   MOTOR DE REPLAY
+   Automático al enviar. En Paso 3 también al recibir.
+   El usuario toca el canvas para responder y cerrar.
+════════════════════════════════════════════════════ */
+let replayActivo=false, replayRAF=null, replayTimeout=null, countdownInt=null;
+
+function iniciarReplay(strokes, senderName, expiresAt) {
+  const overlay=document.getElementById('replay-overlay');
+  const rc=document.getElementById('replay-canvas');
+  const rctx=rc.getContext('2d');
+  const loopEl=document.getElementById('replay-loop');
+
+  const cssW=parseInt(cv.style.width)||cv.width/DPR;
+  const cssH=parseInt(cv.style.height)||cv.height/DPR;
+  rc.style.width=cssW+'px'; rc.style.height=cssH+'px';
+  rc.width=Math.floor(cssW*DPR); rc.height=Math.floor(cssH*DPR);
+  rctx.scale(DPR,DPR); rctx.lineCap='round'; rctx.lineJoin='round';
+
+  document.getElementById('replay-nombre').textContent=senderName;
+  document.getElementById('replay-avatar').src=genAvatar(senderName);
+
+  overlay.classList.add('activo'); replayActivo=true;
+
+  iniciarCountdownEl(expiresAt,'replay-timer',()=>{cerrarReplay();toast('⏱ El dibujo expiró');});
+
+  rc.addEventListener('pointerdown',()=>{cerrarReplay();toast('✏️ Dibuja tu respuesta');},{once:true});
+
+  const segs=strokes.filter(s=>s.tipo==='seg');
+
+  function unaVuelta() {
+    if(!replayActivo) return;
+    rctx.clearRect(0,0,cssW,cssH); fondoCanvas(rctx,cssW,cssH);
+    let i=0; loopEl.textContent='▶ reproduciendo...';
+    function frame() {
+      if(!replayActivo) return;
+      for(let s=0;s<3&&i<segs.length;s++,i++){
+        const t=segs[i];
+        rctx.beginPath();rctx.moveTo(t.de.x,t.de.y);rctx.strokeStyle=t.color;rctx.lineWidth=t.gw;rctx.lineTo(t.a.x,t.a.y);rctx.stroke();
+      }
+      if(i<segs.length){ replayRAF=requestAnimationFrame(frame); }
+      else { loopEl.textContent='↺ reproduciendo en loop...'; replayTimeout=setTimeout(unaVuelta,1200); }
+    }
+    replayRAF=requestAnimationFrame(frame);
+  }
+  unaVuelta();
+}
+
+function cerrarReplay() {
+  replayActivo=false;
+  if(replayRAF){cancelAnimationFrame(replayRAF);replayRAF=null;}
+  if(replayTimeout){clearTimeout(replayTimeout);replayTimeout=null;}
+  if(countdownInt){clearInterval(countdownInt);countdownInt=null;}
+  document.getElementById('replay-overlay').classList.remove('activo');
+}
+document.getElementById('replay-cerrar').addEventListener('click',cerrarReplay);
+
+/* COUNTDOWNS */
+function iniciarCountdown(exp) {
+  const pill=document.getElementById('expiry-pill');
+  pill.style.display='flex';
+  iniciarCountdownEl(exp,'expiry-countdown',()=>{pill.style.display='none';toast('⏱ El dibujo expiró');});
+}
+
+function iniciarCountdownEl(exp,id,onExpire) {
+  const el=document.getElementById(id); if(!el) return;
+  if(countdownInt) clearInterval(countdownInt);
+  function tick(){
+    const rem=Math.max(0,exp-Date.now());
+    if(rem===0){clearInterval(countdownInt);el.textContent='00:00:00';if(onExpire)onExpire();return;}
+    const h=Math.floor(rem/3600000),m=Math.floor((rem%3600000)/60000),s=Math.floor((rem%60000)/1000);
+    el.textContent=`${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+  tick(); countdownInt=setInterval(tick,1000);
+}
+
+/* UTILIDADES */
+function toast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+function genAvatar(nombre) {
+  const c=document.createElement('canvas');c.width=64;c.height=64;
+  const cx=c.getContext('2d');
+  const ini=nombre.trim().split(' ').map(n=>n[0]||'').slice(0,2).join('').toUpperCase();
+  const cols=['#7c3aed','#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899','#06b6d4','#10b981'];
+  const i=(ini.charCodeAt(0)||0)%cols.length;
+  const g=cx.createLinearGradient(0,0,64,64);
+  g.addColorStop(0,cols[i]);g.addColorStop(1,cols[(i+2)%cols.length]);
+  cx.fillStyle=g;cx.beginPath();cx.arc(32,32,32,0,Math.PI*2);cx.fill();
+  cx.font='bold 26px DM Sans,sans-serif';cx.fillStyle='#fff';
+  cx.textAlign='center';cx.textBaseline='middle';cx.fillText(ini,32,33);
+  return c.toDataURL();
+}
+
+/* TÍTULO VOLADOR — idéntico a v5 */
+const volador=document.createElement('div');
+volador.id='titulo-volador';
+volador.textContent='SketchSend ✏️';
+document.body.appendChild(volador);
+
+function posicionarVoladorEnLogin(){
+  const fantasma=document.getElementById('titulo-fantasma');
+  if(!fantasma) return;
+  const r=fantasma.getBoundingClientRect();
+  const fs=getComputedStyle(fantasma).fontSize;
+  volador.style.transition='none';
+  volador.style.fontSize=fs; volador.style.top=r.top+'px'; volador.style.left=r.left+'px'; volador.style.opacity='1';
+}
+
+function volarAlHeader(){
+  const ph=document.getElementById('hdr-logo-placeholder');
+  if(!ph) return;
+  const r=ph.getBoundingClientRect(); const fs=getComputedStyle(ph).fontSize;
+  volador.style.transition='';
+  volador.style.fontSize=fs; volador.style.top=r.top+'px'; volador.style.left=r.left+'px';
+  volador.addEventListener('transitionend',()=>{
+    ph.style.animation='mover 2s linear infinite';
+    ph.style.visibility='visible';
+    volador.style.opacity='0';
+    setTimeout(()=>{
+      const pos=getComputedStyle(ph).backgroundPosition;
+      ph.style.backgroundPosition=pos; ph.style.animation='none';
+    },20000);
+  },{once:true});
+}
+
+/* INIT */
+document.addEventListener('DOMContentLoaded',()=>{
+  applySeason();
+  checkLogin();
+  actualizarBotones();
+  posicionarVoladorEnLogin();
+});
+</script>
+</body>
+</html>

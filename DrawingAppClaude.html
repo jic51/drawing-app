@@ -1,0 +1,1793 @@
+<!DOCTYPE html>
+<!--
+  ╔══════════════════════════════════════════════════════════════════════╗
+  ║  SKETCHSEND — PASO 1: UNIFICACIÓN DEL PROTOTIPO                     ║
+  ║                                                                      ║
+  ║  ¿QUÉ HICIMOS EN ESTE PASO?                                          ║
+  ║  ─────────────────────────                                           ║
+  ║  Teníamos DOS archivos que no se hablaban:                           ║
+  ║    • Complete_drawing_app1.html  → tenía el JS funcional             ║
+  ║    • drawing_app.html + .css     → tenía la UI oscura bonita         ║
+  ║                                                                      ║
+  ║  Aquí los fusionamos en UNO SOLO con:                                ║
+  ║    ✓ UI oscura y moderna                                             ║
+  ║    ✓ Canvas que dibuja de verdad                                     ║
+  ║    ✓ Sensibilidad a la presión del dedo (¡NUEVO!)                    ║
+  ║    ✓ Pincel rainbow que ya tenías                                     ║
+  ║    ✓ Undo / Redo                                                     ║
+  ║    ✓ Guardar como imagen                                             ║
+  ║    ✓ Guardar como video replay                                       ║
+  ║    ✓ Carrusel de contactos (UI base, sin backend aún)               ║
+  ║    ✓ Login básico (todavía con localStorage — lo mejoramos en Paso 2)║
+  ║                                                                      ║
+  ║  CÓMO ABRIRLO:                                                       ║
+  ║    Haz doble clic en este archivo → se abre en tu navegador          ║
+  ║    No necesitas instalar nada todavía.                               ║
+  ╚══════════════════════════════════════════════════════════════════════╝
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SketchSend</title>
+
+  <!--
+    FUENTES: Importamos dos fuentes de Google Fonts (gratuitas).
+    'Syne' — display font para el título, tiene personalidad
+    'DM Sans' — body font, muy legible en pantalla
+    Google Fonts es un CDN (servidor externo) que nos da acceso
+    a cientos de fuentes sin descargar nada manualmente.
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    /*
+    ═══════════════════════════════════════════════════════════
+    VARIABLES CSS
+    ═══════════════════════════════════════════════════════════
+    Las variables (también llamadas "custom properties") son
+    como constantes en programación. Las definimos una vez
+    y las reutilizamos en todo el CSS.
+
+    Ventaja: si quieres cambiar el color morado de la app,
+    solo cambias --accent aquí y cambia en TODOS lados.
+
+    Se definen dentro de :root (que significa "toda la página").
+    */
+    :root {
+      --bg:        #0f0f13;      /* fondo principal — casi negro */
+      --surface:   #1a1a24;      /* superficies de cards/panels */
+      --surface2:  #22222f;      /* superficies secundarias */
+      --border:    #2e2e40;      /* color de bordes sutiles */
+      --accent:    #7c3aed;      /* morado principal */
+      --accent2:   #a855f7;      /* morado más claro para hover */
+      --accent-glow: rgba(124, 58, 237, 0.35); /* sombra de brillo */
+      --text:      #e8e8f0;      /* texto principal */
+      --text-muted:#7070a0;      /* texto secundario/apagado */
+      --danger:    #ef4444;      /* rojo para acciones destructivas */
+      --success:   #22c55e;      /* verde para confirmaciones */
+      --online:    #4ade80;      /* punto verde "en línea" */
+      --canvas-bg: #12121a;      /* fondo del área de dibujo */
+      --radius:    14px;         /* redondez de bordes */
+      --font-display: 'Syne', sans-serif;
+      --font-body:    'DM Sans', sans-serif;
+    }
+
+    /*
+    RESET: Los navegadores tienen estilos propios (márgenes,
+    padding por defecto en <body>, etc.). Esta línea los elimina
+    para que tengamos control total del diseño.
+    box-sizing: border-box hace que el padding NO aumente
+    el tamaño de los elementos — se comporta más intuitivo.
+    */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--bg);
+      color: var(--text);
+      height: 100vh;         /* 100% del alto de la ventana */
+      overflow: hidden;      /* sin scroll en el body */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* ─── PANTALLA DE LOGIN ─────────────────────────────── */
+
+    #auth-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      gap: 32px;
+      /* Animación de aparición al cargar la página */
+      animation: fadeIn 0.6s ease;
+    }
+
+    .auth-logo {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      font-weight: 800;
+      /* Gradiente de texto: el fondo degradado se "recorta" a la forma del texto */
+      background: linear-gradient(135deg, #a855f7, #7c3aed, #6366f1);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -1px;
+    }
+
+    .auth-tagline {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-top: -20px;
+    }
+
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px;
+      width: 100%;
+      max-width: 360px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      /*
+      box-shadow con múltiples capas:
+      - La primera es una sombra negra normal (profundidad)
+      - La segunda es el "glow" morado (identidad visual)
+      */
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px var(--border);
+    }
+
+    .auth-card h2 {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .auth-card p {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* INPUT: campo de texto */
+    .input {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    /* :focus se aplica cuando el usuario está escribiendo en el campo */
+    .input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    /* BOTONES: tres variantes */
+    .btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 10px;
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #6366f1);
+      color: white;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);  /* se "levanta" 1px al pasar el cursor */
+      box-shadow: 0 8px 30px var(--accent-glow);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);  /* vuelve al sitio al hacer click */
+    }
+
+    .btn-secondary {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent2);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      padding: 8px;
+      width: auto;
+    }
+
+    .btn-ghost:hover { color: var(--text); }
+
+    /* ─── APP PRINCIPAL ─────────────────────────────────── */
+
+    #main-app {
+      display: none;  /* oculta por defecto, se muestra tras login */
+      width: 100vw;
+      height: 100vh;
+      flex-direction: column;
+      background: var(--bg);
+      animation: fadeIn 0.4s ease;
+    }
+
+    /* HEADER: barra superior con logo y perfil */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;  /* no se encoge aunque haya poco espacio */
+    }
+
+    .app-logo {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #a855f7, #6366f1);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* AVATAR: círculo de imagen/iniciales del usuario */
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--accent);
+    }
+
+    .username-text {
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    /* ─── ÁREA CENTRAL: CANVAS + TOOLBAR ───────────────── */
+
+    .app-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      gap: 0;
+    }
+
+    /* BARRA LATERAL IZQUIERDA: herramientas de dibujo */
+    .toolbar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 12px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      gap: 8px;
+      width: 64px;
+      flex-shrink: 0;
+    }
+
+    .tool-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .tool-btn:hover {
+      background: var(--surface2);
+      color: var(--text);
+    }
+
+    /* Herramienta activa seleccionada */
+    .tool-btn.active {
+      background: var(--accent-glow);
+      border-color: var(--accent);
+      color: var(--accent2);
+    }
+
+    .tool-separator {
+      width: 30px;
+      height: 1px;
+      background: var(--border);
+      margin: 4px 0;
+    }
+
+    /* TAMAÑO DEL PINCEL: slider vertical */
+    .size-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 4px;
+    }
+
+    /*
+    input[type=range]: el slider de tamaño
+    -webkit-appearance: none borra el estilo default del navegador
+    */
+    .size-slider {
+      -webkit-appearance: none;
+      writing-mode: vertical-lr;  /* hace el slider vertical */
+      direction: rtl;             /* de arriba (grande) a abajo (pequeño) */
+      width: 4px;
+      height: 80px;
+      background: var(--border);
+      border-radius: 2px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .size-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent-glow);
+    }
+
+    /* ZONA DE CANVAS */
+    .canvas-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      position: relative;
+      overflow: hidden;
+    }
+
+    #drawingCanvas {
+      /*
+      touch-action: none es CRÍTICO para dibujo táctil.
+      Sin esto, el navegador intercepta los toques para hacer
+      scroll/zoom en lugar de pasárselos al canvas.
+      */
+      touch-action: none;
+      border-radius: 4px;
+      cursor: crosshair;
+      display: block;
+
+      /*
+      box-shadow: múltiples capas crea profundidad
+      La primera es la sombra exterior que da sensación de "panel"
+      La segunda es el borde sutil de brillo
+      */
+      box-shadow:
+        0 0 0 1px var(--border),
+        0 20px 60px rgba(0,0,0,0.6),
+        0 0 80px rgba(124, 58, 237, 0.05);
+    }
+
+    /*
+    INDICADOR DE PRESIÓN:
+    Un pequeño círculo que sigue el cursor y muestra
+    el tamaño actual del pincel ANTES de pintar.
+    Esto es el "brush preview" que mencionamos.
+    */
+    #brush-preview {
+      position: absolute;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.4);
+      pointer-events: none;  /* no interfiere con los clicks */
+      transform: translate(-50%, -50%);
+      transition: width 0.05s, height 0.05s;  /* suaviza el cambio de tamaño */
+      display: none;
+    }
+
+    /* ─── PANEL DERECHO: INFO Y ESTADO ─────────────────── */
+    .right-panel {
+      width: 240px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+
+    .panel-section {
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .panel-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    /* INFO DE PRESIÓN EN TIEMPO REAL */
+    .pressure-info {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .pressure-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+
+    .pressure-bar-bg {
+      width: 100%;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .pressure-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #a855f7);
+      border-radius: 2px;
+      width: 0%;
+      transition: width 0.1s;
+    }
+
+    .pressure-value {
+      font-size: 0.75rem;
+      color: var(--accent2);
+      font-weight: 600;
+      min-width: 36px;
+      text-align: right;
+    }
+
+    /* ─── FOOTER: CARRUSEL + BOTONES ───────────────────── */
+
+    .app-footer {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 14px 20px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .footer-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .action-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 16px;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .action-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent2);
+    }
+
+    .action-btn.danger:hover {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    /* BOTÓN SEND: el más importante, tiene tratamiento especial */
+    .send-btn {
+      margin-left: auto;  /* empuja el botón al extremo derecho */
+      padding: 9px 22px;
+      border-radius: 9px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), #6366f1);
+      color: white;
+      font-family: var(--font-body);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      box-shadow: 0 4px 16px var(--accent-glow);
+      transition: all 0.2s;
+    }
+
+    .send-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px var(--accent-glow);
+    }
+
+    /* ─── CARRUSEL DE CONTACTOS ─────────────────────────── */
+
+    /*
+    El carrusel es la fila horizontal de avatares de contactos
+    desde donde el usuario elige a quién enviar el dibujo.
+
+    Por ahora muestra contactos de demo. En el Paso 3 (backend),
+    aquí aparecerán los contactos reales del usuario.
+    */
+    .carousel-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .carousel {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      /* Ocultar scrollbar visualmente pero mantener funcionalidad */
+      scrollbar-width: none;
+    }
+
+    .carousel::-webkit-scrollbar { display: none; }
+
+    .contact-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.15s;
+    }
+
+    .contact-item:hover { transform: translateY(-2px); }
+
+    .contact-avatar-wrap {
+      position: relative;
+      width: 44px;
+      height: 44px;
+    }
+
+    .contact-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      transition: border-color 0.15s;
+    }
+
+    /* Cuando un contacto está seleccionado para enviar */
+    .contact-item.selected .contact-avatar {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    /* Punto verde de "en línea" */
+    .online-dot {
+      position: absolute;
+      bottom: 1px;
+      right: 1px;
+      width: 11px;
+      height: 11px;
+      background: var(--online);
+      border-radius: 50%;
+      border: 2px solid var(--surface);
+    }
+
+    /* Checkmark que aparece al seleccionar */
+    .contact-check {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: var(--accent-glow);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .contact-item.selected .contact-check { display: flex; }
+
+    .contact-name {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 44px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Botón especial al final del carrusel para compartir por link */
+    .share-link-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .share-link-circle {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 2px dashed var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      color: var(--text-muted);
+      transition: all 0.15s;
+    }
+
+    .share-link-btn:hover .share-link-circle {
+      border-color: var(--accent);
+      color: var(--accent2);
+    }
+
+    /* ─── MODAL DE GUARDADO ─────────────────────────────── */
+
+    /*
+    Un "modal" es una ventana que aparece encima de todo
+    el contenido. Usa position: fixed para quedarse en su
+    lugar aunque el usuario scrollee.
+    */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;  /* shorthand para top:0, right:0, bottom:0, left:0 */
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);  /* desenfoca el fondo */
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;  /* siempre por encima de todo lo demás */
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      width: 100%;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+      animation: slideUp 0.25s ease;
+    }
+
+    .modal h3 {
+      font-family: var(--font-display);
+      font-size: 1.2rem;
+    }
+
+    .modal p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* ─── TOAST: NOTIFICACIÓN TEMPORAL ─────────────────── */
+
+    /*
+    Un "toast" es el mensajito que aparece brevemente
+    en la esquina de la pantalla ("Imagen guardada", etc.)
+    y desaparece solo. Se llama toast por ser como una
+    tostada que "salta" brevemente.
+    */
+    #toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      padding: 10px 20px;
+      font-size: 0.875rem;
+      color: var(--text);
+      opacity: 0;
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+      z-index: 200;
+      white-space: nowrap;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ─── ANIMACIONES ────────────────────────────────────── */
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Animación del título en el login */
+    @keyframes rainbowFlow {
+      0%   { background-position: 0% 50%; }
+      100% { background-position: 200% 50%; }
+    }
+
+    .rainbow-text {
+      background: linear-gradient(90deg,
+        #ff0000, #ff7f00, #ffff00, #00ff00,
+        #0000ff, #8b00ff, #ff0000);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: rainbowFlow 4s linear infinite;
+    }
+
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════
+  PANTALLA DE LOGIN
+  ══════════════════════════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-logo">SketchSend ✏️</div>
+  <p class="auth-tagline">Donde cada mensaje es un dibujo</p>
+
+  <div class="auth-card">
+    <h2>Empezar a dibujar</h2>
+    <p>Elige un nombre de usuario para continuar.</p>
+
+    <input type="text" id="username-input" class="input" placeholder="Tu nombre">
+
+    <button id="login-btn" class="btn btn-primary">Entrar →</button>
+
+    <div class="divider">o continúa con</div>
+
+    <!--
+      Estos botones son el diseño de autenticación futura.
+      Por ahora solo funcionan el input + botón de arriba.
+      En el Paso 2 conectaremos Firebase para que estos
+      botones funcionen de verdad.
+    -->
+    <button class="btn btn-secondary" onclick="showToast('🚧 Disponible en el Paso 2 (Firebase Auth)')">
+      🔵 Continuar con Google
+    </button>
+    <button class="btn btn-secondary" onclick="showToast('🚧 Disponible en el Paso 2 (Firebase Auth)')">
+      🍎 Continuar con Apple
+    </button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+  APP PRINCIPAL (oculta hasta hacer login)
+  ══════════════════════════════════════════════════════════ -->
+<div id="main-app">
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="app-logo">SketchSend ✏️</div>
+    <div class="user-info">
+      <!--
+        El src del avatar se genera dinámicamente con JS.
+        Usando la función generateAvatar() que teníamos
+        en tu prototipo original (la del círculo con iniciales).
+      -->
+      <img id="user-avatar" class="avatar" src="" alt="avatar">
+      <span id="username-display" class="username-text"></span>
+      <button class="btn-ghost" id="logout-btn">Salir</button>
+    </div>
+  </header>
+
+  <!-- CUERPO PRINCIPAL -->
+  <div class="app-body">
+
+    <!-- BARRA DE HERRAMIENTAS IZQUIERDA -->
+    <aside class="toolbar">
+
+      <!--
+        data-tool="rainbow" es un atributo personalizado.
+        Nos permite identificar qué herramienta activa cada botón
+        sin necesidad de un ID separado para cada uno.
+        En JS accedemos con: btn.dataset.tool
+      -->
+      <button class="tool-btn active" data-tool="rainbow" title="Pincel Rainbow">🌈</button>
+      <button class="tool-btn" data-tool="brush" title="Pincel normal">🖌️</button>
+      <button class="tool-btn" data-tool="eraser" title="Borrador">⬜</button>
+
+      <div class="tool-separator"></div>
+
+      <button class="tool-btn" id="undo-btn" title="Deshacer">↩️</button>
+      <button class="tool-btn" id="redo-btn" title="Rehacer">↪️</button>
+
+      <div class="tool-separator"></div>
+
+      <!--
+        TAMAÑO DEL PINCEL: el slider cambia el tamaño base.
+        La presión del dedo lo modifica encima de este valor base.
+        Así: tamaño_final = slider_value * pressure_factor
+      -->
+      <input type="range" class="size-slider" id="size-slider"
+             min="2" max="40" value="6"
+             title="Tamaño del pincel">
+      <span class="size-label">TAM</span>
+
+    </aside>
+
+    <!-- ÁREA DEL CANVAS -->
+    <main class="canvas-area" id="canvas-area">
+
+      <!--
+        El canvas HTML es como un lienzo en blanco.
+        Dibujamos en él usando JavaScript (el contexto 2D).
+        El width y height se establecen en JS según el tamaño
+        disponible en pantalla (responsive).
+      -->
+      <canvas id="drawingCanvas"></canvas>
+
+      <!-- Indicador visual del pincel (sigue al cursor) -->
+      <div id="brush-preview"></div>
+
+    </main>
+
+    <!-- PANEL DERECHO: INFO EN TIEMPO REAL -->
+    <aside class="right-panel">
+
+      <div class="panel-section">
+        <div class="panel-title">Presión del dedo</div>
+        <!--
+          Esta sección muestra en tiempo real cómo la presión
+          del dedo afecta el grosor del trazo.
+          Es una feature educativa/demostrativa para el usuario.
+        -->
+        <div class="pressure-info">
+          <div class="pressure-row">
+            <span style="font-size:0.78rem; color:var(--text-muted)">Presión</span>
+            <span class="pressure-value" id="pressure-val">0%</span>
+          </div>
+          <div class="pressure-bar-bg">
+            <div class="pressure-bar-fill" id="pressure-bar"></div>
+          </div>
+          <div class="pressure-row" style="margin-top:4px">
+            <span style="font-size:0.78rem; color:var(--text-muted)">Grosor</span>
+            <span class="pressure-value" id="width-val">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-title">Herramienta activa</div>
+        <div id="tool-display" style="font-size:0.85rem; color:var(--accent2); font-weight:600;">
+          🌈 Pincel Rainbow
+        </div>
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:6px;" id="tool-hint">
+          El color cambia automáticamente mientras dibujas
+        </div>
+      </div>
+
+      <div class="panel-section">
+        <div class="panel-title">Trazos</div>
+        <div style="font-size:0.85rem; color:var(--text-muted);">
+          Trazos totales: <span id="stroke-count" style="color:var(--text); font-weight:600;">0</span>
+        </div>
+        <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
+          (Cada trazo completo desde que levantas el dedo)
+        </div>
+      </div>
+
+      <!--
+        NOTA EXPLICATIVA (en la app real esto no estaría visible):
+        Aquí explicamos al desarrollador/usuario qué hace la presión.
+      -->
+      <div class="panel-section">
+        <div class="panel-title">💡 Cómo funciona la presión</div>
+        <div style="font-size:0.75rem; color:var(--text-muted); line-height:1.5;">
+          El evento <code style="color:var(--accent2)">PointerEvent.pressure</code> devuelve un valor entre 0 y 1.
+          <br><br>
+          Multiplicamos ese valor por el tamaño base del pincel para que presionar más fuerte → trazo más grueso.
+          <br><br>
+          En mouse de computadora siempre es 0.5 (sin presión real).
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+
+  <!-- FOOTER: CARRUSEL + ACCIONES -->
+  <footer class="app-footer">
+
+    <!-- BOTONES DE ACCIÓN -->
+    <div class="footer-actions">
+      <button class="action-btn" id="save-btn">💾 Guardar</button>
+      <button class="action-btn danger" id="clear-btn">🗑️ Limpiar</button>
+      <button class="send-btn" id="send-btn">Enviar dibujo ✉️</button>
+    </div>
+
+    <!-- CARRUSEL DE CONTACTOS -->
+    <div>
+      <div class="carousel-label" style="margin-bottom:8px;">
+        Enviar a... <span id="selected-count" style="color:var(--accent2);"></span>
+      </div>
+      <div class="carousel" id="contacts-carousel">
+        <!--
+          Los contactos de demo se generan con JavaScript.
+          Tienen: avatar generado, nombre, indicador online/offline.
+          En el Paso 3 (backend), estos vendrán de la base de datos.
+        -->
+      </div>
+    </div>
+
+  </footer>
+
+</div>
+
+<!-- MODAL DE GUARDADO -->
+<div class="modal-overlay" id="save-modal">
+  <div class="modal">
+    <h3>💾 Guardar dibujo</h3>
+    <p>Elige el formato en que quieres guardar tu obra.</p>
+    <button class="btn btn-primary" id="save-png-btn">⬇️ Imagen estática (.PNG)</button>
+    <button class="btn btn-secondary" id="save-video-btn">🎬 Video replay (.WEBM)</button>
+    <button class="btn btn-ghost" id="close-modal-btn">Cancelar</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!--
+  LIBRERÍA CCAPTURE.JS
+  ════════════════════
+  Esta librería nos permite capturar frame a frame lo que
+  ocurre en el canvas y exportarlo como video WebM.
+  Es la misma que ya tenías en el prototipo original.
+  La cargamos desde un CDN (servidor de terceros) para no
+  tener que descargar el archivo nosotros mismos.
+-->
+<script src="https://cdn.jsdelivr.net/npm/ccapture.js@1.1.0/build/CCapture.all.min.js"></script>
+
+<script>
+/*
+════════════════════════════════════════════════════════════════════════
+JAVASCRIPT — EL CEREBRO DE LA APLICACIÓN
+════════════════════════════════════════════════════════════════════════
+
+Estructura de este script:
+  1. Referencias al DOM (los elementos HTML que manipulamos)
+  2. Estado de la app (las variables que guardan información)
+  3. Autenticación y perfil
+  4. Configuración del canvas
+  5. Lógica de dibujo con presión ← ¡La parte más importante!
+  6. Herramientas (cambio de pincel, tamaño, undo/redo)
+  7. Carrusel de contactos
+  8. Guardar (PNG y video)
+  9. Funciones de utilidad (toast, avatar, etc.)
+  10. Inicialización
+
+════════════════════════════════════════════════════════════════════════
+*/
+
+
+/* ──────────────────────────────────────────────────────────
+  1. REFERENCIAS AL DOM
+  ──────────────────────────────────────────────────────────
+  document.getElementById() busca un elemento en el HTML
+  por su atributo id="...". Lo guardamos en una variable
+  para no buscarlo cada vez que lo necesitamos (más eficiente).
+*/
+const authScreen      = document.getElementById('auth-screen');
+const mainApp         = document.getElementById('main-app');
+const usernameInput   = document.getElementById('username-input');
+const loginBtn        = document.getElementById('login-btn');
+const logoutBtn       = document.getElementById('logout-btn');
+const userAvatar      = document.getElementById('user-avatar');
+const usernameDisplay = document.getElementById('username-display');
+
+const canvas          = document.getElementById('drawingCanvas');
+const ctx             = canvas.getContext('2d'); // El contexto 2D es la API con la que dibujamos
+const canvasArea      = document.getElementById('canvas-area');
+const brushPreview    = document.getElementById('brush-preview');
+
+const undoBtn         = document.getElementById('undo-btn');
+const redoBtn         = document.getElementById('redo-btn');
+const sizeSlider      = document.getElementById('size-slider');
+const saveBtn         = document.getElementById('save-btn');
+const clearBtn        = document.getElementById('clear-btn');
+const sendBtn         = document.getElementById('send-btn');
+const saveModal       = document.getElementById('save-modal');
+const savePngBtn      = document.getElementById('save-png-btn');
+const saveVideoBtn    = document.getElementById('save-video-btn');
+const closeModalBtn   = document.getElementById('close-modal-btn');
+const carousel        = document.getElementById('contacts-carousel');
+
+const pressureBar     = document.getElementById('pressure-bar');
+const pressureVal     = document.getElementById('pressure-val');
+const widthVal        = document.getElementById('width-val');
+const strokeCount     = document.getElementById('stroke-count');
+const selectedCount   = document.getElementById('selected-count');
+const toolDisplay     = document.getElementById('tool-display');
+const toolHint        = document.getElementById('tool-hint');
+const toolBtns        = document.querySelectorAll('.tool-btn[data-tool]');
+
+
+/* ──────────────────────────────────────────────────────────
+  2. ESTADO DE LA APLICACIÓN
+  ──────────────────────────────────────────────────────────
+  "Estado" = todas las variables que describen cómo está
+  la app en un momento dado. Cambiar el estado → cambia
+  lo que el usuario ve.
+*/
+let isDrawing    = false;      // ¿está el usuario dibujando ahora mismo?
+let hue          = 0;          // color actual del pincel rainbow (0–360 grados)
+let currentTool  = 'rainbow';  // herramienta activa
+let baseSize     = 6;          // tamaño base del pincel (del slider)
+let lastPoint    = null;       // último punto donde se dibujó (para trazar segmentos)
+let currentUser  = null;       // nombre del usuario logueado
+
+/*
+  HISTORIAL DE TRAZOS para Undo/Redo:
+  ─────────────────────────────────────
+  recordedStrokes: array de TODOS los trazos actuales en el canvas
+  redoStack:       trazos que se deshicieron (para poder rehacerlos)
+
+  Cada "trazo" es un objeto con info del movimiento del pincel:
+  { type: 'start'|'segment'|'end', ... }
+
+  Cuando el usuario dibuja → pushamos a recordedStrokes
+  Cuando hace Undo        → quitamos el último trazo completo
+                            y lo guardamos en redoStack
+  Cuando hace Redo        → lo sacamos de redoStack y lo
+                            volvemos a recordedStrokes
+*/
+let recordedStrokes = [];
+let redoStack       = [];
+
+/* Contactos seleccionados en el carrusel */
+let selectedContacts = new Set(); // Set = colección sin duplicados
+
+
+/* ──────────────────────────────────────────────────────────
+  3. AUTENTICACIÓN Y PERFIL
+  ──────────────────────────────────────────────────────────
+  Por ahora usamos localStorage (almacenamiento del navegador).
+  En el Paso 2 lo reemplazaremos con Firebase Auth.
+
+  localStorage es como un pequeño cajón de almacenamiento
+  que el navegador guarda para este sitio web. Sobrevive
+  a cerrar y abrir el navegador. Limitaciones:
+    - Solo funciona en ese navegador/dispositivo
+    - No hay manera de identificar al usuario en el servidor
+    - No es seguro para datos sensibles
+  Por eso lo reemplazaremos pronto.
+*/
+function checkLoginState() {
+  currentUser = localStorage.getItem('sketchsend_user');
+  if (currentUser) {
+    // Si hay usuario guardado, mostrar la app
+    usernameDisplay.textContent = currentUser;
+    userAvatar.src = generateAvatar(currentUser);
+    authScreen.style.display = 'none';
+    mainApp.style.display = 'flex';
+    setupCanvas(); // Configurar el canvas al entrar
+    buildCarousel(); // Construir la lista de contactos de demo
+  } else {
+    // Si no hay usuario, mostrar el login
+    authScreen.style.display = 'flex';
+    mainApp.style.display = 'none';
+  }
+}
+
+loginBtn.addEventListener('click', () => {
+  const name = usernameInput.value.trim();
+  if (!name) {
+    showToast('⚠️ Escribe un nombre primero');
+    return;
+  }
+  localStorage.setItem('sketchsend_user', name);
+  checkLoginState();
+});
+
+// Permitir login con Enter
+usernameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') loginBtn.click();
+});
+
+logoutBtn.addEventListener('click', () => {
+  localStorage.removeItem('sketchsend_user');
+  checkLoginState();
+});
+
+
+/* ──────────────────────────────────────────────────────────
+  4. CONFIGURACIÓN DEL CANVAS
+  ──────────────────────────────────────────────────────────
+  El canvas debe ajustarse al espacio disponible en pantalla.
+  No podemos hardcodear 800x500 como en el prototipo original
+  porque las pantallas de los usuarios tienen distintos tamaños.
+*/
+function setupCanvas() {
+  const area = canvasArea.getBoundingClientRect();
+
+  // Calculamos el tamaño óptimo con márgenes
+  const padding = 40;
+  const maxW = area.width - padding;
+  const maxH = area.height - padding;
+
+  // Mantenemos proporción 16:10
+  const ratio = 16 / 10;
+  let w = maxW;
+  let h = w / ratio;
+  if (h > maxH) {
+    h = maxH;
+    w = h * ratio;
+  }
+
+  canvas.width  = Math.floor(w);
+  canvas.height = Math.floor(h);
+
+  // Configuración permanente del contexto de dibujo
+  ctx.lineCap  = 'round';  // puntas redondeadas en los trazos
+  ctx.lineJoin = 'round';  // uniones redondeadas entre segmentos
+}
+
+
+/* ──────────────────────────────────────────────────────────
+  5. LÓGICA DE DIBUJO CON PRESIÓN
+  ──────────────────────────────────────────────────────────
+
+  ¿QUÉ ES PointerEvent.pressure?
+  ────────────────────────────────
+  Cuando tocas una pantalla táctil, el sensor registra no solo
+  DÓNDE tocas, sino también CON QUÉ FUERZA.
+  PointerEvent.pressure devuelve un número entre:
+    0.0 → toque muy suave / sin presión
+    1.0 → presión máxima
+
+  En una computadora con mouse, siempre es 0.5 (no hay sensor).
+  En tablets con stylus (Apple Pencil, S Pen), da valores precisos.
+  En teléfonos depende del hardware — muchos soportan presión básica.
+
+  ¿CÓMO LO USAMOS?
+  ─────────────────
+  grosorFinal = tamaño_base × (presión × factorMúltiplicador)
+  
+  Ejemplo con base=6 y factor=3:
+    presión 0.2 → grosor = 6 × (0.2 × 3) = 3.6px  (trazo fino)
+    presión 0.5 → grosor = 6 × (0.5 × 3) = 9px     (trazo medio)
+    presión 1.0 → grosor = 6 × (1.0 × 3) = 18px    (trazo grueso)
+*/
+
+function getPointerCoords(e) {
+  /*
+    Necesitamos coordenadas RELATIVAS al canvas, no a la página.
+    getBoundingClientRect() nos da la posición del canvas en la pantalla.
+    Restando ese offset, obtenemos la posición dentro del canvas.
+  */
+  const rect = canvas.getBoundingClientRect();
+  let x, y;
+
+  if (e.touches && e.touches.length > 0) {
+    // Evento táctil
+    x = e.touches[0].clientX - rect.left;
+    y = e.touches[0].clientY - rect.top;
+  } else {
+    // Evento de mouse o pointer
+    x = e.clientX - rect.left;
+    y = e.clientY - rect.top;
+  }
+
+  /*
+    Escalado: el canvas puede tener un tamaño CSS diferente
+    a su resolución interna. Por seguridad, escalamos.
+  */
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return {
+    x: x * scaleX,
+    y: y * scaleY,
+    pressure: e.pressure !== undefined ? e.pressure : 0.5
+  };
+}
+
+function calculateBrushWidth(pressure) {
+  /*
+    Aquí está el corazón de la sensibilidad a presión.
+
+    Si pressure es 0 (sin presión), usamos un mínimo de 0.3
+    para que el trazo nunca desaparezca completamente.
+
+    El factor 2.8 es el multiplicador que hace que la diferencia
+    de presión sea visible y satisfactoria. Puedes ajustarlo:
+      - Factor mayor → diferencia más dramática
+      - Factor menor → diferencia más sutil
+  */
+  const p = pressure < 0.05 ? 0.3 : pressure;
+  const width = baseSize * (p * 2.8);
+  return Math.max(1, Math.min(width, baseSize * 3)); // clamp entre 1px y 3x el tamaño base
+}
+
+function startDrawing(e) {
+  e.preventDefault();
+  isDrawing = true;
+  redoStack = []; // Al dibujar algo nuevo, se pierde el historial de redo
+
+  const { x, y, pressure } = getPointerCoords(e);
+  lastPoint = { x, y };
+
+  // Guardamos el inicio del trazo en el historial
+  recordedStrokes.push({ type: 'start', x, y, tool: currentTool, hue });
+  updateUI();
+}
+
+function draw(e) {
+  if (!isDrawing) return;
+  e.preventDefault();
+
+  const { x, y, pressure } = getPointerCoords(e);
+  const brushWidth = calculateBrushWidth(pressure);
+
+  // Actualizamos el panel de presión en tiempo real
+  const pct = Math.round(pressure * 100);
+  pressureBar.style.width = pct + '%';
+  pressureVal.textContent = pct + '%';
+  widthVal.textContent = brushWidth.toFixed(1) + 'px';
+
+  // Determinamos el color según la herramienta
+  let color;
+  if (currentTool === 'rainbow') {
+    hue = (hue + 1.2) % 360; // avanzamos el tono del arcoíris
+    color = `hsl(${hue}, 100%, 55%)`;
+  } else if (currentTool === 'eraser') {
+    color = '#12121a'; // color del fondo del canvas = efecto de borrado
+  } else {
+    color = '#ffffff'; // blanco por defecto para pincel normal
+    // (en el Paso 4 agregamos el color picker)
+  }
+
+  /*
+    Dibujamos UN SEGMENTO (de lastPoint a punto actual).
+    No dibujamos toda la línea de nuevo — solo el nuevo fragmento.
+    Esto es más eficiente y crea el efecto rainbow suave.
+  */
+  ctx.beginPath();
+  ctx.moveTo(lastPoint.x, lastPoint.y);
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = brushWidth;
+  ctx.lineTo(x, y);
+  ctx.stroke();
+
+  // Actualizamos el preview del pincel
+  updateBrushPreview(e, brushWidth);
+
+  // Guardamos este segmento en el historial de trazos
+  recordedStrokes.push({
+    type: 'segment',
+    from: { ...lastPoint },
+    to:   { x, y },
+    color,
+    width: brushWidth
+  });
+
+  lastPoint = { x, y };
+}
+
+function stopDrawing(e) {
+  if (!isDrawing) return;
+  isDrawing = false;
+  lastPoint = null;
+  recordedStrokes.push({ type: 'end' });
+
+  // Reseteamos la barra de presión
+  pressureBar.style.width = '0%';
+  pressureVal.textContent = '0%';
+  widthVal.textContent = '—';
+
+  updateUI();
+}
+
+/* ──────────────────────────────────────────────────────────
+  PREVIEW DEL PINCEL (el círculo que sigue al cursor)
+  ──────────────────────────────────────────────────────────
+*/
+function updateBrushPreview(e, size) {
+  const rect = canvasArea.getBoundingClientRect();
+  let cx, cy;
+  if (e.touches && e.touches.length > 0) {
+    cx = e.touches[0].clientX - rect.left;
+    cy = e.touches[0].clientY - rect.top;
+  } else {
+    cx = e.clientX - rect.left;
+    cy = e.clientY - rect.top;
+  }
+  brushPreview.style.display = 'block';
+  brushPreview.style.left   = cx + 'px';
+  brushPreview.style.top    = cy + 'px';
+  brushPreview.style.width  = size + 'px';
+  brushPreview.style.height = size + 'px';
+}
+
+canvasArea.addEventListener('mousemove', (e) => {
+  if (!isDrawing) {
+    // Mostrar preview aunque no estés dibujando
+    const rect = canvasArea.getBoundingClientRect();
+    brushPreview.style.display = 'block';
+    brushPreview.style.left   = (e.clientX - rect.left) + 'px';
+    brushPreview.style.top    = (e.clientY - rect.top)  + 'px';
+    const pw = calculateBrushWidth(0.5);
+    brushPreview.style.width  = pw + 'px';
+    brushPreview.style.height = pw + 'px';
+  }
+});
+
+canvasArea.addEventListener('mouseleave', () => {
+  brushPreview.style.display = 'none';
+});
+
+
+/* ──────────────────────────────────────────────────────────
+  6. EVENT LISTENERS DEL CANVAS
+  ──────────────────────────────────────────────────────────
+  Conectamos las funciones de dibujo a los eventos del canvas.
+
+  Usamos PointerEvents en lugar de MouseEvents + TouchEvents
+  porque PointerEvents unifica ambos Y nos da .pressure.
+*/
+canvas.addEventListener('pointerdown', startDrawing);
+canvas.addEventListener('pointermove', draw);
+canvas.addEventListener('pointerup',   stopDrawing);
+canvas.addEventListener('pointerout',  stopDrawing);
+
+// Touch events adicionales como fallback para Safari iOS
+canvas.addEventListener('touchstart', startDrawing, { passive: false });
+canvas.addEventListener('touchmove',  draw,         { passive: false });
+canvas.addEventListener('touchend',   stopDrawing);
+
+
+/* ──────────────────────────────────────────────────────────
+  7. HERRAMIENTAS: CAMBIO DE TOOL, TAMAÑO, UNDO/REDO
+  ──────────────────────────────────────────────────────────
+*/
+
+// Cambio de herramienta al hacer click en la barra lateral
+toolBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    // Quitamos la clase 'active' de todos los botones
+    toolBtns.forEach(b => b.classList.remove('active'));
+    // La añadimos solo al que se hizo click
+    btn.classList.add('active');
+
+    currentTool = btn.dataset.tool;
+
+    // Actualizar el panel derecho
+    const labels = {
+      rainbow: ['🌈 Pincel Rainbow', 'El color cambia automáticamente mientras dibujas'],
+      brush:   ['🖌️ Pincel Normal',  'Color blanco sólido (selector de color próximamente)'],
+      eraser:  ['⬜ Borrador',        'Borra usando el color de fondo del canvas']
+    };
+    toolDisplay.textContent = labels[currentTool][0];
+    toolHint.textContent    = labels[currentTool][1];
+  });
+});
+
+// Cambio de tamaño del pincel
+sizeSlider.addEventListener('input', () => {
+  baseSize = parseInt(sizeSlider.value);
+});
+
+// UNDO: deshace el último trazo completo
+function undo() {
+  // Buscamos el índice del último 'start' en el historial
+  let lastStartIdx = -1;
+  for (let i = recordedStrokes.length - 1; i >= 0; i--) {
+    if (recordedStrokes[i].type === 'start') {
+      lastStartIdx = i;
+      break;
+    }
+  }
+
+  if (lastStartIdx === -1) return; // nada que deshacer
+
+  // Guardamos el trazo eliminado en redoStack para poder rehacerlo
+  const removed = recordedStrokes.splice(lastStartIdx);
+  redoStack.push(removed);
+
+  // Redibujamos el canvas desde cero con los trazos restantes
+  redrawFromHistory();
+  updateUI();
+}
+
+// REDO: rehace el último trazo deshecho
+function redo() {
+  if (redoStack.length === 0) return;
+
+  const strokes = redoStack.pop();
+  recordedStrokes.push(...strokes); // ... (spread) agrega todos los elementos del array
+  redrawFromHistory();
+  updateUI();
+}
+
+undoBtn.addEventListener('click', undo);
+redoBtn.addEventListener('click', redo);
+
+// Atajos de teclado (Ctrl+Z / Ctrl+Y)
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    undo();
+  }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+    e.preventDefault();
+    redo();
+  }
+});
+
+// Redibujar el canvas completo desde el historial de trazos
+function redrawFromHistory() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (const stroke of recordedStrokes) {
+    if (stroke.type === 'segment') {
+      ctx.beginPath();
+      ctx.moveTo(stroke.from.x, stroke.from.y);
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth   = stroke.width;
+      ctx.lineTo(stroke.to.x, stroke.to.y);
+      ctx.stroke();
+    }
+  }
+}
+
+// Limpiar canvas completamente
+clearBtn.addEventListener('click', () => {
+  // Guardamos el estado actual antes de limpiar (para poder deshacer)
+  if (recordedStrokes.length > 0) {
+    redoStack = [];
+    recordedStrokes = [];
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    updateUI();
+    showToast('🗑️ Canvas limpiado');
+  }
+});
+
+
+/* ──────────────────────────────────────────────────────────
+  8. CARRUSEL DE CONTACTOS
+  ──────────────────────────────────────────────────────────
+  Construimos contactos de demostración.
+  En el Paso 3 (backend), estos vendrán de una API real.
+*/
+const DEMO_CONTACTS = [
+  { id: '1', name: 'Ana',     online: true  },
+  { id: '2', name: 'Carlos',  online: true  },
+  { id: '3', name: 'Sofía',   online: false },
+  { id: '4', name: 'Miguel',  online: true  },
+  { id: '5', name: 'Lucía',   online: false },
+  { id: '6', name: 'Diego',   online: true  },
+  { id: '7', name: 'Valentina', online: false },
+  { id: '8', name: 'Mateo',   online: true  },
+];
+
+function buildCarousel() {
+  carousel.innerHTML = ''; // Limpiamos antes de construir
+
+  DEMO_CONTACTS.forEach(contact => {
+    const item = document.createElement('div');
+    item.className = 'contact-item';
+    item.dataset.id = contact.id;
+
+    // Generamos el avatar con las iniciales del contacto
+    const avatarSrc = generateAvatar(contact.name);
+
+    item.innerHTML = `
+      <div class="contact-avatar-wrap">
+        <img class="contact-avatar" src="${avatarSrc}" alt="${contact.name}">
+        ${contact.online ? '<div class="online-dot"></div>' : ''}
+        <div class="contact-check">✓</div>
+      </div>
+      <span class="contact-name">${contact.name}</span>
+    `;
+
+    // Al hacer click en un contacto, lo seleccionamos/deseleccionamos
+    item.addEventListener('click', () => {
+      if (selectedContacts.has(contact.id)) {
+        selectedContacts.delete(contact.id);
+        item.classList.remove('selected');
+      } else {
+        selectedContacts.add(contact.id);
+        item.classList.add('selected');
+      }
+      updateSelectedCount();
+    });
+
+    carousel.appendChild(item);
+  });
+
+  // Botón de compartir por link (al final del carrusel)
+  const shareItem = document.createElement('div');
+  shareItem.className = 'share-link-btn';
+  shareItem.innerHTML = `
+    <div class="share-link-circle">🔗</div>
+    <span class="contact-name" style="max-width:50px">Compartir</span>
+  `;
+  shareItem.addEventListener('click', () => {
+    /*
+      navigator.share() es la API nativa del sistema operativo
+      para compartir contenido. Funciona en iOS, Android, y
+      algunos navegadores de escritorio modernos.
+      En el Paso 3 agregaremos la generación del link real.
+    */
+    if (navigator.share) {
+      navigator.share({
+        title: 'SketchSend',
+        text: '¡Te envié un dibujo!',
+        url: window.location.href
+      }).catch(() => {});
+    } else {
+      showToast('🔗 Link copiado (próximamente con backend)');
+    }
+  });
+  carousel.appendChild(shareItem);
+}
+
+function updateSelectedCount() {
+  const n = selectedContacts.size;
+  selectedCount.textContent = n > 0 ? `(${n} seleccionado${n > 1 ? 's' : ''})` : '';
+}
+
+// Botón de enviar
+sendBtn.addEventListener('click', () => {
+  if (recordedStrokes.length === 0) {
+    showToast('✏️ ¡Dibuja algo primero!');
+    return;
+  }
+  if (selectedContacts.size === 0) {
+    showToast('👆 Selecciona a quién enviar desde el carrusel');
+    return;
+  }
+  /*
+    En el Paso 3 (backend + WebSocket), aquí haremos
+    la llamada real a la API para enviar el dibujo.
+    Por ahora solo simulamos.
+  */
+  const names = DEMO_CONTACTS
+    .filter(c => selectedContacts.has(c.id))
+    .map(c => c.name)
+    .join(', ');
+
+  showToast(`✉️ Enviado a: ${names} (simulado — Paso 3)`);
+
+  // Limpiamos la selección tras enviar
+  selectedContacts.clear();
+  document.querySelectorAll('.contact-item.selected')
+    .forEach(el => el.classList.remove('selected'));
+  updateSelectedCount();
+});
+
+
+/* ──────────────────────────────────────────────────────────
+  9. GUARDAR: PNG Y VIDEO
+  ──────────────────────────────────────────────────────────
+*/
+saveBtn.addEventListener('click', () => {
+  saveModal.classList.add('open');
+});
+
+closeModalBtn.addEventListener('click', () => {
+  saveModal.classList.remove('open');
+});
+
+// Cerrar modal al hacer click fuera de él
+saveModal.addEventListener('click', (e) => {
+  if (e.target === saveModal) saveModal.classList.remove('open');
+});
+
+// Guardar como PNG
+savePngBtn.addEventListener('click', () => {
+  const link = document.createElement('a');
+  link.download = `sketchsend_${Date.now()}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  saveModal.classList.remove('open');
+  showToast('🖼️ Imagen guardada');
+});
+
+// Guardar como video replay
+saveVideoBtn.addEventListener('click', async () => {
+  if (recordedStrokes.length === 0) {
+    showToast('✏️ ¡Dibuja algo primero!');
+    return;
+  }
+
+  saveModal.classList.remove('open');
+  showToast('⏳ Preparando video...');
+
+  /*
+    CCapture.js trabaja así:
+    1. Creamos un "capturer" configurado para WebM a 60fps
+    2. Creamos un canvas temporal (para no modificar el canvas real)
+    3. Reproducimos todos los trazos del historial en el canvas temporal
+    4. En cada frame, capturamos el canvas temporal
+    5. Al terminar, CCapture genera el archivo WebM y lo descarga
+  */
+  const capturer = new CCapture({ format: 'webm', framerate: 60 });
+
+  const tmpCanvas = document.createElement('canvas');
+  tmpCanvas.width  = canvas.width;
+  tmpCanvas.height = canvas.height;
+  const tmpCtx = tmpCanvas.getContext('2d');
+  tmpCtx.lineCap  = 'round';
+  tmpCtx.lineJoin = 'round';
+
+  capturer.start();
+
+  for (const stroke of recordedStrokes) {
+    if (stroke.type === 'segment') {
+      tmpCtx.beginPath();
+      tmpCtx.moveTo(stroke.from.x, stroke.from.y);
+      tmpCtx.strokeStyle = stroke.color;
+      tmpCtx.lineWidth   = stroke.width;
+      tmpCtx.lineTo(stroke.to.x, stroke.to.y);
+      tmpCtx.stroke();
+    }
+    capturer.capture(tmpCanvas);
+  }
+
+  capturer.stop();
+  capturer.save();
+  showToast('🎬 Video descargado');
+});
+
+
+/* ──────────────────────────────────────────────────────────
+  10. FUNCIONES DE UTILIDAD
+  ──────────────────────────────────────────────────────────
+*/
+
+// TOAST: muestra un mensaje temporal
+function showToast(message) {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+// GENERATE AVATAR: crea un canvas con las iniciales del usuario
+// (misma función que tenías en el prototipo, mejorada para colores del nuevo tema)
+function generateAvatar(name) {
+  const c = document.createElement('canvas');
+  c.width = 64;
+  c.height = 64;
+  const cx = c.getContext('2d');
+
+  const initials = name.trim().split(' ')
+    .map(n => n[0] || '')
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
+  // Paleta de colores del tema morado
+  const colors = [
+    '#7c3aed', '#6366f1', '#8b5cf6', '#a855f7',
+    '#d946ef', '#ec4899', '#06b6d4', '#10b981'
+  ];
+  const idx = (initials.charCodeAt(0) || 0) % colors.length;
+
+  // Fondo con gradiente
+  const gradient = cx.createLinearGradient(0, 0, 64, 64);
+  gradient.addColorStop(0, colors[idx]);
+  gradient.addColorStop(1, colors[(idx + 2) % colors.length]);
+
+  cx.fillStyle = gradient;
+  cx.beginPath();
+  cx.arc(32, 32, 32, 0, Math.PI * 2);
+  cx.fill();
+
+  cx.font = 'bold 26px DM Sans, sans-serif';
+  cx.fillStyle = '#fff';
+  cx.textAlign = 'center';
+  cx.textBaseline = 'middle';
+  cx.fillText(initials, 32, 33);
+
+  return c.toDataURL();
+}
+
+// Actualizar contadores y estado visual de la UI
+function updateUI() {
+  const totalStrokes = recordedStrokes.filter(s => s.type === 'start').length;
+  strokeCount.textContent = totalStrokes;
+
+  // Atributos de los botones undo/redo
+  undoBtn.style.opacity = recordedStrokes.length > 0 ? '1' : '0.3';
+  redoBtn.style.opacity = redoStack.length > 0 ? '1' : '0.3';
+}
+
+
+/* ──────────────────────────────────────────────────────────
+  INICIALIZACIÓN
+  ──────────────────────────────────────────────────────────
+  Esto se ejecuta cuando la página termina de cargar.
+  Verificamos si hay un usuario guardado para mostrar
+  el login o la app directamente.
+*/
+document.addEventListener('DOMContentLoaded', () => {
+  checkLoginState();
+  updateUI();
+});
+
+</script>
+</body>
+</html>

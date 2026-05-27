@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<!--
+  SketchSend — Paso 1 v2
+  Cambios respecto a la versión anterior:
+    ✓ Título rainbow que se anima 20 seg y se detiene
+    ✓ Canvas adapta fondo al modo oscuro/claro del sistema
+    ✓ Sin slider de tamaño — solo presión controla el grosor
+    ✓ Undo/Redo flotantes dentro del canvas (esquina sup. izq.)
+      → Solo visibles cuando hay trazos Y el usuario no está dibujando
+    ✓ Botones Guardar y Limpiar arriba a la izquierda, fuera del canvas
+    ✓ Carrusel de contactos pegado debajo del canvas
+    ✓ Panel derecho eliminado — más limpio y enfocado
+    ✓ Barra lateral izquierda reducida solo a herramientas
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SketchSend</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* ─── VARIABLES ──────────────────────────────────────── */
+    :root {
+      --bg:          #0f0f13;
+      --surface:     #1a1a24;
+      --surface2:    #22222f;
+      --border:      #2e2e40;
+      --accent:      #7c3aed;
+      --accent2:     #a855f7;
+      --accent-glow: rgba(124,58,237,0.35);
+      --text:        #e8e8f0;
+      --text-muted:  #7070a0;
+      --danger:      #ef4444;
+      --online:      #4ade80;
+      --radius:      14px;
+      --font-display:'Syne', sans-serif;
+      --font-body:   'DM Sans', sans-serif;
+
+      /*
+        COLOR DEL CANVAS: se define aquí como variable para poder
+        cambiarlo fácilmente según el modo del sistema operativo.
+        Por defecto (modo oscuro) es casi negro.
+      */
+      --canvas-bg:   #12121a;
+      --canvas-text: #e8e8f0;  /* color del texto si lo hubiera */
+    }
+
+    /*
+      MODO CLARO:
+      @media (prefers-color-scheme: light) detecta si el usuario
+      tiene su sistema operativo en modo claro (día).
+      Cuando eso ocurre, redefinimos las variables que necesitan cambiar.
+      
+      ¿Por qué funciona?
+      CSS aplica estas variables ENCIMA de las de :root cuando se
+      cumple la condición del media query. Todo lo que use var(--canvas-bg)
+      automáticamente cambia sin que tengamos que tocar el resto del CSS.
+    */
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:        #f0f0f7;
+        --surface:   #ffffff;
+        --surface2:  #f5f5fb;
+        --border:    #d0d0e0;
+        --text:      #1a1a2e;
+        --text-muted:#7070a0;
+        --canvas-bg: #ffffff;   /* canvas blanco en modo claro */
+        --canvas-text: #1a1a2e;
+      }
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: background 0.3s; /* suaviza el cambio si el usuario cambia el modo */
+    }
+
+    /* ─── PANTALLA DE LOGIN ───────────────────────────────── */
+
+    #auth-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      gap: 28px;
+      animation: fadeIn 0.5s ease;
+    }
+
+    /* 
+      TÍTULO RAINBOW ANIMADO
+      ──────────────────────
+      Usamos la misma técnica del Complete_drawing_app1.html original:
+      un degradado de colores del arcoíris aplicado al texto.
+      background-size: 200% hace que el degradado sea el doble de ancho
+      para que la animación pueda desplazarse.
+      
+      La clase .rainbow-stop detiene la animación (la añadimos con JS a los 20s).
+    */
+    .app-title {
+      font-family: var(--font-display);
+      font-size: 2.25rem;      /* mitad de 4.5rem como se pidió */
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1.1;
+
+      /*
+        GRADIENTE RAINBOW — igual que en Complete_drawing_app1.html original:
+        El gradiente tiene el doble de ancho que el texto (background-size: 200% auto).
+        La animación desplaza el fondo de 0% a 200% — eso hace que los colores
+        "viajen" de izquierda a derecha a través de las letras.
+        
+        PROBLEMA que teníamos antes: poníamos 'animation' en una regla
+        y 'animation-iteration-count' en otra regla separada del MISMO selector.
+        Cuando CSS ve dos bloques del mismo selector, el segundo sobreescribe
+        propiedades del primero — pero solo las que se repiten. Esto causaba
+        que 'infinite' del shorthand ganara sobre el iteration-count separado.
+        
+        SOLUCIÓN: poner todo en UN solo bloque, sin repetir el selector.
+      */
+      background: linear-gradient(90deg,
+        #ff0000, #ff7f00, #ffff00,
+        #00ff00, #0000ff, #4b0082,
+        #9400d3, #ff0000
+      );
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+
+      /*
+        animation shorthand completo en UNA sola línea:
+          nombre     duración  curva    delay  iteraciones  dirección  fill-mode
+          rainbowFlow  2s      linear   0s         10        normal     forwards
+
+        2s × 10 iteraciones = 20 segundos exactos.
+        'forwards' = al terminar se queda en el último frame (no salta al inicio).
+      */
+      animation: rainbowFlow 2s linear 0s 10 normal forwards;
+    }
+
+    @keyframes rainbowFlow {
+      0%   { background-position: 0%   50%; }
+      100% { background-position: 200% 50%; }
+    }
+
+    .auth-tagline {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-top: -16px;
+      letter-spacing: 0.02em;
+    }
+
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      width: 100%;
+      max-width: 340px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .auth-card h2 {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+    }
+
+    .auth-card p { font-size: 0.875rem; color: var(--text-muted); }
+
+    .divider {
+      display: flex; align-items: center; gap: 10px;
+      color: var(--text-muted); font-size: 0.8rem;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    .input {
+      width: 100%; padding: 12px 16px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      font-family: var(--font-body); font-size: 0.95rem;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .btn {
+      padding: 12px 20px; border: none; border-radius: 10px;
+      font-family: var(--font-body); font-size: 0.95rem;
+      font-weight: 600; cursor: pointer;
+      transition: all 0.2s ease; width: 100%;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), #6366f1);
+      color: white; box-shadow: 0 4px 20px var(--accent-glow);
+    }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 8px 30px var(--accent-glow); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-secondary {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent2); }
+    .btn-ghost {
+      background: transparent; border: none; color: var(--text-muted);
+      font-size: 0.875rem; padding: 8px; width: auto; cursor: pointer;
+    }
+    .btn-ghost:hover { color: var(--text); }
+
+
+    /* ─── APP PRINCIPAL ──────────────────────────────────── */
+
+    #main-app {
+      display: none;
+      width: 100vw;
+      height: 100vh;
+      flex-direction: column;
+      background: var(--bg);
+      animation: fadeIn 0.4s ease;
+    }
+
+    /*
+      HEADER — barra superior
+      ─────────────────────────
+      Contiene el título (pequeño aquí), los botones de acción
+      (Guardar y Limpiar) y el perfil del usuario.
+      
+      Los botones de acción están FUERA del canvas como pediste,
+      pero en la misma barra para no ocupar espacio extra.
+    */
+    .app-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    /* Título pequeño en el header de la app (no animado — ya se animó en el login) */
+    .header-logo {
+      font-family: var(--font-display);
+      font-size: 1.3rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #a855f7, #6366f1);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-right: 4px;
+    }
+
+    /* Separador visual entre logo y botones */
+    .header-sep {
+      width: 1px; height: 24px;
+      background: var(--border);
+      margin: 0 4px;
+    }
+
+    /* Botones de acción en el header */
+    .header-btn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 7px 14px; border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text);
+      font-family: var(--font-body); font-size: 0.82rem;
+      font-weight: 500; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .header-btn:hover { border-color: var(--accent); color: var(--accent2); }
+    .header-btn.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* El grupo de botones de acción */
+    .header-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Empuja el perfil de usuario al extremo derecho */
+    .header-spacer { flex: 1; }
+
+    .user-info { display: flex; align-items: center; gap: 8px; }
+    .avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      border: 2px solid var(--accent); object-fit: cover;
+    }
+    .username-text { font-weight: 600; font-size: 0.875rem; }
+
+
+    /* ─── CUERPO: TOOLBAR + CANVAS ───────────────────────── */
+
+    .app-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /*
+      BARRA LATERAL — solo herramientas de pincel
+      Quitamos el slider de tamaño como pediste.
+      El grosor ahora depende ÚNICAMENTE de la presión.
+    */
+    .toolbar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 10px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      gap: 6px;
+      width: 56px;
+      flex-shrink: 0;
+    }
+
+    .tool-btn {
+      width: 38px; height: 38px; border-radius: 9px;
+      border: 1px solid transparent;
+      background: transparent; color: var(--text-muted);
+      font-size: 1.1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .tool-btn:hover { background: var(--surface2); color: var(--text); }
+    .tool-btn.active {
+      background: var(--accent-glow);
+      border-color: var(--accent);
+      color: var(--accent2);
+    }
+    .tool-separator { width: 28px; height: 1px; background: var(--border); margin: 3px 0; }
+
+    /* Etiqueta pequeña debajo de cada herramienta */
+    .tool-label {
+      font-size: 0.55rem;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: -4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+
+    /* ─── ZONA DEL CANVAS ────────────────────────────────── */
+
+    .canvas-zone {
+      flex: 1;
+      display: flex;
+      flex-direction: column;   /* canvas arriba, carrusel abajo */
+      overflow: hidden;
+    }
+
+    /* Área donde vive el canvas (con el padding y el fondo) */
+    .canvas-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;       /* necesario para los botones flotantes */
+      overflow: hidden;
+      background: var(--bg);
+      padding: 20px;
+    }
+
+    #drawingCanvas {
+      touch-action: none;
+      border-radius: 6px;
+      cursor: crosshair;
+      display: block;
+      /*
+        El fondo del canvas cambia con el modo del sistema.
+        Lo manejamos en JS con canvas.style.background = var(--canvas-bg)
+        porque el elemento <canvas> en sí no hereda CSS para su contenido.
+      */
+      box-shadow:
+        0 0 0 1px var(--border),
+        0 16px 48px rgba(0,0,0,0.4);
+    }
+
+    /* Preview del pincel */
+    #brush-preview {
+      position: absolute;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.5);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      transition: width 0.04s, height 0.04s;
+      display: none;
+      mix-blend-mode: difference;  /* se ve bien tanto en canvas oscuro como claro */
+    }
+
+    /*
+      BOTONES FLOTANTES DE UNDO / REDO
+      ──────────────────────────────────
+      Viven dentro del canvas en la esquina superior izquierda.
+      position: absolute los posiciona respecto al .canvas-area (su padre con position:relative).
+
+      Regla de visibilidad:
+        - Si NO hay trazos      → opacity 0, pointer-events none (invisibles e inactivos)
+        - Si el usuario dibuja  → opacity 0, pointer-events none (se esconden mientras dibuja)
+        - Si hay trazos Y paró  → opacity 1, pointer-events auto (visibles y activos)
+      
+      Esto se maneja con clases CSS en JS. La transición de opacity
+      hace que aparezcan/desaparezcan suavemente.
+    */
+    .floating-btns {
+      position: absolute;
+      top: 36px;        /* 36px desde arriba del .canvas-area */
+      left: 36px;       /* 36px desde la izquierda */
+      display: flex;
+      gap: 8px;
+      z-index: 10;      /* encima del canvas pero debajo de modales */
+      opacity: 0;                      /* invisibles por defecto */
+      pointer-events: none;            /* no interactuables cuando invisibles */
+      transition: opacity 0.25s ease;  /* aparecen/desaparecen suavemente */
+    }
+
+    /* Se vuelven visibles cuando el canvas tiene trazos y no se está dibujando */
+    .floating-btns.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .float-btn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 7px 13px; border-radius: 20px;   /* forma de "píldora" */
+      border: 1px solid rgba(255,255,255,0.15);
+      /* vidrio esmerilado: fondo semitransparente + desenfoque del contenido detrás */
+      background: rgba(26, 26, 36, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .float-btn:hover {
+      background: rgba(124, 58, 237, 0.3);
+      border-color: var(--accent);
+      color: var(--accent2);
+    }
+
+    /* Botón desactivado (ej: redo sin nada en la pila) */
+    .float-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    @media (prefers-color-scheme: light) {
+      .float-btn {
+        background: rgba(255,255,255,0.82);
+        border-color: rgba(0,0,0,0.12);
+        color: #1a1a2e;
+      }
+      #brush-preview {
+        border-color: rgba(0,0,0,0.4);
+        mix-blend-mode: normal;
+      }
+    }
+
+
+    /* ─── CARRUSEL DE CONTACTOS ──────────────────────────── */
+
+    /*
+      El carrusel está PEGADO DEBAJO del canvas, dentro de .canvas-zone.
+      No es parte del footer global — es específico de la zona del canvas.
+      Esto hace que cuando en mobile el canvas ocupe toda la pantalla,
+      el carrusel esté justo debajo sin espacio extra.
+    */
+    .carousel-strip {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 10px 16px 12px;
+      flex-shrink: 0;
+    }
+
+    .carousel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .carousel-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+
+    /* Botón de enviar dentro del carrusel */
+    .send-btn {
+      padding: 7px 18px; border-radius: 20px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), #6366f1);
+      color: white; font-family: var(--font-body);
+      font-size: 0.82rem; font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 3px 12px var(--accent-glow);
+      transition: all 0.2s;
+    }
+    .send-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px var(--accent-glow); }
+
+    /* Fila horizontal con scroll */
+    .carousel {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;   /* scroll horizontal cuando hay muchos contactos */
+      padding-bottom: 4px;
+      scrollbar-width: none;  /* oculta scrollbar en Firefox */
+      -webkit-overflow-scrolling: touch; /* scroll suave en iOS */
+    }
+    .carousel::-webkit-scrollbar { display: none; } /* oculta scrollbar en Chrome/Safari */
+
+    .contact-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: transform 0.15s;
+    }
+    .contact-item:hover { transform: translateY(-2px); }
+
+    .contact-avatar-wrap {
+      position: relative;
+      width: 46px; height: 46px;
+    }
+
+    .contact-avatar {
+      width: 46px; height: 46px; border-radius: 50%;
+      border: 2.5px solid transparent;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      object-fit: cover;
+    }
+
+    .contact-item.selected .contact-avatar {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    /* Punto verde de "en línea" */
+    .online-dot {
+      position: absolute; bottom: 1px; right: 1px;
+      width: 12px; height: 12px;
+      background: #4ade80; border-radius: 50%;
+      border: 2px solid var(--surface);
+    }
+
+    /* Tick de selección encima del avatar */
+    .contact-check {
+      position: absolute; inset: 0; border-radius: 50%;
+      background: rgba(124,58,237,0.5);
+      display: none; align-items: center; justify-content: center;
+      font-size: 1.1rem; color: white;
+    }
+    .contact-item.selected .contact-check { display: flex; }
+
+    .contact-name {
+      font-size: 0.65rem; color: var(--text-muted);
+      max-width: 46px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+      text-align: center;
+    }
+
+    /* Botón de compartir link (último en el carrusel) */
+    .share-btn {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 4px;
+      cursor: pointer; flex-shrink: 0;
+    }
+    .share-circle {
+      width: 46px; height: 46px; border-radius: 50%;
+      border: 2px dashed var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; color: var(--text-muted);
+      transition: all 0.15s;
+    }
+    .share-btn:hover .share-circle { border-color: var(--accent); color: var(--accent2); }
+
+
+    /* ─── MODAL DE GUARDADO ──────────────────────────────── */
+
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(6px);
+      display: none; align-items: center; justify-content: center;
+      z-index: 100;
+    }
+    .modal-overlay.open { display: flex; animation: fadeIn 0.2s ease; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px; width: 100%; max-width: 300px;
+      display: flex; flex-direction: column; gap: 10px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+      animation: slideUp 0.25s ease;
+    }
+    .modal h3 { font-family: var(--font-display); font-size: 1.15rem; }
+    .modal p  { font-size: 0.82rem; color: var(--text-muted); }
+
+
+    /* ─── TOAST ─────────────────────────────────────────── */
+
+    #toast {
+      position: fixed; bottom: 90px; left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      padding: 9px 20px;
+      font-size: 0.85rem; color: var(--text);
+      opacity: 0; transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none; z-index: 200; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+
+    /* ─── ANIMACIONES ────────────────────────────────────── */
+
+    @keyframes fadeIn {
+      from { opacity: 0; } to { opacity: 1; }
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+  PANTALLA DE LOGIN
+════════════════════════════════════════════ -->
+<div id="auth-screen">
+
+  <!--
+    .app-title tiene la animación rainbow de 20s.
+    Usamos animation-iteration-count: 10 (10 ciclos × 2s = 20s).
+    animation-fill-mode: forwards hace que se quede en el último frame
+    en vez de volver al inicio al terminar.
+  -->
+  <div class="app-title">SketchSend ✏️</div>
+  <p class="auth-tagline">Donde cada mensaje es un dibujo</p>
+
+  <div class="auth-card">
+    <h2>Empezar a dibujar</h2>
+    <p>Elige un nombre para continuar.</p>
+    <input type="text" id="username-input" class="input" placeholder="Tu nombre">
+    <button id="login-btn" class="btn btn-primary">Entrar →</button>
+    <div class="divider">o continúa con</div>
+    <button class="btn btn-secondary" onclick="showToast('🚧 Firebase Auth — Paso 2')">🔵 Continuar con Google</button>
+    <button class="btn btn-secondary" onclick="showToast('🚧 Firebase Auth — Paso 2')">🍎 Continuar con Apple</button>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+  APP PRINCIPAL
+════════════════════════════════════════════ -->
+<div id="main-app">
+
+  <!-- HEADER: logo + acciones + perfil -->
+  <header class="app-header">
+    <div class="header-logo">SketchSend ✏️</div>
+
+    <div class="header-sep"></div>
+
+    <!-- Guardar y Limpiar: arriba a la izquierda, fuera del canvas -->
+    <div class="header-actions">
+      <button class="header-btn" id="save-btn">💾 Guardar</button>
+      <button class="header-btn danger" id="clear-btn">🗑️ Limpiar</button>
+    </div>
+
+    <div class="header-spacer"></div>
+
+    <div class="user-info">
+      <img id="user-avatar" class="avatar" src="" alt="avatar">
+      <span id="username-display" class="username-text"></span>
+      <button class="btn-ghost" id="logout-btn">Salir</button>
+    </div>
+  </header>
+
+  <!-- CUERPO: toolbar izquierda + zona canvas -->
+  <div class="app-body">
+
+    <!-- BARRA LATERAL: solo herramientas de pincel (sin slider de tamaño) -->
+    <aside class="toolbar">
+      <button class="tool-btn active" data-tool="rainbow" title="Pincel Rainbow">🌈</button>
+      <div class="tool-label">Rainbow</div>
+
+      <div class="tool-separator"></div>
+
+      <button class="tool-btn" data-tool="brush" title="Pincel normal">🖌️</button>
+      <div class="tool-label">Pincel</div>
+
+      <div class="tool-separator"></div>
+
+      <button class="tool-btn" data-tool="eraser" title="Borrador">⬜</button>
+      <div class="tool-label">Borrar</div>
+    </aside>
+
+    <!-- ZONA CANVAS + CARRUSEL -->
+    <div class="canvas-zone">
+
+      <!-- Área del canvas con botones flotantes -->
+      <div class="canvas-area" id="canvas-area">
+
+        <canvas id="drawingCanvas"></canvas>
+
+        <!-- Preview del pincel -->
+        <div id="brush-preview"></div>
+
+        <!--
+          BOTONES FLOTANTES — dentro del canvas, esquina superior izquierda
+          La clase 'visible' se añade/quita con JS según:
+            - Hay trazos en el canvas
+            - El usuario NO está dibujando en este momento
+        -->
+        <div class="floating-btns" id="floating-btns">
+          <button class="float-btn" id="undo-btn" title="Deshacer (Ctrl+Z)">
+            ↩ Deshacer
+          </button>
+          <button class="float-btn" id="redo-btn" title="Rehacer (Ctrl+Y)" disabled>
+            Rehacer ↪
+          </button>
+        </div>
+
+      </div>
+
+      <!-- CARRUSEL — pegado justo debajo del canvas -->
+      <div class="carousel-strip">
+        <div class="carousel-header">
+          <span class="carousel-label">
+            Enviar a
+            <span id="selected-count" style="color:var(--accent2); margin-left:4px;"></span>
+          </span>
+          <button class="send-btn" id="send-btn">Enviar ✉️</button>
+        </div>
+        <div class="carousel" id="contacts-carousel">
+          <!-- Se genera con JS -->
+        </div>
+      </div>
+
+    </div><!-- fin .canvas-zone -->
+
+  </div><!-- fin .app-body -->
+
+</div><!-- fin #main-app -->
+
+
+<!-- MODAL DE GUARDADO -->
+<div class="modal-overlay" id="save-modal">
+  <div class="modal">
+    <h3>💾 Guardar dibujo</h3>
+    <p>¿En qué formato quieres guardar?</p>
+    <button class="btn btn-primary" id="save-png-btn">⬇️ Imagen (.PNG)</button>
+    <button class="btn btn-secondary" id="save-video-btn">🎬 Video replay (.WEBM)</button>
+    <button class="btn-ghost" id="close-modal-btn" style="text-align:center; margin-top:4px;">Cancelar</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/ccapture.js@1.1.0/build/CCapture.all.min.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════════
+   REFERENCIAS AL DOM
+════════════════════════════════════════════════════════════ */
+const authScreen      = document.getElementById('auth-screen');
+const mainApp         = document.getElementById('main-app');
+const usernameInput   = document.getElementById('username-input');
+const loginBtn        = document.getElementById('login-btn');
+const logoutBtn       = document.getElementById('logout-btn');
+const userAvatar      = document.getElementById('user-avatar');
+const usernameDisplay = document.getElementById('username-display');
+
+const canvas          = document.getElementById('drawingCanvas');
+const ctx             = canvas.getContext('2d');
+const canvasArea      = document.getElementById('canvas-area');
+const brushPreview    = document.getElementById('brush-preview');
+const floatingBtns    = document.getElementById('floating-btns');
+
+const undoBtn         = document.getElementById('undo-btn');
+const redoBtn         = document.getElementById('redo-btn');
+const saveBtn         = document.getElementById('save-btn');
+const clearBtn        = document.getElementById('clear-btn');
+const sendBtn         = document.getElementById('send-btn');
+const saveModal       = document.getElementById('save-modal');
+const savePngBtn      = document.getElementById('save-png-btn');
+const saveVideoBtn    = document.getElementById('save-video-btn');
+const closeModalBtn   = document.getElementById('close-modal-btn');
+const carousel        = document.getElementById('contacts-carousel');
+const selectedCountEl = document.getElementById('selected-count');
+const toolBtns        = document.querySelectorAll('.tool-btn[data-tool]');
+
+
+/* ════════════════════════════════════════════════════════════
+   ESTADO
+════════════════════════════════════════════════════════════ */
+let isDrawing       = false;
+let hue             = 0;
+let currentTool     = 'rainbow';
+let baseSize        = 8;          // tamaño base único — la presión lo modifica
+let lastPoint       = null;
+let currentUser     = null;
+let recordedStrokes = [];
+let redoStack       = [];
+let selectedContacts = new Set();
+
+
+/* ════════════════════════════════════════════════════════════
+   CANVAS — COLOR DE FONDO SEGÚN EL MODO DEL SISTEMA
+   ════════════════════════════════════════════════════════════
+   
+   El canvas HTML por sí solo no hereda estilos CSS para su
+   contenido de dibujo. Necesitamos detectar el modo del sistema
+   con JavaScript y aplicar el color de fondo directamente.
+
+   window.matchMedia('(prefers-color-scheme: dark)') devuelve
+   un objeto MediaQueryList. Su propiedad .matches es true
+   si el sistema está en modo oscuro.
+   
+   También escuchamos el evento 'change' por si el usuario
+   cambia el modo mientras usa la app (ocurre si el teléfono
+   tiene auto-oscuro por horario).
+*/
+const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+
+function getCanvasBg() {
+  return darkModeQuery.matches ? '#12121a' : '#ffffff';
+}
+
+function fillCanvasBg() {
+  /*
+    Necesitamos rellenar el fondo del canvas con el color correcto.
+    Si no lo hacemos, el fondo del canvas es transparente y al guardar
+    como PNG el fondo saldría negro (en algunos navegadores) o con
+    el fondo de la página.
+    
+    Usamos fillRect para pintar todo el canvas con el color de fondo.
+    Guardamos la compositeOperation anterior y la restauramos para
+    que no afecte a los trazos que ya existen.
+  */
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-over'; 
+  // 'destination-over' dibuja DETRÁS de lo que ya está en el canvas
+  ctx.fillStyle = getCanvasBg();
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+}
+
+// Cuando el sistema cambia de modo, redibujar el canvas
+darkModeQuery.addEventListener('change', () => {
+  redrawFromHistory();
+  fillCanvasBg();
+});
+
+
+/* ════════════════════════════════════════════════════════════
+   AUTENTICACIÓN
+════════════════════════════════════════════════════════════ */
+function checkLoginState() {
+  currentUser = localStorage.getItem('sketchsend_user');
+  if (currentUser) {
+    usernameDisplay.textContent = currentUser;
+    userAvatar.src = generateAvatar(currentUser);
+    authScreen.style.display = 'none';
+    mainApp.style.display = 'flex';
+    setupCanvas();
+    buildCarousel();
+  } else {
+    authScreen.style.display = 'flex';
+    mainApp.style.display = 'none';
+  }
+}
+
+loginBtn.addEventListener('click', () => {
+  const name = usernameInput.value.trim();
+  if (!name) { showToast('⚠️ Escribe un nombre primero'); return; }
+  localStorage.setItem('sketchsend_user', name);
+  checkLoginState();
+});
+
+usernameInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') loginBtn.click();
+});
+
+logoutBtn.addEventListener('click', () => {
+  localStorage.removeItem('sketchsend_user');
+  checkLoginState();
+});
+
+
+/* ════════════════════════════════════════════════════════════
+   SETUP DEL CANVAS
+════════════════════════════════════════════════════════════ */
+function setupCanvas() {
+  const area   = canvasArea.getBoundingClientRect();
+  const padding = 32;
+  const maxW = area.width  - padding;
+  const maxH = area.height - padding;
+
+  // Proporción 16:10
+  const ratio = 16 / 10;
+  let w = maxW;
+  let h = w / ratio;
+  if (h > maxH) { h = maxH; w = h * ratio; }
+
+  canvas.width  = Math.floor(w);
+  canvas.height = Math.floor(h);
+
+  ctx.lineCap  = 'round';
+  ctx.lineJoin = 'round';
+
+  // Aplicar color de fondo correcto desde el inicio
+  fillCanvasBg();
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   DIBUJO CON PRESIÓN
+════════════════════════════════════════════════════════════ */
+function getPointerCoords(e) {
+  const rect = canvas.getBoundingClientRect();
+  let x, y, pressure;
+
+  if (e.touches && e.touches.length > 0) {
+    x = e.touches[0].clientX - rect.left;
+    y = e.touches[0].clientY - rect.top;
+    pressure = e.touches[0].force || 0.5; // .force es la presión en TouchEvent
+  } else {
+    x = e.clientX - rect.left;
+    y = e.clientY - rect.top;
+    pressure = e.pressure !== undefined ? e.pressure : 0.5;
+  }
+
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return { x: x * scaleX, y: y * scaleY, pressure };
+}
+
+function calcBrushWidth(pressure) {
+  /*
+    Sin slider de tamaño, el baseSize es fijo (8px).
+    La presión multiplica ese valor:
+      presión 0.1 → 8 × 0.3 = ~2.4px  (muy suave)
+      presión 0.5 → 8 × 1.4 = ~11px   (normal)
+      presión 1.0 → 8 × 2.8 = ~22px   (fuerte)
+    
+    Math.max y Math.min aseguran que nunca sea menor a 1px
+    ni mayor al triple del tamaño base.
+  */
+  const p = pressure < 0.05 ? 0.3 : pressure;
+  return Math.max(1, Math.min(baseSize * (p * 2.8), baseSize * 3));
+}
+
+function startDrawing(e) {
+  e.preventDefault();
+  isDrawing = true;
+  redoStack = [];
+  const { x, y } = getPointerCoords(e);
+  lastPoint = { x, y };
+  recordedStrokes.push({ type: 'start', x, y, tool: currentTool });
+  updateFloatingBtns(); // actualizar visibilidad de undo/redo
+}
+
+function draw(e) {
+  if (!isDrawing) return;
+  e.preventDefault();
+  const { x, y, pressure } = getPointerCoords(e);
+  const bw = calcBrushWidth(pressure);
+
+  let color;
+  if (currentTool === 'rainbow') {
+    hue = (hue + 1.2) % 360;
+    color = `hsl(${hue}, 100%, 55%)`;
+  } else if (currentTool === 'eraser') {
+    color = getCanvasBg();  // borra con el color del fondo actual
+  } else {
+    // Pincel normal: negro en modo claro, blanco en modo oscuro
+    color = darkModeQuery.matches ? '#ffffff' : '#1a1a2e';
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(lastPoint.x, lastPoint.y);
+  ctx.strokeStyle = color;
+  ctx.lineWidth   = bw;
+  ctx.lineTo(x, y);
+  ctx.stroke();
+
+  // Preview del pincel
+  const areaRect = canvasArea.getBoundingClientRect();
+  const cx = (e.clientX || (e.touches && e.touches[0].clientX)) - areaRect.left;
+  const cy = (e.clientY || (e.touches && e.touches[0].clientY)) - areaRect.top;
+  brushPreview.style.display = 'block';
+  brushPreview.style.left   = cx + 'px';
+  brushPreview.style.top    = cy + 'px';
+  brushPreview.style.width  = (bw / (canvas.width / (canvasArea.getBoundingClientRect().width - 32))) + 'px';
+  brushPreview.style.height = brushPreview.style.width;
+
+  recordedStrokes.push({
+    type: 'segment',
+    from: { ...lastPoint },
+    to:   { x, y },
+    color,
+    width: bw
+  });
+  lastPoint = { x, y };
+}
+
+function stopDrawing() {
+  if (!isDrawing) return;
+  isDrawing = false;
+  lastPoint = null;
+  brushPreview.style.display = 'none';
+  recordedStrokes.push({ type: 'end' });
+  updateFloatingBtns(); // ahora sí se muestran los botones undo/redo
+}
+
+canvas.addEventListener('pointerdown', startDrawing);
+canvas.addEventListener('pointermove', draw);
+canvas.addEventListener('pointerup',   stopDrawing);
+canvas.addEventListener('pointerout',  stopDrawing);
+canvas.addEventListener('touchstart',  startDrawing, { passive: false });
+canvas.addEventListener('touchmove',   draw,         { passive: false });
+canvas.addEventListener('touchend',    stopDrawing);
+
+// Preview del pincel cuando el cursor está encima sin dibujar
+canvasArea.addEventListener('mousemove', e => {
+  if (isDrawing) return;
+  const rect = canvasArea.getBoundingClientRect();
+  brushPreview.style.display = 'block';
+  brushPreview.style.left   = (e.clientX - rect.left) + 'px';
+  brushPreview.style.top    = (e.clientY - rect.top)  + 'px';
+  const pw = calcBrushWidth(0.5);
+  const scale = canvas.width / (rect.width - 32);
+  const displayPw = pw / scale;
+  brushPreview.style.width  = displayPw + 'px';
+  brushPreview.style.height = displayPw + 'px';
+});
+canvasArea.addEventListener('mouseleave', () => {
+  brushPreview.style.display = 'none';
+});
+
+
+/* ════════════════════════════════════════════════════════════
+   VISIBILIDAD DE BOTONES FLOTANTES (UNDO / REDO)
+   ════════════════════════════════════════════════════════════
+   
+   Condición para mostrar los botones:
+     ✓ Hay al menos un trazo en el canvas
+     ✓ El usuario NO está dibujando ahora mismo
+   
+   Si alguna de estas condiciones no se cumple → ocultos.
+*/
+function updateFloatingBtns() {
+  const hasStrokes = recordedStrokes.some(s => s.type === 'start');
+  const shouldShow = hasStrokes && !isDrawing;
+
+  if (shouldShow) {
+    floatingBtns.classList.add('visible');
+  } else {
+    floatingBtns.classList.remove('visible');
+  }
+
+  // El botón redo se desactiva si no hay nada en la pila de redo
+  redoBtn.disabled = redoStack.length === 0;
+  // El botón undo se desactiva si no hay trazos
+  undoBtn.disabled = !hasStrokes;
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   HERRAMIENTAS
+════════════════════════════════════════════════════════════ */
+toolBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    toolBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentTool = btn.dataset.tool;
+  });
+});
+
+
+/* ════════════════════════════════════════════════════════════
+   UNDO / REDO
+════════════════════════════════════════════════════════════ */
+function undo() {
+  let lastStartIdx = -1;
+  for (let i = recordedStrokes.length - 1; i >= 0; i--) {
+    if (recordedStrokes[i].type === 'start') { lastStartIdx = i; break; }
+  }
+  if (lastStartIdx === -1) return;
+  redoStack.push(recordedStrokes.splice(lastStartIdx));
+  redrawFromHistory();
+  updateFloatingBtns();
+}
+
+function redo() {
+  if (redoStack.length === 0) return;
+  recordedStrokes.push(...redoStack.pop());
+  redrawFromHistory();
+  updateFloatingBtns();
+}
+
+undoBtn.addEventListener('click', undo);
+redoBtn.addEventListener('click', redo);
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) { e.preventDefault(); redo(); }
+});
+
+function redrawFromHistory() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  fillCanvasBg(); // volver a poner el fondo al limpiar
+  for (const s of recordedStrokes) {
+    if (s.type === 'segment') {
+      ctx.beginPath();
+      ctx.moveTo(s.from.x, s.from.y);
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth   = s.width;
+      ctx.lineTo(s.to.x, s.to.y);
+      ctx.stroke();
+    }
+  }
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   LIMPIAR
+════════════════════════════════════════════════════════════ */
+clearBtn.addEventListener('click', () => {
+  if (recordedStrokes.length === 0) { showToast('El canvas ya está limpio'); return; }
+  redoStack = [];
+  recordedStrokes = [];
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  fillCanvasBg();
+  updateFloatingBtns();
+  showToast('🗑️ Canvas limpiado');
+});
+
+
+/* ════════════════════════════════════════════════════════════
+   CARRUSEL DE CONTACTOS
+════════════════════════════════════════════════════════════ */
+const DEMO_CONTACTS = [
+  { id:'1', name:'Ana',       online:true  },
+  { id:'2', name:'Carlos',    online:true  },
+  { id:'3', name:'Sofía',     online:false },
+  { id:'4', name:'Miguel',    online:true  },
+  { id:'5', name:'Lucía',     online:false },
+  { id:'6', name:'Diego',     online:true  },
+  { id:'7', name:'Valentina', online:false },
+  { id:'8', name:'Mateo',     online:true  },
+];
+
+function buildCarousel() {
+  carousel.innerHTML = '';
+
+  DEMO_CONTACTS.forEach(contact => {
+    const item = document.createElement('div');
+    item.className = 'contact-item';
+    item.dataset.id = contact.id;
+    item.innerHTML = `
+      <div class="contact-avatar-wrap">
+        <img class="contact-avatar" src="${generateAvatar(contact.name)}" alt="${contact.name}">
+        ${contact.online ? '<div class="online-dot"></div>' : ''}
+        <div class="contact-check">✓</div>
+      </div>
+      <span class="contact-name">${contact.name}</span>
+    `;
+    item.addEventListener('click', () => {
+      if (selectedContacts.has(contact.id)) {
+        selectedContacts.delete(contact.id);
+        item.classList.remove('selected');
+      } else {
+        selectedContacts.add(contact.id);
+        item.classList.add('selected');
+      }
+      updateSelectedCount();
+    });
+    carousel.appendChild(item);
+  });
+
+  // Botón de compartir link
+  const shareItem = document.createElement('div');
+  shareItem.className = 'share-btn';
+  shareItem.innerHTML = `<div class="share-circle">🔗</div><span class="contact-name" style="max-width:54px">Compartir</span>`;
+  shareItem.addEventListener('click', () => {
+    if (navigator.share) {
+      navigator.share({ title:'SketchSend', text:'¡Te envié un dibujo!', url: window.location.href }).catch(()=>{});
+    } else {
+      showToast('🔗 Link copiado (disponible con backend)');
+    }
+  });
+  carousel.appendChild(shareItem);
+}
+
+function updateSelectedCount() {
+  const n = selectedContacts.size;
+  selectedCountEl.textContent = n > 0 ? `(${n} seleccionado${n>1?'s':''})` : '';
+}
+
+sendBtn.addEventListener('click', () => {
+  if (recordedStrokes.length === 0) { showToast('✏️ ¡Dibuja algo primero!'); return; }
+  if (selectedContacts.size === 0)  { showToast('👆 Selecciona a quién enviar'); return; }
+  const names = DEMO_CONTACTS.filter(c => selectedContacts.has(c.id)).map(c=>c.name).join(', ');
+  showToast(`✉️ Enviado a: ${names} — (Paso 3 conecta el backend)`);
+  selectedContacts.clear();
+  document.querySelectorAll('.contact-item.selected').forEach(el => el.classList.remove('selected'));
+  updateSelectedCount();
+});
+
+
+/* ════════════════════════════════════════════════════════════
+   GUARDAR
+════════════════════════════════════════════════════════════ */
+saveBtn.addEventListener('click', () => { saveModal.classList.add('open'); });
+closeModalBtn.addEventListener('click', () => { saveModal.classList.remove('open'); });
+saveModal.addEventListener('click', e => { if (e.target === saveModal) saveModal.classList.remove('open'); });
+
+savePngBtn.addEventListener('click', () => {
+  /*
+    Para que el PNG tenga el fondo correcto (blanco o negro según el modo),
+    creamos un canvas temporal, pintamos el fondo y luego los trazos encima.
+  */
+  const tmp = document.createElement('canvas');
+  tmp.width = canvas.width; tmp.height = canvas.height;
+  const tc = tmp.getContext('2d');
+  tc.fillStyle = getCanvasBg();
+  tc.fillRect(0, 0, tmp.width, tmp.height);
+  tc.drawImage(canvas, 0, 0);
+
+  const link = document.createElement('a');
+  link.download = `sketchsend_${Date.now()}.png`;
+  link.href = tmp.toDataURL('image/png');
+  link.click();
+  saveModal.classList.remove('open');
+  showToast('🖼️ Imagen guardada');
+});
+
+saveVideoBtn.addEventListener('click', async () => {
+  if (recordedStrokes.length === 0) { showToast('✏️ ¡Dibuja algo primero!'); return; }
+  saveModal.classList.remove('open');
+  showToast('⏳ Preparando video...');
+
+  const capturer = new CCapture({ format:'webm', framerate:60 });
+  const tmp = document.createElement('canvas');
+  tmp.width = canvas.width; tmp.height = canvas.height;
+  const tc = tmp.getContext('2d');
+  tc.lineCap = 'round'; tc.lineJoin = 'round';
+
+  // Fondo en el video
+  tc.fillStyle = getCanvasBg();
+  tc.fillRect(0, 0, tmp.width, tmp.height);
+
+  capturer.start();
+  for (const s of recordedStrokes) {
+    if (s.type === 'segment') {
+      tc.beginPath();
+      tc.moveTo(s.from.x, s.from.y);
+      tc.strokeStyle = s.color;
+      tc.lineWidth   = s.width;
+      tc.lineTo(s.to.x, s.to.y);
+      tc.stroke();
+    }
+    capturer.capture(tmp);
+  }
+  capturer.stop();
+  capturer.save();
+  showToast('🎬 Video descargado');
+});
+
+
+/* ════════════════════════════════════════════════════════════
+   UTILIDADES
+════════════════════════════════════════════════════════════ */
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function generateAvatar(name) {
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const cx = c.getContext('2d');
+  const initials = name.trim().split(' ').map(n=>n[0]||'').slice(0,2).join('').toUpperCase();
+  const colors = ['#7c3aed','#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899','#06b6d4','#10b981'];
+  const idx = (initials.charCodeAt(0)||0) % colors.length;
+  const g = cx.createLinearGradient(0,0,64,64);
+  g.addColorStop(0, colors[idx]);
+  g.addColorStop(1, colors[(idx+2)%colors.length]);
+  cx.fillStyle = g;
+  cx.beginPath(); cx.arc(32,32,32,0,Math.PI*2); cx.fill();
+  cx.font = 'bold 26px DM Sans,sans-serif';
+  cx.fillStyle = '#fff';
+  cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  cx.fillText(initials, 32, 33);
+  return c.toDataURL();
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   INICIALIZACIÓN
+════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  checkLoginState();
+  updateFloatingBtns();
+});
+</script>
+</body>
+</html>

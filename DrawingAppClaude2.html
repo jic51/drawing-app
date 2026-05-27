@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SketchSend</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+
+    /* ── VARIABLES ─────────────────────────────────────── */
+    :root {
+      --bg:         #0f0f13;
+      --surface:    #1a1a24;
+      --surface2:   #22222f;
+      --border:     #2e2e40;
+      --accent:     #7c3aed;
+      --accent2:    #a855f7;
+      --glow:       rgba(124,58,237,0.35);
+      --text:       #e8e8f0;
+      --muted:      #7070a0;
+      --danger:     #ef4444;
+      --online:     #4ade80;
+      --canvas-bg:  #12121a;
+      --r: 14px;
+      --sans: 'DM Sans', sans-serif;
+      --display: 'Syne', sans-serif;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:        #f0f0f7;
+        --surface:   #ffffff;
+        --surface2:  #f5f5fb;
+        --border:    #d0d0e0;
+        --text:      #1a1a2e;
+        --muted:     #7070a0;
+        --canvas-bg: #ffffff;
+      }
+    }
+
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    /* ── TÍTULO RAINBOW ────────────────────────────────────
+       Copiado exactamente del test que funcionó, solo
+       cambiamos font-size a 2.25rem como pidió el usuario.
+    ───────────────────────────────────────────────────── */
+    .titulo {
+      font-family: var(--display);
+      font-size: 2.25rem;
+      font-weight: 900;
+      background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #9400d3, #ff0000);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: mover 2s linear infinite;
+    }
+
+    /* .titulo siempre animado infinitamente (pantalla de login) */
+    @keyframes mover {
+      from { background-position: 0% center; }
+      to   { background-position: 200% center; }
+    }
+
+    /*
+      TÍTULO VOLADOR — el elemento que hace la transición
+      Vive fuera del flujo normal (position:fixed) para poder
+      moverse libremente por la pantalla durante la animación.
+      JS calcula las posiciones inicio y fin con getBoundingClientRect().
+    */
+    #titulo-volador {
+      position: fixed;
+      pointer-events: none;
+      z-index: 500;
+      white-space: nowrap;
+      font-family: var(--display);
+      font-weight: 900;
+      background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #9400d3, #ff0000);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: mover 2s linear infinite;
+      /* transform-origin top-left para que el scale sea predecible */
+      transform-origin: top left;
+      /* la transición que hace el "vuelo": mueve posición y escala a la vez */
+      transition:
+        top    0.65s cubic-bezier(0.4, 0, 0.2, 1),
+        left   0.65s cubic-bezier(0.4, 0, 0.2, 1),
+        font-size 0.65s cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 0.3s ease;
+    }
+
+    /* Cuando llega al header, detiene la animación rainbow a los 20s */
+    #titulo-volador.parado {
+      animation: none;
+    }
+
+    /* ── LOGIN ─────────────────────────────────────────── */
+    #auth-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      gap: 24px;
+      animation: aparecer 0.5s ease;
+    }
+
+    .tagline { color: var(--muted); font-size: 0.95rem; margin-top: -14px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 32px;
+      width: 100%;
+      max-width: 340px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .card h2 { font-family: var(--display); font-size: 1.3rem; }
+    .card p  { font-size: 0.875rem; color: var(--muted); }
+
+    .sep {
+      display: flex; align-items: center; gap: 10px;
+      color: var(--muted); font-size: 0.8rem;
+    }
+    .sep::before, .sep::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    .inp {
+      width: 100%; padding: 12px 16px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      font-family: var(--sans); font-size: 0.95rem;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .inp:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow); }
+
+    .btn {
+      padding: 12px 20px; border: none; border-radius: 10px;
+      font-family: var(--sans); font-size: 0.95rem; font-weight: 600;
+      cursor: pointer; transition: all 0.2s; width: 100%;
+    }
+    .btn-p {
+      background: linear-gradient(135deg, var(--accent), #6366f1);
+      color: #fff; box-shadow: 0 4px 20px var(--glow);
+    }
+    .btn-p:hover { transform: translateY(-1px); box-shadow: 0 8px 30px var(--glow); }
+    .btn-s {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    }
+    .btn-s:hover { border-color: var(--accent); color: var(--accent2); }
+    .btn-g {
+      background: none; border: none; color: var(--muted);
+      font-size: 0.875rem; cursor: pointer; width: auto; padding: 6px;
+    }
+    .btn-g:hover { color: var(--text); }
+
+
+    /* ── APP PRINCIPAL ─────────────────────────────────── */
+    #app {
+      display: none;
+      width: 100vw;
+      height: 100vh;
+      flex-direction: column;
+      animation: aparecer 0.4s ease;
+    }
+
+    /* HEADER */
+    .hdr {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+    }
+
+    .hdr-logo {
+      font-family: var(--display);
+      font-size: 1.2rem;
+      font-weight: 800;
+      /* mismo gradiente rainbow para consistencia visual */
+      background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #9400d3, #ff0000);
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hdr-sep { width: 1px; height: 22px; background: var(--border); margin: 0 2px; }
+    .hdr-space { flex: 1; }
+
+    .hbtn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 13px; border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface2); color: var(--text);
+      font-family: var(--sans); font-size: 0.82rem; font-weight: 500;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .hbtn:hover          { border-color: var(--accent); color: var(--accent2); }
+    .hbtn.danger:hover   { border-color: var(--danger); color: var(--danger); }
+
+    .uinfo { display: flex; align-items: center; gap: 8px; }
+    .avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      border: 2px solid var(--accent); object-fit: cover;
+    }
+    .uname { font-weight: 600; font-size: 0.85rem; }
+
+
+    /* ── CUERPO ────────────────────────────────────────── */
+    .body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Toolbar lateral — solo herramientas, sin slider */
+    .toolbar {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 14px 8px;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      gap: 4px;
+      width: 52px;
+      flex-shrink: 0;
+    }
+
+    .tbtn {
+      width: 36px; height: 36px; border-radius: 9px;
+      border: 1px solid transparent;
+      background: transparent; color: var(--muted);
+      font-size: 1.05rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .tbtn:hover { background: var(--surface2); color: var(--text); }
+    .tbtn.activo {
+      background: var(--glow);
+      border-color: var(--accent);
+      color: var(--accent2);
+    }
+    .tlabel {
+      font-size: 0.52rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.04em;
+      text-align: center; margin-top: -2px;
+    }
+    .tsep { width: 26px; height: 1px; background: var(--border); margin: 3px 0; }
+
+
+    /* ── ZONA CANVAS + CARRUSEL ────────────────────────── */
+    .czone {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .carea {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: var(--bg);
+      padding: 18px;
+      overflow: hidden;
+    }
+
+    #canvas {
+      touch-action: none;
+      border-radius: 5px;
+      cursor: crosshair;
+      display: block;
+      box-shadow: 0 0 0 1px var(--border), 0 14px 40px rgba(0,0,0,0.4);
+    }
+
+    /* Preview del pincel */
+    #preview {
+      position: absolute;
+      border-radius: 50%;
+      border: 1.5px solid rgba(255,255,255,0.5);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      transition: width 0.04s, height 0.04s;
+      display: none;
+      mix-blend-mode: difference;
+    }
+
+    /* Botones flotantes undo/redo dentro del canvas */
+    .fbtns {
+      position: absolute;
+      top: 30px; left: 30px;
+      display: flex; gap: 7px;
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .fbtns.visible { opacity: 1; pointer-events: auto; }
+
+    .fbtn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 13px; border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(26,26,36,0.8);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color: var(--text);
+      font-family: var(--sans); font-size: 0.78rem; font-weight: 500;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .fbtn:hover { background: rgba(124,58,237,0.3); border-color: var(--accent); color: var(--accent2); }
+    .fbtn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    @media (prefers-color-scheme: light) {
+      .fbtn { background: rgba(255,255,255,0.85); border-color: rgba(0,0,0,0.1); color: #1a1a2e; }
+      #preview { border-color: rgba(0,0,0,0.4); mix-blend-mode: normal; }
+    }
+
+
+    /* ── CARRUSEL ──────────────────────────────────────── */
+    .strip {
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 9px 14px 11px;
+      flex-shrink: 0;
+    }
+
+    .strip-hdr {
+      display: flex; align-items: center;
+      justify-content: space-between;
+      margin-bottom: 9px;
+    }
+
+    .clabel {
+      font-size: 0.67rem; font-weight: 600;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em;
+    }
+
+    .sbtn {
+      padding: 6px 16px; border-radius: 20px; border: none;
+      background: linear-gradient(135deg, var(--accent), #6366f1);
+      color: #fff; font-family: var(--sans); font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; box-shadow: 0 3px 10px var(--glow); transition: all 0.2s;
+    }
+    .sbtn:hover { transform: translateY(-1px); box-shadow: 0 6px 18px var(--glow); }
+
+    .carousel {
+      display: flex; gap: 13px;
+      overflow-x: auto; padding-bottom: 3px;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .carousel::-webkit-scrollbar { display: none; }
+
+    .citem {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 4px;
+      cursor: pointer; flex-shrink: 0;
+      transition: transform 0.15s;
+    }
+    .citem:hover { transform: translateY(-2px); }
+
+    .cwrap { position: relative; width: 44px; height: 44px; }
+
+    .cimg {
+      width: 44px; height: 44px; border-radius: 50%;
+      border: 2.5px solid transparent; object-fit: cover;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .citem.sel .cimg {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--glow);
+    }
+
+    .odot {
+      position: absolute; bottom: 1px; right: 1px;
+      width: 11px; height: 11px; background: var(--online);
+      border-radius: 50%; border: 2px solid var(--surface);
+    }
+
+    .ccheck {
+      position: absolute; inset: 0; border-radius: 50%;
+      background: rgba(124,58,237,0.5);
+      display: none; align-items: center; justify-content: center;
+      color: #fff; font-size: 1rem;
+    }
+    .citem.sel .ccheck { display: flex; }
+
+    .cname {
+      font-size: 0.63rem; color: var(--muted);
+      max-width: 44px; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+      text-align: center;
+    }
+
+    .sharebtn {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 4px;
+      cursor: pointer; flex-shrink: 0;
+    }
+    .sharecircle {
+      width: 44px; height: 44px; border-radius: 50%;
+      border: 2px dashed var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; color: var(--muted); transition: all 0.15s;
+    }
+    .sharebtn:hover .sharecircle { border-color: var(--accent); color: var(--accent2); }
+
+
+    /* ── MODAL ─────────────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.65);
+      backdrop-filter: blur(6px);
+      display: none; align-items: center; justify-content: center;
+      z-index: 100;
+    }
+    .overlay.open { display: flex; animation: aparecer 0.2s ease; }
+
+    .modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 26px;
+      width: 100%; max-width: 290px;
+      display: flex; flex-direction: column; gap: 10px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+      animation: subir 0.25s ease;
+    }
+    .modal h3 { font-family: var(--display); font-size: 1.1rem; }
+    .modal p  { font-size: 0.82rem; color: var(--muted); }
+
+
+    /* ── TOAST ─────────────────────────────────────────── */
+    #toast {
+      position: fixed; bottom: 80px; left: 50%;
+      transform: translateX(-50%) translateY(8px);
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 30px; padding: 8px 18px;
+      font-size: 0.84rem; color: var(--text);
+      opacity: 0; transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none; z-index: 200; white-space: nowrap;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+
+    /* ── ANIMACIONES ───────────────────────────────────── */
+    @keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes subir {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="auth-screen">
+  <!-- Este div es el "fantasma" — ocupa el espacio pero es invisible.
+       El título real que el usuario ve es #titulo-volador (el que vuela). -->
+  <div class="titulo" id="titulo-fantasma" style="visibility:hidden;">SketchSend ✏️</div>
+  <p class="tagline">Donde cada mensaje es un dibujo</p>
+
+  <div class="card">
+    <h2>Empezar a dibujar</h2>
+    <p>Elige un nombre para continuar.</p>
+    <input type="text" id="nombre-inp" class="inp" placeholder="Tu nombre">
+    <button id="entrar-btn" class="btn btn-p">Entrar →</button>
+    <div class="sep">o continúa con</div>
+    <button class="btn btn-s" onclick="toast('🚧 Firebase Auth — Paso 2')">🔵 Continuar con Google</button>
+    <button class="btn btn-s" onclick="toast('🚧 Firebase Auth — Paso 2')">🍎 Continuar con Apple</button>
+  </div>
+</div>
+
+
+<!-- APP -->
+<div id="app">
+
+  <header class="hdr">
+    <!-- Placeholder invisible — el título volador aterriza aquí -->
+    <div class="hdr-logo" id="hdr-logo-placeholder" style="visibility:hidden;">SketchSend ✏️</div>
+    <div class="hdr-sep"></div>
+    <button class="hbtn" id="guardar-btn">💾 Guardar</button>
+    <button class="hbtn danger" id="limpiar-btn">🗑️ Limpiar</button>
+    <div class="hdr-space"></div>
+    <div class="uinfo">
+      <img id="av" class="avatar" src="" alt="">
+      <span id="uname" class="uname"></span>
+      <button class="btn-g" id="salir-btn">Salir</button>
+    </div>
+  </header>
+
+  <div class="body">
+
+    <!-- TOOLBAR sin slider de tamaño -->
+    <aside class="toolbar">
+      <button class="tbtn activo" data-tool="rainbow">🌈</button>
+      <div class="tlabel">Rainbow</div>
+      <div class="tsep"></div>
+      <button class="tbtn" data-tool="pincel">🖌️</button>
+      <div class="tlabel">Pincel</div>
+      <div class="tsep"></div>
+      <button class="tbtn" data-tool="borrador">⬜</button>
+      <div class="tlabel">Borrar</div>
+    </aside>
+
+    <div class="czone">
+
+      <div class="carea" id="carea">
+        <canvas id="canvas"></canvas>
+        <div id="preview"></div>
+
+        <!-- Undo/redo flotantes — solo visibles con trazos y sin dibujar -->
+        <div class="fbtns" id="fbtns">
+          <button class="fbtn" id="undo-btn">↩ Deshacer</button>
+          <button class="fbtn" id="redo-btn" disabled>Rehacer ↪</button>
+        </div>
+      </div>
+
+      <!-- Carrusel pegado justo debajo del canvas -->
+      <div class="strip">
+        <div class="strip-hdr">
+          <span class="clabel">Enviar a <span id="sel-count" style="color:var(--accent2)"></span></span>
+          <button class="sbtn" id="enviar-btn">Enviar ✉️</button>
+        </div>
+        <div class="carousel" id="carousel"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL GUARDAR -->
+<div class="overlay" id="modal">
+  <div class="modal">
+    <h3>💾 Guardar dibujo</h3>
+    <p>¿En qué formato?</p>
+    <button class="btn btn-p" id="png-btn">⬇️ Imagen (.PNG)</button>
+    <button class="btn btn-s" id="vid-btn">🎬 Video replay (.WEBM)</button>
+    <button class="btn-g" id="cerrar-btn" style="text-align:center; margin-top:2px">Cancelar</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/ccapture.js@1.1.0/build/CCapture.all.min.js"></script>
+<script>
+/* ── REFERENCIAS ───────────────────────────────────── */
+const authScreen = document.getElementById('auth-screen');
+const appEl      = document.getElementById('app');
+const nombreInp  = document.getElementById('nombre-inp');
+const entrarBtn  = document.getElementById('entrar-btn');
+const salirBtn   = document.getElementById('salir-btn');
+const avatarEl   = document.getElementById('av');
+const unameEl    = document.getElementById('uname');
+const cv         = document.getElementById('canvas');
+const ctx        = cv.getContext('2d');
+const carea      = document.getElementById('carea');
+const preview    = document.getElementById('preview');
+const fbtns      = document.getElementById('fbtns');
+const undoBtn    = document.getElementById('undo-btn');
+const redoBtn    = document.getElementById('redo-btn');
+const guardarBtn = document.getElementById('guardar-btn');
+const limpiarBtn = document.getElementById('limpiar-btn');
+const enviarBtn  = document.getElementById('enviar-btn');
+const modalEl    = document.getElementById('modal');
+const pngBtn     = document.getElementById('png-btn');
+const vidBtn     = document.getElementById('vid-btn');
+const cerrarBtn  = document.getElementById('cerrar-btn');
+const carouselEl = document.getElementById('carousel');
+const selCount   = document.getElementById('sel-count');
+const tituloEl   = document.getElementById('titulo');
+const toolBtns   = document.querySelectorAll('.tbtn[data-tool]');
+
+
+/* ── ESTADO ────────────────────────────────────────── */
+let dibujando   = false;
+let hue         = 0;
+let herramienta = 'rainbow';
+let tamBase     = 8;      // tamaño base fijo — la presión lo multiplica
+let ultimo      = null;
+let usuario     = null;
+let trazos      = [];
+let pilaRedo    = [];
+let seleccionados = new Set();
+
+
+/* ── MODO OSCURO / CLARO DEL SISTEMA ──────────────── */
+const modoOscuro = window.matchMedia('(prefers-color-scheme: dark)');
+const canvasBg   = () => modoOscuro.matches ? '#12121a' : '#ffffff';
+
+function fondoCanvas() {
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-over';
+  ctx.fillStyle = canvasBg();
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.restore();
+}
+
+modoOscuro.addEventListener('change', () => {
+  redibujar();
+  fondoCanvas();
+});
+
+
+/* ── AUTENTICACIÓN ─────────────────────────────────── */
+function checkLogin() {
+  usuario = localStorage.getItem('ss_user');
+  if (usuario) {
+    unameEl.textContent = usuario;
+    avatarEl.src = genAvatar(usuario);
+
+    // Primero mostramos la app (para que el header exista en el DOM y tenga posición real)
+    authScreen.style.display = 'none';
+    appEl.style.display = 'flex';
+    setupCanvas();
+    buildCarousel();
+
+    // requestAnimationFrame asegura que el navegador haya pintado la app
+    // antes de que leamos las posiciones del header (si no, getBoundingClientRect
+    // podría devolver valores de cuando el header era display:none → todos ceros)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        volarAlHeader();
+      });
+    });
+
+  } else {
+    authScreen.style.display = 'flex';
+    appEl.style.display = 'none';
+
+    // Al hacer logout, reseteamos el volador al login
+    const placeholder = document.getElementById('hdr-logo-placeholder');
+    if (placeholder) {
+      placeholder.style.visibility = 'hidden';
+      placeholder.style.animation  = '';
+      placeholder.style.backgroundPosition = '';
+    }
+    volador.style.opacity    = '1';
+    volador.style.transition = 'none';
+    // Pequeño delay para que el auth-screen ya esté visible
+    setTimeout(posicionarVoladorEnLogin, 50);
+  }
+}
+
+entrarBtn.addEventListener('click', () => {
+  const n = nombreInp.value.trim();
+  if (!n) { toast('⚠️ Escribe un nombre'); return; }
+  localStorage.setItem('ss_user', n);
+  checkLogin();
+});
+
+nombreInp.addEventListener('keydown', e => { if (e.key === 'Enter') entrarBtn.click(); });
+salirBtn.addEventListener('click', () => { localStorage.removeItem('ss_user'); checkLogin(); });
+
+
+/* ── CANVAS ────────────────────────────────────────── */
+function setupCanvas() {
+  const r = carea.getBoundingClientRect();
+  const pad = 28;
+  let w = r.width - pad, h = w / (16/10);
+  if (h > r.height - pad) { h = r.height - pad; w = h * (16/10); }
+  cv.width  = Math.floor(w);
+  cv.height = Math.floor(h);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  fondoCanvas();
+}
+
+
+/* ── DIBUJO CON PRESIÓN ────────────────────────────────
+   tamBase es fijo en 8px.
+   La presión (0.0 – 1.0) multiplica ese valor:
+     presión 0.1 → ~2px  (trazo muy fino)
+     presión 0.5 → ~11px (trazo medio)
+     presión 1.0 → ~22px (trazo grueso)
+─────────────────────────────────────────────────── */
+function coords(e) {
+  const r = cv.getBoundingClientRect();
+  let x, y, p;
+  if (e.touches && e.touches.length > 0) {
+    x = e.touches[0].clientX - r.left;
+    y = e.touches[0].clientY - r.top;
+    p = e.touches[0].force || 0.5;
+  } else {
+    x = e.clientX - r.left;
+    y = e.clientY - r.top;
+    p = (e.pressure !== undefined && e.pressure > 0) ? e.pressure : 0.5;
+  }
+  const sx = cv.width  / r.width;
+  const sy = cv.height / r.height;
+  return { x: x*sx, y: y*sy, p };
+}
+
+function grosor(p) {
+  const pn = p < 0.05 ? 0.3 : p;
+  return Math.max(1, Math.min(tamBase * pn * 2.8, tamBase * 3));
+}
+
+function iniciarDibujo(e) {
+  e.preventDefault();
+  dibujando = true;
+  pilaRedo  = [];
+  const { x, y } = coords(e);
+  ultimo = { x, y };
+  trazos.push({ tipo: 'inicio', x, y, h: herramienta });
+  actualizarBotones();
+}
+
+function dibujar(e) {
+  if (!dibujando) return;
+  e.preventDefault();
+  const { x, y, p } = coords(e);
+  const gw = grosor(p);
+
+  let color;
+  if (herramienta === 'rainbow') {
+    hue = (hue + 1.2) % 360;
+    color = `hsl(${hue},100%,55%)`;
+  } else if (herramienta === 'borrador') {
+    color = canvasBg();
+  } else {
+    color = modoOscuro.matches ? '#ffffff' : '#1a1a2e';
+  }
+
+  ctx.beginPath();
+  ctx.moveTo(ultimo.x, ultimo.y);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = gw;
+  ctx.lineTo(x, y);
+  ctx.stroke();
+
+  // Preview del pincel
+  const ar = carea.getBoundingClientRect();
+  const cx2 = (e.clientX || (e.touches && e.touches[0].clientX)) - ar.left;
+  const cy2 = (e.clientY || (e.touches && e.touches[0].clientY)) - ar.top;
+  const escala = cv.width / ar.width;
+  const pw = gw / escala;
+  preview.style.cssText = `display:block; left:${cx2}px; top:${cy2}px; width:${pw}px; height:${pw}px;`;
+
+  trazos.push({ tipo: 'seg', de: { ...ultimo }, a: { x, y }, color, gw });
+  ultimo = { x, y };
+}
+
+function pararDibujo() {
+  if (!dibujando) return;
+  dibujando = false;
+  ultimo = null;
+  preview.style.display = 'none';
+  trazos.push({ tipo: 'fin' });
+  actualizarBotones();
+}
+
+cv.addEventListener('pointerdown', iniciarDibujo);
+cv.addEventListener('pointermove', dibujar);
+cv.addEventListener('pointerup',   pararDibujo);
+cv.addEventListener('pointerout',  pararDibujo);
+cv.addEventListener('touchstart',  iniciarDibujo, { passive: false });
+cv.addEventListener('touchmove',   dibujar,       { passive: false });
+cv.addEventListener('touchend',    pararDibujo);
+
+carea.addEventListener('mousemove', e => {
+  if (dibujando) return;
+  const r = carea.getBoundingClientRect();
+  const pw = grosor(0.5) / (cv.width / r.width);
+  preview.style.cssText = `display:block; left:${e.clientX - r.left}px; top:${e.clientY - r.top}px; width:${pw}px; height:${pw}px;`;
+});
+carea.addEventListener('mouseleave', () => { preview.style.display = 'none'; });
+
+
+/* ── BOTONES FLOTANTES ─────────────────────────────── */
+function actualizarBotones() {
+  const hayTrazos = trazos.some(t => t.tipo === 'inicio');
+  fbtns.classList.toggle('visible', hayTrazos && !dibujando);
+  undoBtn.disabled = !hayTrazos;
+  redoBtn.disabled = pilaRedo.length === 0;
+}
+
+
+/* ── HERRAMIENTAS ──────────────────────────────────── */
+toolBtns.forEach(b => {
+  b.addEventListener('click', () => {
+    toolBtns.forEach(x => x.classList.remove('activo'));
+    b.classList.add('activo');
+    herramienta = b.dataset.tool;
+  });
+});
+
+
+/* ── UNDO / REDO ───────────────────────────────────── */
+function undo() {
+  let idx = -1;
+  for (let i = trazos.length - 1; i >= 0; i--) {
+    if (trazos[i].tipo === 'inicio') { idx = i; break; }
+  }
+  if (idx === -1) return;
+  pilaRedo.push(trazos.splice(idx));
+  redibujar(); actualizarBotones();
+}
+
+function redo() {
+  if (!pilaRedo.length) return;
+  trazos.push(...pilaRedo.pop());
+  redibujar(); actualizarBotones();
+}
+
+undoBtn.addEventListener('click', undo);
+redoBtn.addEventListener('click', redo);
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key==='z' && e.shiftKey))) { e.preventDefault(); redo(); }
+});
+
+function redibujar() {
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  fondoCanvas();
+  for (const t of trazos) {
+    if (t.tipo === 'seg') {
+      ctx.beginPath();
+      ctx.moveTo(t.de.x, t.de.y);
+      ctx.strokeStyle = t.color;
+      ctx.lineWidth   = t.gw;
+      ctx.lineTo(t.a.x, t.a.y);
+      ctx.stroke();
+    }
+  }
+}
+
+
+/* ── LIMPIAR ───────────────────────────────────────── */
+limpiarBtn.addEventListener('click', () => {
+  if (!trazos.length) { toast('El canvas ya está limpio'); return; }
+  pilaRedo = []; trazos = [];
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  fondoCanvas(); actualizarBotones();
+  toast('🗑️ Canvas limpiado');
+});
+
+
+/* ── CARRUSEL ──────────────────────────────────────── */
+const CONTACTOS = [
+  { id:'1', nombre:'Ana',       online:true  },
+  { id:'2', nombre:'Carlos',    online:true  },
+  { id:'3', nombre:'Sofía',     online:false },
+  { id:'4', nombre:'Miguel',    online:true  },
+  { id:'5', nombre:'Lucía',     online:false },
+  { id:'6', nombre:'Diego',     online:true  },
+  { id:'7', nombre:'Valentina', online:false },
+  { id:'8', nombre:'Mateo',     online:true  },
+];
+
+function buildCarousel() {
+  carouselEl.innerHTML = '';
+  CONTACTOS.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'citem';
+    el.dataset.id = c.id;
+    el.innerHTML = `
+      <div class="cwrap">
+        <img class="cimg" src="${genAvatar(c.nombre)}" alt="${c.nombre}">
+        ${c.online ? '<div class="odot"></div>' : ''}
+        <div class="ccheck">✓</div>
+      </div>
+      <span class="cname">${c.nombre}</span>`;
+    el.addEventListener('click', () => {
+      seleccionados.has(c.id) ? seleccionados.delete(c.id) : seleccionados.add(c.id);
+      el.classList.toggle('sel', seleccionados.has(c.id));
+      const n = seleccionados.size;
+      selCount.textContent = n > 0 ? `(${n})` : '';
+    });
+    carouselEl.appendChild(el);
+  });
+
+  const share = document.createElement('div');
+  share.className = 'sharebtn';
+  share.innerHTML = `<div class="sharecircle">🔗</div><span class="cname" style="max-width:52px">Compartir</span>`;
+  share.addEventListener('click', () => {
+    if (navigator.share) {
+      navigator.share({ title:'SketchSend', text:'¡Te envié un dibujo!', url: location.href }).catch(()=>{});
+    } else {
+      toast('🔗 Link disponible en el Paso 3');
+    }
+  });
+  carouselEl.appendChild(share);
+}
+
+enviarBtn.addEventListener('click', () => {
+  if (!trazos.length)       { toast('✏️ ¡Dibuja algo primero!'); return; }
+  if (!seleccionados.size)  { toast('👆 Selecciona a quién enviar'); return; }
+  const nombres = CONTACTOS.filter(c => seleccionados.has(c.id)).map(c=>c.nombre).join(', ');
+  toast(`✉️ Enviado a: ${nombres}`);
+  seleccionados.clear();
+  document.querySelectorAll('.citem.sel').forEach(el => el.classList.remove('sel'));
+  selCount.textContent = '';
+});
+
+
+/* ── GUARDAR ───────────────────────────────────────── */
+guardarBtn.addEventListener('click', () => modalEl.classList.add('open'));
+cerrarBtn.addEventListener('click',  () => modalEl.classList.remove('open'));
+modalEl.addEventListener('click', e => { if (e.target === modalEl) modalEl.classList.remove('open'); });
+
+pngBtn.addEventListener('click', () => {
+  const tmp = document.createElement('canvas');
+  tmp.width = cv.width; tmp.height = cv.height;
+  const tc = tmp.getContext('2d');
+  tc.fillStyle = canvasBg();
+  tc.fillRect(0, 0, tmp.width, tmp.height);
+  tc.drawImage(cv, 0, 0);
+  const a = document.createElement('a');
+  a.download = `sketchsend_${Date.now()}.png`;
+  a.href = tmp.toDataURL('image/png');
+  a.click();
+  modalEl.classList.remove('open');
+  toast('🖼️ Imagen guardada');
+});
+
+vidBtn.addEventListener('click', async () => {
+  if (!trazos.length) { toast('✏️ ¡Dibuja algo primero!'); return; }
+  modalEl.classList.remove('open');
+  toast('⏳ Preparando video...');
+
+  const capturer = new CCapture({ format:'webm', framerate:60 });
+  const tmp = document.createElement('canvas');
+  tmp.width = cv.width; tmp.height = cv.height;
+  const tc = tmp.getContext('2d');
+  tc.lineCap = 'round'; tc.lineJoin = 'round';
+  tc.fillStyle = canvasBg();
+  tc.fillRect(0, 0, tmp.width, tmp.height);
+
+  capturer.start();
+  for (const t of trazos) {
+    if (t.tipo === 'seg') {
+      tc.beginPath();
+      tc.moveTo(t.de.x, t.de.y);
+      tc.strokeStyle = t.color;
+      tc.lineWidth   = t.gw;
+      tc.lineTo(t.a.x, t.a.y);
+      tc.stroke();
+    }
+    capturer.capture(tmp);
+  }
+  capturer.stop();
+  capturer.save();
+  toast('🎬 Video descargado');
+});
+
+
+/* ── UTILIDADES ────────────────────────────────────── */
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function genAvatar(nombre) {
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const cx = c.getContext('2d');
+  const ini = nombre.trim().split(' ').map(n=>n[0]||'').slice(0,2).join('').toUpperCase();
+  const cols = ['#7c3aed','#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899','#06b6d4','#10b981'];
+  const i = (ini.charCodeAt(0)||0) % cols.length;
+  const g = cx.createLinearGradient(0,0,64,64);
+  g.addColorStop(0, cols[i]);
+  g.addColorStop(1, cols[(i+2)%cols.length]);
+  cx.fillStyle = g; cx.beginPath(); cx.arc(32,32,32,0,Math.PI*2); cx.fill();
+  cx.font = 'bold 26px DM Sans,sans-serif';
+  cx.fillStyle = '#fff'; cx.textAlign = 'center'; cx.textBaseline = 'middle';
+  cx.fillText(ini, 32, 33);
+  return c.toDataURL();
+}
+
+
+/* ── TÍTULO VOLADOR ────────────────────────────────────
+   
+   Idea: cuando el usuario hace login, el título grande del
+   login "vuela" hasta convertirse en el logo pequeño del header.
+   
+   Cómo funciona:
+   1. Creamos un elemento <div id="titulo-volador"> que flota
+      sobre toda la página (position:fixed).
+   2. Al cargar, lo posicionamos encima del título del login
+      (mismo tamaño, mismo lugar) — el usuario ve este div,
+      no el original (que está invisible/visibility:hidden).
+   3. Al hacer login, calculamos con getBoundingClientRect()
+      dónde está el placeholder del header.
+   4. Cambiamos top, left y font-size del volador en un solo frame.
+      Como tiene `transition`, CSS anima el movimiento suavemente.
+   5. Al terminar la transición, mostramos el placeholder del
+      header y ocultamos el volador.
+   6. A los 20s de haber aterrizado, paramos el rainbow del header.
+────────────────────────────────────────────────────── */
+
+// Crear el elemento volador y añadirlo al body
+const volador = document.createElement('div');
+volador.id = 'titulo-volador';
+volador.textContent = 'SketchSend ✏️';
+document.body.appendChild(volador);
+
+function posicionarVoladorEnLogin() {
+  // Leemos la posición del fantasma del login para que el volador lo tape exactamente
+  const fantasma = document.getElementById('titulo-fantasma');
+  if (!fantasma) return;
+  const r = fantasma.getBoundingClientRect();
+  const fs = getComputedStyle(fantasma).fontSize;
+  volador.style.transition = 'none'; // sin transición al posicionar inicialmente
+  volador.style.fontSize   = fs;
+  volador.style.top        = r.top  + 'px';
+  volador.style.left       = r.left + 'px';
+  volador.style.opacity    = '1';
+}
+
+function volarAlHeader() {
+  /*
+    Leemos la posición del placeholder del header.
+    Ese div es invisible pero ocupa su espacio real en el layout,
+    así que getBoundingClientRect() nos da la posición exacta
+    donde el título debe aterrizar.
+  */
+  const placeholder = document.getElementById('hdr-logo-placeholder');
+  if (!placeholder) return;
+  const r  = placeholder.getBoundingClientRect();
+  const fs = getComputedStyle(placeholder).fontSize;
+
+  // Reactivamos la transición ANTES de cambiar los valores
+  // (si no, el cambio sería instantáneo)
+  volador.style.transition = ''; // restaura la transición del CSS
+
+  // Estos tres cambios disparan la animación simultáneamente:
+  volador.style.fontSize = fs;       // se encoge
+  volador.style.top      = r.top  + 'px'; // sube
+  volador.style.left     = r.left + 'px'; // se va a la izquierda
+
+  // Cuando termina la transición (0.65s), hacemos el "swap":
+  // mostramos el placeholder real y ocultamos el volador
+  volador.addEventListener('transitionend', () => {
+    // Arrancamos la animación rainbow en el placeholder ANTES de mostrarlo
+    // para que no haya ni un frame estático visible
+    placeholder.style.animation = 'mover 2s linear infinite';
+    placeholder.style.visibility = 'visible';
+    volador.style.opacity = '0';
+
+    // 20s después de aterrizar, congelamos los colores donde quedaron
+    setTimeout(() => {
+      const pos = getComputedStyle(placeholder).backgroundPosition;
+      placeholder.style.backgroundPosition = pos;
+      placeholder.style.animation = 'none';
+    }, 20000);
+
+  }, { once: true });
+}
+
+/* ── INIT ──────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  checkLogin();
+  actualizarBotones();
+  // Posicionamos el volador encima del título del login al cargar
+  posicionarVoladorEnLogin();
+});
+</script>
+</body>
+</html>

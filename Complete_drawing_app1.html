@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rainbow Drawing App</title>
+    <style>
+        /* General Styling */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding-top: 20px;
+        }
+
+        .app-container {
+            width: 90%;
+            max-width: 900px;
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            font-weight: bold;
+            background: linear-gradient(90deg, 
+                #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3,
+                #ff0000);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: rainbow-flow 10s linear infinite;
+            background-size: 200% auto;
+        }
+
+        @keyframes rainbow-flow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        /* Login Screen Styling */
+        #auth-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+        }
+        #username-input {
+            font-size: 1.2em; padding: 10px; border: 2px solid #ccc;
+            border-radius: 8px; margin-bottom: 20px; width: 80%;
+            max-width: 300px; text-align: center;
+        }
+        #login-button {
+            font-size: 1.1em; padding: 12px 25px; cursor: pointer;
+            border: none; border-radius: 8px; background-color: #007bff;
+            color: white; transition: background-color 0.3s;
+        }
+        #login-button:hover { background-color: #0056b3; }
+
+        /* Main Drawing App Styling */
+        #main-app { display: none; }
+        
+        /* NEW: Header for User Profile */
+        .app-header {
+            display: flex;
+            justify-content: flex-end; /* Aligns items to the right */
+            align-items: center;
+            padding: 0 10px;
+            margin-bottom: 15px;
+        }
+        
+        #user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #user-avatar {
+            width: 32px; height: 32px; border-radius: 50%; object-fit: cover;
+        }
+        #username-display { font-weight: 600; }
+        #logout-button {
+            background: none; border: none; color: #007bff;
+            cursor: pointer; text-decoration: underline; font-size: 0.9em;
+            padding: 0; margin-left: 5px;
+        }
+        
+        /* Wrapper for Canvas and Floating UI */
+        .canvas-wrapper {
+            position: relative;
+            width: 800px; height: 500px;
+            margin: 0 auto; /* Centered now that header is outside */
+        }
+
+        canvas {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background-color: #fdfdfd;
+            cursor: crosshair;
+            display: block;
+            touch-action: none;
+        }
+        
+        /* Floating Controls (Top Left) */
+        .floating-controls {
+            position: absolute;
+            top: 15px; left: 15px;
+            display: flex; gap: 10px;
+        }
+        .floating-controls button {
+            padding: 8px 12px; font-size: 1em; cursor: pointer;
+            border: none; border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(5px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: background-color 0.2s;
+        }
+        .floating-controls button:hover { background-color: rgba(255, 255, 255, 1); }
+
+        .save-container { position: relative; }
+        .save-options {
+            display: none; position: absolute; top: 100%;
+            left: 0; margin-top: 5px; background: white;
+            border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            overflow: hidden; flex-direction: column; width: 120px;
+        }
+        .save-options button {
+            width: 100%; border-radius: 0;
+            box-shadow: none; text-align: left;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <h1>Rainbow Drawing</h1>
+
+        <div id="auth-screen">
+            <h2>Welcome!</h2>
+            <p>Please enter a username to begin.</p>
+            <input type="text" id="username-input" placeholder="Enter your name">
+            <button id="login-button">Start Drawing</button>
+        </div>
+
+        <div id="main-app">
+            <div class="app-header">
+                <div id="user-profile">
+                    <img id="user-avatar" src="" alt="User Avatar">
+                    <span id="username-display"></span>
+                    <button id="logout-button">Logout</button>
+                </div>
+            </div>
+
+            <div class="canvas-wrapper">
+                <canvas id="drawingCanvas" width="800" height="500"></canvas>
+                
+                <div class="floating-controls">
+                    <button id="undoButton">↩️ Undo</button>
+                    <div class="save-container">
+                        <button id="saveButton">💾 Save</button>
+                        <div class="save-options" id="saveOptions">
+                            <button id="downloadStaticButton">⬇️ Image</button>
+                            <button id="downloadVideoButton">🎬 Video</button>
+                        </div>
+                    </div>
+                    <button id="sendButton">✉️ Send</button>
+                </div>
+            </div>
+            <div id="statusMessage" style="margin-top:10px;"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/ccapture.js@1.1.0/build/CCapture.all.min.js"></script>
+    <script>
+        // --- DOM Elements ---
+        const authScreen = document.getElementById('auth-screen');
+        const mainApp = document.getElementById('main-app');
+        const usernameInput = document.getElementById('username-input');
+        const loginButton = document.getElementById('login-button');
+        const userProfile = document.getElementById('user-profile');
+        const userAvatar = document.getElementById('user-avatar');
+        const usernameDisplay = document.getElementById('username-display');
+        const logoutButton = document.getElementById('logout-button');
+        
+        const canvas = document.getElementById('drawingCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusMessage = document.getElementById('statusMessage');
+
+        const undoButton = document.getElementById('undoButton');
+        const saveButton = document.getElementById('saveButton');
+        const saveOptions = document.getElementById('saveOptions');
+        const downloadStaticButton = document.getElementById('downloadStaticButton');
+        const downloadVideoButton = document.getElementById('downloadVideoButton');
+        const sendButton = document.getElementById('sendButton');
+
+        // --- App State ---
+        let isDrawing = false;
+        let hue = 0;
+        let brushWidth = 4;
+        let recordedStrokes = [];
+        let currentUser = null;
+        let lastPoint = { x: 0, y: 0 }; // For segment-by-segment drawing
+
+        // --- Authentication & Profile ---
+        function checkLoginState() {
+            currentUser = localStorage.getItem('rainbowDrawUser');
+            if (currentUser) {
+                usernameDisplay.textContent = currentUser;
+                userAvatar.src = generateAvatar(currentUser);
+                authScreen.style.display = 'none';
+                mainApp.style.display = 'block';
+            } else {
+                authScreen.style.display = 'flex';
+                mainApp.style.display = 'none';
+            }
+        }
+
+        loginButton.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            if (username) {
+                localStorage.setItem('rainbowDrawUser', username);
+                checkLoginState();
+            } else {
+                alert('Please enter a username.');
+            }
+        });
+
+        logoutButton.addEventListener('click', () => {
+            localStorage.removeItem('rainbowDrawUser');
+            checkLoginState();
+        });
+        
+        function generateAvatar(name) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 64;
+            canvas.height = 64;
+            const initials = name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+            const colors = ['#007bff', '#6610f2', '#6f42c1', '#e83e8c', '#dc3545', '#fd7e14', '#ffc107', '#28a745', '#20c997', '#17a2b8'];
+            const colorIndex = (initials.charCodeAt(0) || 0) % colors.length;
+            context.fillStyle = colors[colorIndex];
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.font = 'bold 32px Arial';
+            context.fillStyle = '#fff';
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(initials, canvas.width / 2, canvas.height / 2);
+            return canvas.toDataURL();
+        }
+
+        // --- Drawing Logic ---
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = brushWidth;
+
+        function getRainbowColor() {
+            hue = (hue + 1) % 360;
+            return `hsl(${hue}, 100%, 50%)`;
+        }
+        
+        function getEventCoords(e) {
+            const rect = canvas.getBoundingClientRect();
+            if (e.touches && e.touches.length > 0) {
+                return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+            }
+            return { x: e.offsetX, y: e.offsetY };
+        }
+
+        function startDrawing(e) {
+            e.preventDefault();
+            isDrawing = true;
+            const { x, y } = getEventCoords(e);
+            lastPoint = { x, y };
+            recordedStrokes.push({ type: 'start', x, y, width: brushWidth });
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const { x, y } = getEventCoords(e);
+            
+            // NEW: Draw segment by segment for a true rainbow effect
+            ctx.beginPath();
+            ctx.moveTo(lastPoint.x, lastPoint.y);
+            ctx.strokeStyle = getRainbowColor();
+            ctx.lineTo(x, y);
+            ctx.stroke();
+            
+            recordedStrokes.push({ type: 'draw', from: lastPoint, to: {x,y}, color: ctx.strokeStyle });
+            lastPoint = { x, y };
+        }
+
+        function stopDrawing() {
+            if (!isDrawing) return;
+            isDrawing = false;
+            recordedStrokes.push({ type: 'end' });
+        }
+
+        // --- Redraw Canvas from Strokes ---
+        function redrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (const stroke of recordedStrokes) {
+                if (stroke.type === 'draw') {
+                    ctx.beginPath();
+                    ctx.moveTo(stroke.from.x, stroke.from.y);
+                    ctx.strokeStyle = stroke.color;
+                    ctx.lineTo(stroke.to.x, stroke.to.y);
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        // --- Event Listeners ---
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+        canvas.addEventListener('touchstart', startDrawing, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDrawing);
+
+        undoButton.addEventListener('click', () => {
+            if (recordedStrokes.length === 0) return;
+            let lastStartIndex = -1;
+            for (let i = recordedStrokes.length - 1; i >= 0; i--) {
+                if (recordedStrokes[i].type === 'start') {
+                    lastStartIndex = i;
+                    break;
+                }
+            }
+            if (lastStartIndex !== -1) {
+                recordedStrokes.splice(lastStartIndex);
+                redrawCanvas();
+            }
+        });
+
+        saveButton.addEventListener('click', () => {
+            saveOptions.style.display = saveOptions.style.display === 'flex' ? 'none' : 'flex';
+        });
+        document.addEventListener('click', (e) => {
+            if (!saveButton.contains(e.target) && !saveOptions.contains(e.target)) {
+                saveOptions.style.display = 'none';
+            }
+        });
+        
+        sendButton.addEventListener('click', () => {
+            alert('Send functionality is not yet implemented!');
+        });
+
+        // --- Download Logic ---
+        downloadStaticButton.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = `rainbow-drawing-${Date.now()}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            statusMessage.textContent = 'Image download started!';
+            saveOptions.style.display = 'none';
+        });
+
+        downloadVideoButton.addEventListener('click', async () => {
+            if (recordedStrokes.length === 0) {
+                statusMessage.textContent = 'Draw something to record a video!';
+                return;
+            }
+            statusMessage.textContent = 'Preparing video... this may take a moment.';
+
+            const capturer = new CCapture({ format: 'webm', framerate: 60 });
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCtx.lineWidth = brushWidth;
+            tempCtx.lineCap = 'round';
+            tempCtx.lineJoin = 'round';
+            
+            capturer.start();
+
+            for (const stroke of recordedStrokes) {
+                if(stroke.type === 'draw') {
+                    tempCtx.beginPath();
+                    tempCtx.moveTo(stroke.from.x, stroke.from.y);
+                    tempCtx.strokeStyle = stroke.color;
+                    tempCtx.lineTo(stroke.to.x, stroke.to.y);
+                    tempCtx.stroke();
+                }
+                capturer.capture(tempCanvas);
+            }
+            
+            capturer.stop();
+            capturer.save();
+            statusMessage.textContent = 'Video download started!';
+            saveOptions.style.display = 'none';
+        });
+
+        // --- Initial Load ---
+        checkLoginState();
+    </script>
+</body>
+</html>
