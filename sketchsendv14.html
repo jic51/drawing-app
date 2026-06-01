@@ -6,6 +6,9 @@
   <title>SketchSend</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Firebase SDK (compat mode — un solo bundle, sin build step) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <style>
 
     /* ══════════════════════════════════════════════════════
@@ -711,8 +714,8 @@
     <input type="text" id="nombre-inp" class="inp" placeholder="Tu nombre">
     <button id="entrar-btn" class="btn btn-p">Entrar →</button>
     <div class="sep">o continúa con</div>
-    <button class="btn btn-s" onclick="toast('🚧 Firebase Auth — Paso 2')">🔵 Continuar con Google</button>
-    <button class="btn btn-s" onclick="toast('🚧 Firebase Auth — Paso 2')">🍎 Continuar con Apple</button>
+    <button class="btn btn-s" id="google-btn">🔵 Continuar con Google</button>
+    <button class="btn btn-s" onclick="toast('🚧 Apple Sign-In — próximamente')">🍎 Continuar con Apple</button>
   </div>
 </div>
 
@@ -1064,46 +1067,142 @@ function applySeason() {
 }
 
 /* ══════════════════════════════════════════════════════
-   AUTENTICACIÓN (localStorage por ahora, Firebase en Paso 2)
+   FIREBASE CONFIG — reemplaza con tu firebaseConfig real
+   Obtén el tuyo en: console.firebase.google.com
+   Project Settings → Your apps → Web app → firebaseConfig
 ══════════════════════════════════════════════════════ */
-function checkLogin() {
-  usuario = localStorage.getItem('ss_user');
-  if (usuario) {
-    const avatarSrc = genAvatar(usuario);
-    /* Desktop header */
-    unameEl.textContent = usuario;
-    avatarEl.src = avatarSrc;
-    /* Mobile header */
-    unameMob.textContent = usuario;
-    avMob.src = avatarSrc;
+const FIREBASE_CONFIG = {
+  apiKey:            "REEMPLAZA_CON_TU_API_KEY",
+  authDomain:        "REEMPLAZA.firebaseapp.com",
+  projectId:         "REEMPLAZA_CON_TU_PROJECT_ID",
+  storageBucket:     "REEMPLAZA.appspot.com",
+  messagingSenderId: "REEMPLAZA_CON_TU_SENDER_ID",
+  appId:             "REEMPLAZA_CON_TU_APP_ID"
+};
 
-    authScreen.style.display = 'none';
-    appEl.style.display = 'flex';
-    setupCanvas();
-    buildCarousel();
-    requestAnimationFrame(() => requestAnimationFrame(volarAlHeader));
+/* ── Inicializar Firebase (solo si el config es real) ── */
+let auth = null;
+const firebaseReady = (() => {
+  try {
+    if (FIREBASE_CONFIG.apiKey.startsWith('REEMPLAZA')) return false;
+    firebase.initializeApp(FIREBASE_CONFIG);
+    auth = firebase.auth();
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    return true;
+  } catch(e) {
+    console.warn('Firebase no inicializado:', e.message);
+    return false;
+  }
+})();
+
+/* ══════════════════════════════════════════════════════
+   AUTENTICACIÓN — Firebase Auth + fallback localStorage
+══════════════════════════════════════════════════════ */
+
+function mostrarApp(nombre, fotoUrl) {
+  usuario = nombre;
+  const avatarSrc = fotoUrl || genAvatar(nombre);
+  unameEl.textContent = nombre;
+  avatarEl.src = avatarSrc;
+  unameMob.textContent = nombre;
+  avMob.src = avatarSrc;
+  authScreen.style.display = 'none';
+  appEl.style.display = 'flex';
+  setupCanvas();
+  buildCarousel();
+  requestAnimationFrame(() => requestAnimationFrame(volarAlHeader));
+}
+
+function mostrarLogin() {
+  authScreen.style.display = 'flex';
+  appEl.style.display = 'none';
+  const ph = document.getElementById('hdr-logo-placeholder');
+  if (ph) { ph.style.visibility='hidden'; ph.style.animation=''; ph.style.backgroundPosition=''; }
+  volador.style.opacity = '1';
+  volador.style.transition = 'none';
+  setTimeout(posicionarVoladorEnLogin, 50);
+}
+
+function checkLogin() {
+  if (firebaseReady) {
+    /* Firebase gestiona el estado — onAuthStateChanged se encarga */
+    return;
+  }
+  /* Fallback: localStorage (sin Firebase) */
+  const n = localStorage.getItem('ss_user');
+  if (n) mostrarApp(n, null);
+  else mostrarLogin();
+}
+
+function doLogout() {
+  if (firebaseReady && auth) {
+    auth.signOut().catch(e => console.warn('signOut error:', e));
   } else {
-    authScreen.style.display = 'flex';
-    appEl.style.display = 'none';
-    const ph = document.getElementById('hdr-logo-placeholder');
-    if (ph) { ph.style.visibility='hidden'; ph.style.animation=''; ph.style.backgroundPosition=''; }
-    volador.style.opacity = '1';
-    volador.style.transition = 'none';
-    setTimeout(posicionarVoladorEnLogin, 50);
+    localStorage.removeItem('ss_user');
+    checkLogin();
   }
 }
 
-entrarBtn.addEventListener('click', () => {
+/* ── Observer Firebase: reacciona a login/logout en tiempo real ── */
+if (firebaseReady && auth) {
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      const nombre = user.displayName || user.email?.split('@')[0] || 'Usuario';
+      mostrarApp(nombre, user.photoURL);
+    } else {
+      mostrarLogin();
+    }
+  });
+}
+
+/* ── Entrar con nombre (anónimo en Firebase, o localStorage como fallback) ── */
+entrarBtn.addEventListener('click', async () => {
   const n = nombreInp.value.trim();
   if (!n) { toast('⚠️ Escribe un nombre'); return; }
   if (n.length > 15) { toast('⚠️ Máximo 15 caracteres'); return; }
-  localStorage.setItem('ss_user', n);
-  checkLogin();
+
+  if (firebaseReady && auth) {
+    entrarBtn.disabled = true;
+    entrarBtn.textContent = 'Entrando…';
+    try {
+      const cred = await auth.signInAnonymously();
+      await cred.user.updateProfile({ displayName: n });
+      /* onAuthStateChanged se dispara y llama mostrarApp() */
+    } catch(e) {
+      toast('⚠️ Error de conexión — entrando sin cuenta');
+      localStorage.setItem('ss_user', n);
+      mostrarApp(n, null);
+    } finally {
+      entrarBtn.disabled = false;
+      entrarBtn.textContent = 'Entrar →';
+    }
+  } else {
+    localStorage.setItem('ss_user', n);
+    mostrarApp(n, null);
+  }
 });
+
+/* ── Google Sign-In ── */
+document.getElementById('google-btn').addEventListener('click', async () => {
+  if (!firebaseReady || !auth) {
+    toast('🚧 Primero configura Firebase — ver instrucciones');
+    return;
+  }
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
+    /* onAuthStateChanged maneja el resto */
+  } catch(e) {
+    if (e.code !== 'auth/popup-closed-by-user') {
+      toast('⚠️ Error con Google: ' + e.message);
+    }
+  }
+});
+
 nombreInp.addEventListener('keydown', e => { if (e.key === 'Enter') entrarBtn.click(); });
 nombreInp.setAttribute('maxlength', '15');
-salirBtn.addEventListener('click', () => { localStorage.removeItem('ss_user'); checkLogin(); });
-salirBtnMob.addEventListener('click', () => { localStorage.removeItem('ss_user'); checkLogin(); });
+salirBtn.addEventListener('click', doLogout);
+salirBtnMob.addEventListener('click', doLogout);
 
 /* ══════════════════════════════════════════════════════
    CANVAS CON HiDPI — sin pixelación al exportar
@@ -2161,11 +2260,15 @@ avMob.addEventListener('click', abrirSettings);
 settingsClose.addEventListener('click', cerrarSettings);
 settingsOverlay.addEventListener('click', e => { if (e.target === settingsOverlay) cerrarSettings(); });
 
-settingsRename.addEventListener('click', () => {
+settingsRename.addEventListener('click', async () => {
   const nuevoNombre = prompt('Nuevo nombre (máx 15 caracteres):', usuario || '');
   if (!nuevoNombre || !nuevoNombre.trim()) return;
   const n = nuevoNombre.trim().slice(0, 15);
-  localStorage.setItem('ss_user', n);
+  if (firebaseReady && auth && auth.currentUser) {
+    try { await auth.currentUser.updateProfile({ displayName: n }); } catch(e) {}
+  } else {
+    localStorage.setItem('ss_user', n);
+  }
   usuario = n;
   const av = genAvatar(n);
   unameEl.textContent = n; avatarEl.src = av;
@@ -2183,8 +2286,7 @@ settingsInvite.addEventListener('click', () => {
 
 settingsLogout.addEventListener('click', () => {
   cerrarSettings();
-  localStorage.removeItem('ss_user');
-  checkLogin();
+  doLogout();
 });
 
 /* Los botones de la tienda por ahora solo muestran toast */
@@ -2199,7 +2301,10 @@ document.querySelectorAll('.settings-row-action.premium').forEach(btn => {
    ya existe. Ejecutamos directamente.
 ══════════════════════════════════════════════════════ */
 applySeason();
-checkLogin();
+/* Si Firebase está activo, onAuthStateChanged gestiona login/logout.
+   Si no, checkLogin() usa localStorage. En ambos casos arrancamos en login. */
+if (!firebaseReady) checkLogin();
+else mostrarLogin(); /* estado inicial mientras Firebase resuelve la sesión */
 actualizarBotones();
 posicionarVoladorEnLogin();
 cargarBandeja();
