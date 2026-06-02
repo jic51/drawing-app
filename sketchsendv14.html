@@ -9,6 +9,7 @@
   <!-- Firebase SDK (compat mode — un solo bundle, sin build step) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <style>
 
     /* ══════════════════════════════════════════════════════
@@ -719,6 +720,21 @@
   </div>
 </div>
 
+<!-- ══ PANTALLA DE ELECCIÓN DE @USERNAME ══ -->
+<div id="username-screen" style="display:none;">
+  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;gap:24px;animation:aparecer 0.5s ease;">
+    <div class="titulo">SketchSend ✏️</div>
+    <p class="tagline">Donde cada mensaje es un dibujo</p>
+    <div class="card">
+      <h2>Elige tu @usuario</h2>
+      <p>Este será tu nombre en SketchSend. No podrás cambiarlo después.</p>
+      <input type="text" id="username-inp" class="inp" placeholder="@tuusuario" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+      <div id="username-error" style="font-size:0.8rem;color:var(--danger);display:none;"></div>
+      <button id="username-confirm-btn" class="btn btn-p">Confirmar →</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ APP PRINCIPAL ══ -->
 <div id="app">
   <header class="hdr">
@@ -1080,13 +1096,20 @@ const FIREBASE_CONFIG = {
   appId:             "1:445386471766:web:6f8c0681a676d5a5b67ef7"
 };
 
+// Firestore Rules recomendadas (configurar en Firebase Console):
+// users: read si está autenticado, write solo el propio uid
+// friendships: read/write si tu uid está en el array users[]
+// sketches: write si from==uid, read si to==uid, delete si to==uid
+
 /* ── Inicializar Firebase (solo si el config es real) ── */
 let auth = null;
+let db = null;
 const firebaseReady = (() => {
   try {
     if (FIREBASE_CONFIG.apiKey.startsWith('REEMPLAZA')) return false;
     firebase.initializeApp(FIREBASE_CONFIG);
     auth = firebase.auth();
+    db = firebase.firestore();
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     return true;
   } catch(e) {
@@ -1099,17 +1122,100 @@ const firebaseReady = (() => {
    AUTENTICACIÓN — Firebase Auth + fallback localStorage
 ══════════════════════════════════════════════════════ */
 
-function mostrarApp(nombre, fotoUrl) {
-  usuario = nombre;
-  const avatarSrc = fotoUrl || genAvatar(nombre);
-  unameEl.textContent = nombre;
+async function mostrarApp(nombre, fotoUrl) {
+  if (!firebaseReady || !auth.currentUser) {
+    /* Fallback localStorage — mostrar app directo */
+    finalizarLogin(nombre, nombre, fotoUrl);
+    return;
+  }
+  const uid = auth.currentUser.uid;
+  try {
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists) {
+      /* Primera vez — mostrar pantalla de @username */
+      mostrarPantallaUsername(nombre, fotoUrl);
+    } else {
+      /* Ya tiene cuenta — ir directo a la app */
+      const data = userDoc.data();
+      finalizarLogin(data.username, data.displayName, fotoUrl || data.photoURL);
+    }
+  } catch(e) {
+    console.warn('Error consultando Firestore:', e.message);
+    finalizarLogin(nombre, nombre, fotoUrl);
+  }
+}
+
+function mostrarPantallaUsername(nombre, fotoUrl) {
+  authScreen.style.display = 'none';
+  appEl.style.display = 'none';
+  const usernameScreen = document.getElementById('username-screen');
+  usernameScreen.style.display = 'flex';
+
+  const usernameInp = document.getElementById('username-inp');
+  const confirmBtn  = document.getElementById('username-confirm-btn');
+  const errorEl     = document.getElementById('username-error');
+
+  /* Prefill con nombre limpio si es posible */
+  const pre = nombre.toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,20);
+  if (pre.length >= 3) usernameInp.value = pre;
+
+  function mostrarError(msg) {
+    errorEl.textContent = msg;
+    errorEl.style.display = 'block';
+  }
+  function ocultarError() { errorEl.style.display = 'none'; }
+
+  confirmBtn.addEventListener('click', async () => {
+    const raw = usernameInp.value.trim().toLowerCase().replace(/^@/, '');
+    if (!/^[a-z0-9_]{3,20}$/.test(raw)) {
+      mostrarError('Solo letras minúsculas, números y _ · mínimo 3, máximo 20 chars');
+      return;
+    }
+    ocultarError();
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Verificando…';
+
+    try {
+      const snap = await db.collection('users').where('username','==',raw).get();
+      if (!snap.empty) {
+        mostrarError('Ese @usuario ya está tomado, elige otro');
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Confirmar →';
+        return;
+      }
+      const uid = auth.currentUser.uid;
+      await db.collection('users').doc(uid).set({
+        username: raw,
+        displayName: nombre,
+        photoURL: fotoUrl || '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        uid
+      });
+      usernameScreen.style.display = 'none';
+      finalizarLogin(raw, nombre, fotoUrl);
+    } catch(e) {
+      mostrarError('Error al guardar: ' + e.message);
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Confirmar →';
+    }
+  });
+
+  usernameInp.addEventListener('keydown', e => { if (e.key === 'Enter') confirmBtn.click(); });
+}
+
+function finalizarLogin(username, displayName, photoURL) {
+  usuario = username || displayName;
+  const avatarSrc = photoURL || genAvatar(displayName || username);
+  unameEl.textContent = usuario;
   avatarEl.src = avatarSrc;
-  unameMob.textContent = nombre;
+  unameMob.textContent = usuario;
   avMob.src = avatarSrc;
   authScreen.style.display = 'none';
+  document.getElementById('username-screen').style.display = 'none';
   appEl.style.display = 'flex';
   setupCanvas();
   buildCarousel();
+  cargarBandeja();
   requestAnimationFrame(() => requestAnimationFrame(volarAlHeader));
 }
 
@@ -1456,13 +1562,87 @@ const CONTACTOS = [
   {id:'7',nombre:'Valentina',online:false},{id:'8',nombre:'Mateo',online:true},
 ];
 
-function buildCarousel() {
+/* ── SISTEMA DE AMIGOS ── */
+async function cargarAmigos() {
+  if (!firebaseReady || !auth.currentUser) return [];
+  const uid = auth.currentUser.uid;
+  try {
+    const snap = await db.collection('friendships')
+      .where('users', 'array-contains', uid)
+      .where('status', '==', 'accepted')
+      .get();
+    const amigos = [];
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      const otroUid = data.users.find(u => u !== uid);
+      if (!otroUid) continue;
+      try {
+        const userDoc = await db.collection('users').doc(otroUid).get();
+        if (userDoc.exists) {
+          const u = userDoc.data();
+          amigos.push({ id: otroUid, nombre: u.username || u.displayName, username: u.username, photoURL: u.photoURL });
+        }
+      } catch(e) { /* skip usuario no encontrado */ }
+    }
+    return amigos;
+  } catch(e) {
+    console.warn('Error cargando amigos:', e.message);
+    return [];
+  }
+}
+
+async function agregarAmigo(username) {
+  if (!firebaseReady || !auth.currentUser) { toast('❌ Necesitas iniciar sesión'); return; }
+  const uid = auth.currentUser.uid;
+  try {
+    const snap = await db.collection('users').where('username','==',username).get();
+    if (snap.empty) { toast('❌ Usuario @' + username + ' no encontrado'); return; }
+    const otroUser = snap.docs[0].data();
+    if (otroUser.uid === uid) { toast('❌ No puedes agregarte a ti mismo'); return; }
+    /* Verificar si ya hay amistad */
+    const existing = await db.collection('friendships')
+      .where('users', 'array-contains', uid)
+      .get();
+    const yaExiste = existing.docs.some(doc => doc.data().users.includes(otroUser.uid));
+    if (yaExiste) { toast('Ya tienes una amistad con @' + username); return; }
+    /* Crear friendship pendiente */
+    await db.collection('friendships').add({
+      users: [uid, otroUser.uid],
+      status: 'accepted', /* auto-accept por ahora para simplicidad */
+      requestedBy: uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast('✅ @' + username + ' agregado como amigo');
+    buildCarousel();
+  } catch(e) {
+    toast('❌ Error: ' + e.message);
+  }
+}
+
+async function buildCarousel() {
   carouselEl.innerHTML = '';
-  CONTACTOS.forEach(c => {
+
+  let amigos = [];
+  if (firebaseReady && auth.currentUser) {
+    amigos = await cargarAmigos();
+  } else {
+    /* Fallback a datos simulados */
+    amigos = CONTACTOS.map(c => ({ id: c.id, nombre: c.nombre, username: c.nombre.toLowerCase(), photoURL: '' }));
+  }
+
+  if (amigos.length === 0 && firebaseReady) {
+    /* Estado vacío con instrucción */
+    const empty = document.createElement('div');
+    empty.style.cssText = 'display:flex;align-items:center;gap:8px;color:var(--muted);font-size:0.8rem;padding:4px 0;';
+    empty.textContent = 'Agrega amigos para enviarles dibujos →';
+    carouselEl.appendChild(empty);
+  }
+
+  amigos.forEach(c => {
     const el = document.createElement('div'); el.className='citem'; el.dataset.id=c.id;
-    el.innerHTML=`<div class="cwrap"><img class="cimg" src="${genAvatar(c.nombre)}" alt="${c.nombre}">${c.online?'<div class="odot"></div>':''}<div class="ccheck">✓</div></div><span class="cname">${c.nombre}</span>`;
+    el.innerHTML=`<div class="cwrap"><img class="cimg" src="${c.photoURL || genAvatar(c.nombre)}" alt="${c.nombre}"><div class="ccheck">✓</div></div><span class="cname">@${c.username||c.nombre}</span>`;
     el.addEventListener('click', () => {
-      if (el.classList.contains('disabled')) return; /* no click en modo respuesta */
+      if (el.classList.contains('disabled')) return;
       seleccionados.has(c.id) ? seleccionados.delete(c.id) : seleccionados.add(c.id);
       el.classList.toggle('sel', seleccionados.has(c.id));
       selCount.textContent = seleccionados.size > 0 ? `(${seleccionados.size})` : '';
@@ -1470,11 +1650,23 @@ function buildCarousel() {
     });
     carouselEl.appendChild(el);
   });
+
+  /* Botón + para agregar amigo */
+  const addBtn = document.createElement('div');
+  addBtn.className = 'citem';
+  addBtn.innerHTML = `<div class="cwrap" style="background:var(--surface2);border:2px dashed var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="font-size:1.5rem">+</span></div><span class="cname">Agregar</span>`;
+  addBtn.addEventListener('click', () => {
+    const raw = prompt('Ingresa el @usuario de tu amigo:');
+    if (raw) agregarAmigo(raw.replace(/^@/,'').toLowerCase().trim());
+  });
+  carouselEl.appendChild(addBtn);
+
+  /* Botón compartir */
   const share = document.createElement('div'); share.className='sharebtn';
   share.innerHTML=`<div class="sharecircle">🔗</div><span class="cname" style="max-width:52px">Compartir</span>`;
   share.addEventListener('click', () => {
     if (navigator.share) navigator.share({title:'SketchSend',text:'¡Te envié un dibujo!',url:location.href}).catch(()=>{});
-    else toast('🔗 Link disponible en el Paso 3');
+    else toast('🔗 Comparte este link con tus amigos');
   });
   carouselEl.appendChild(share);
 }
@@ -1482,18 +1674,24 @@ function buildCarousel() {
 /* ══════════════════════════════════════════════════════
    ENVIAR → replay automático del propio dibujo
 ══════════════════════════════════════════════════════ */
-enviarBtn.addEventListener('click', () => {
+enviarBtn.addEventListener('click', async () => {
   if (!trazos.length) { toast('✏️ ¡Dibuja algo primero!'); return; }
 
   /* Modo respuesta: enviando directamente a quien nos escribió */
   if (replyingTo) {
-    toast(`✉️ Respuesta enviada a: ${replyingTo}`);
+    if (firebaseReady && auth.currentUser) {
+      await enviarSketchFirestore(replyingTo.uid);
+    } else {
+      toast(`✉️ Respuesta enviada a: ${replyingTo.nombre || replyingTo}`);
+    }
     salirModoRespuesta();
   } else {
     /* Modo normal: enviar a los seleccionados del carrusel */
     if (!seleccionados.size) { toast('👆 Selecciona a quién enviar'); return; }
-    const nombres = CONTACTOS.filter(c => seleccionados.has(c.id)).map(c => c.nombre).join(', ');
-    toast(`✉️ Enviado a: ${nombres}`);
+    if (firebaseReady && auth.currentUser) {
+      for (const uid of seleccionados) await enviarSketchFirestore(uid);
+    }
+    toast(`✉️ Enviado`);
   }
 
   /* Captura snapshot y muestra replay */
@@ -1505,6 +1703,24 @@ enviarBtn.addEventListener('click', () => {
   selCount.textContent = '';
   enviarBtn.disabled = true;
 });
+
+async function enviarSketchFirestore(toUid) {
+  const uid = auth.currentUser.uid;
+  try {
+    await db.collection('sketches').add({
+      from: uid,
+      fromName: usuario,
+      to: toUid,
+      strokes: trazos,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      expiresAt: new Date(Date.now() + 24*3600*1000),
+      viewed: false
+    });
+  } catch(e) {
+    console.warn('Error enviando sketch:', e.message);
+    toast('⚠️ Error al enviar');
+  }
+}
 
 /* ══════════════════════════════════════════════════════
    BANDEJA DE ENTRADA — "Pila de dibujos"
@@ -1549,31 +1765,56 @@ function generarDibujoSimulado(senderName) {
 }
 
 function cargarBandeja() {
-  /* Simular 3 dibujos recibidos de diferentes contactos */
-  bandejaEntrada = [
-    {
-      id:'msg1', sender:'Ana', senderId:'1',
-      strokes: generarDibujoSimulado('Ana'),
-      receivedAt: Date.now() - 300000, /* hace 5 min */
-      expiresAt: Date.now() + 23*3600000, /* expira en 23h */
-      visto: false
-    },
-    {
-      id:'msg2', sender:'Carlos', senderId:'2',
-      strokes: generarDibujoSimulado('Carlos'),
-      receivedAt: Date.now() - 1800000, /* hace 30 min */
-      expiresAt: Date.now() + 20*3600000,
-      visto: false
-    },
-    {
-      id:'msg3', sender:'Diego', senderId:'6',
-      strokes: generarDibujoSimulado('Diego'),
-      receivedAt: Date.now() - 7200000, /* hace 2h */
-      expiresAt: Date.now() + 15*3600000,
-      visto: false
-    },
-  ];
-  actualizarBadge();
+  if (!firebaseReady || !auth.currentUser) {
+    /* Fallback — datos simulados */
+    bandejaEntrada = [
+      {
+        id:'msg1', sender:'Ana', senderId:'1',
+        strokes: generarDibujoSimulado('Ana'),
+        receivedAt: Date.now() - 300000,
+        expiresAt: Date.now() + 23*3600000,
+        visto: false
+      },
+      {
+        id:'msg2', sender:'Carlos', senderId:'2',
+        strokes: generarDibujoSimulado('Carlos'),
+        receivedAt: Date.now() - 1800000,
+        expiresAt: Date.now() + 20*3600000,
+        visto: false
+      },
+      {
+        id:'msg3', sender:'Diego', senderId:'6',
+        strokes: generarDibujoSimulado('Diego'),
+        receivedAt: Date.now() - 7200000,
+        expiresAt: Date.now() + 15*3600000,
+        visto: false
+      },
+    ];
+    actualizarBadge();
+    return;
+  }
+
+  const uid = auth.currentUser.uid;
+  const ahora = new Date();
+  db.collection('sketches')
+    .where('to', '==', uid)
+    .where('viewed', '==', false)
+    .where('expiresAt', '>', ahora)
+    .orderBy('expiresAt')
+    .onSnapshot(snap => {
+      bandejaEntrada = snap.docs.map(doc => ({
+        id: doc.id,
+        sender: doc.data().fromName,
+        senderId: doc.data().from,
+        strokes: doc.data().strokes,
+        receivedAt: doc.data().createdAt?.toMillis() || Date.now(),
+        expiresAt: doc.data().expiresAt?.toMillis() || (Date.now() + 24*3600*1000),
+        visto: false
+      }));
+      actualizarBadge();
+    }, err => {
+      console.warn('Error escuchando bandeja:', err.message);
+    });
 }
 
 function actualizarBadge() {
@@ -1682,6 +1923,10 @@ function iniciarReplayInbox(msg) {
     entrarModoRespuesta(msg.sender, msg.senderId);
     bandejaEntrada = bandejaEntrada.filter(m => m.id !== msg.id);
     actualizarBadge();
+    /* Eliminar de Firestore */
+    if (firebaseReady && db) {
+      db.collection('sketches').doc(msg.id).delete().catch(e => console.warn('Error borrando sketch:', e.message));
+    }
   }
 
   overlay.addEventListener('pointerdown', onTouch, { once:true });
@@ -1695,7 +1940,7 @@ const stripBack  = document.getElementById('strip-back');
 const stripLabel = document.getElementById('strip-label');
 
 function entrarModoRespuesta(senderName, senderId) {
-  replyingTo = senderName;
+  replyingTo = { nombre: senderName, uid: senderId };
   stripLabel.innerHTML = `Respondiendo a <strong style="color:var(--accent2)">${senderName}</strong>`;
   stripBack.style.display = 'flex';
   document.querySelectorAll('.citem').forEach(el => {
