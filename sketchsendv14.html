@@ -711,8 +711,9 @@
   <p class="tagline">Donde cada mensaje es un dibujo</p>
   <div class="card">
     <h2>Empezar a dibujar</h2>
-    <p>Elige un nombre para continuar.</p>
-    <input type="text" id="nombre-inp" class="inp" placeholder="Tu nombre">
+    <p style="color:var(--muted);font-size:0.85rem;">Tu <strong>nombre</strong> es lo que ven tus amigos. Tu <strong>@usuario</strong> sirve para que te encuentren.</p>
+    <input type="text" id="nombre-inp" class="inp" placeholder="Tu nombre (ej: José)">
+    <input type="text" id="username-inp-login" class="inp" placeholder="@usuario (ej: joselo)" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
     <button id="entrar-btn" class="btn btn-p">Entrar →</button>
     <div class="sep">o continúa con</div>
     <button class="btn btn-s" id="google-btn">🔵 Continuar con Google</button>
@@ -720,18 +721,16 @@
   </div>
 </div>
 
-<!-- ══ PANTALLA DE ELECCIÓN DE @USERNAME ══ -->
-<div id="username-screen" style="display:none;">
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;gap:24px;animation:aparecer 0.5s ease;">
-    <div class="titulo">SketchSend ✏️</div>
-    <p class="tagline">Donde cada mensaje es un dibujo</p>
-    <div class="card">
-      <h2>Elige tu @usuario</h2>
-      <p>Este será tu nombre en SketchSend. No podrás cambiarlo después.</p>
-      <input type="text" id="username-inp" class="inp" placeholder="@tuusuario" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-      <div id="username-error" style="font-size:0.8rem;color:var(--danger);display:none;"></div>
-      <button id="username-confirm-btn" class="btn btn-p">Confirmar →</button>
-    </div>
+<!-- ══ PANTALLA DE @USERNAME (solo para Google/Apple — nombre ya viene de ellos) ══ -->
+<div id="username-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
+  <p class="tagline">Donde cada mensaje es un dibujo</p>
+  <div class="card">
+    <h2>Elige tu @usuario</h2>
+    <p style="color:var(--muted);font-size:0.85rem;">Con este nombre tus amigos te podrán buscar en SketchSend.</p>
+    <div id="username-screen-displayname" style="font-size:0.82rem;color:var(--muted);margin-bottom:2px;"></div>
+    <input type="text" id="username-inp" class="inp" placeholder="@tuusuario" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+    <div id="username-error" style="font-size:0.8rem;color:var(--danger);display:none;"></div>
+    <button id="username-confirm-btn" class="btn btn-p">Confirmar →</button>
   </div>
 </div>
 
@@ -1148,8 +1147,13 @@ async function mostrarApp(nombre, fotoUrl) {
 function mostrarPantallaUsername(nombre, fotoUrl) {
   authScreen.style.display = 'none';
   appEl.style.display = 'none';
+  volador.style.opacity = '0'; /* ocultar título volador para evitar duplicado */
   const usernameScreen = document.getElementById('username-screen');
   usernameScreen.style.display = 'flex';
+
+  /* Mostrar el nombre que viene de Google para contexto */
+  const dnEl = document.getElementById('username-screen-displayname');
+  if (dnEl) dnEl.textContent = 'Hola, ' + nombre + ' 👋 — tu nombre ya está guardado';
 
   const usernameInp = document.getElementById('username-inp');
   const confirmBtn  = document.getElementById('username-confirm-btn');
@@ -1204,11 +1208,12 @@ function mostrarPantallaUsername(nombre, fotoUrl) {
 }
 
 function finalizarLogin(username, displayName, photoURL) {
-  usuario = username || displayName;
-  const avatarSrc = photoURL || genAvatar(displayName || username);
-  unameEl.textContent = usuario;
+  usuario = username || displayName; /* @username — usado para buscar amigos */
+  const nombreMostrar = displayName || username; /* nombre real — mostrado en header */
+  const avatarSrc = photoURL || genAvatar(nombreMostrar);
+  unameEl.textContent = nombreMostrar;
   avatarEl.src = avatarSrc;
-  unameMob.textContent = usuario;
+  unameMob.textContent = nombreMostrar;
   avMob.src = avatarSrc;
   authScreen.style.display = 'none';
   document.getElementById('username-screen').style.display = 'none';
@@ -1261,26 +1266,39 @@ if (firebaseReady && auth) {
   });
 }
 
-/* ── Entrar con nombre (anónimo en Firebase, o localStorage como fallback) ── */
+/* ── Entrar con nombre + @usuario (anónimo en Firebase) ── */
 entrarBtn.addEventListener('click', async () => {
   const n = nombreInp.value.trim();
-  if (!n) { toast('⚠️ Escribe un nombre'); return; }
-  if (n.length > 15) { toast('⚠️ Máximo 15 caracteres'); return; }
+  const uInp = document.getElementById('username-inp-login');
+  const rawU = (uInp ? uInp.value.trim().toLowerCase().replace(/^@/,'') : '');
+
+  if (!n) { toast('⚠️ Escribe tu nombre'); return; }
+  if (n.length > 20) { toast('⚠️ Nombre máximo 20 caracteres'); return; }
+  if (!rawU) { toast('⚠️ Escribe tu @usuario'); return; }
+  if (!/^[a-z0-9_]{3,20}$/.test(rawU)) { toast('⚠️ @usuario: solo letras minúsculas, números y _ · mínimo 3 caracteres'); return; }
 
   if (firebaseReady && auth) {
     entrarBtn.disabled = true;
-    entrarBtn.textContent = 'Entrando…';
+    entrarBtn.textContent = 'Verificando…';
     try {
+      /* Verificar que el @username esté disponible antes de crear cuenta */
+      const snapU = await db.collection('users').where('username','==',rawU).get();
+      if (!snapU.empty) {
+        toast('❌ El @' + rawU + ' ya está tomado, elige otro');
+        entrarBtn.disabled = false; entrarBtn.textContent = 'Entrar →';
+        return;
+      }
       const cred = await auth.signInAnonymously();
       await cred.user.updateProfile({ displayName: n });
-      /* onAuthStateChanged se dispara y llama mostrarApp() */
+      /* Crear documento de usuario directamente con el @username elegido */
+      await db.collection('users').doc(cred.user.uid).set({
+        username: rawU, displayName: n, photoURL: '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(), uid: cred.user.uid
+      });
+      /* onAuthStateChanged → mostrarApp → finalizarLogin (ya tiene doc) */
     } catch(e) {
-      toast('⚠️ Error de conexión — entrando sin cuenta');
-      localStorage.setItem('ss_user', n);
-      mostrarApp(n, null);
-    } finally {
-      entrarBtn.disabled = false;
-      entrarBtn.textContent = 'Entrar →';
+      toast('⚠️ Error — ' + e.message);
+      entrarBtn.disabled = false; entrarBtn.textContent = 'Entrar →';
     }
   } else {
     localStorage.setItem('ss_user', n);
@@ -1306,7 +1324,8 @@ document.getElementById('google-btn').addEventListener('click', async () => {
 });
 
 nombreInp.addEventListener('keydown', e => { if (e.key === 'Enter') entrarBtn.click(); });
-nombreInp.setAttribute('maxlength', '15');
+nombreInp.setAttribute('maxlength', '20');
+document.getElementById('username-inp-login')?.addEventListener('keydown', e => { if (e.key === 'Enter') entrarBtn.click(); });
 salirBtn.addEventListener('click', doLogout);
 salirBtnMob.addEventListener('click', doLogout);
 
@@ -1795,22 +1814,25 @@ function cargarBandeja() {
   }
 
   const uid = auth.currentUser.uid;
-  const ahora = new Date();
+  /* Query simple sin índice compuesto: solo filtrar por destinatario.
+     El filtro de viewed y expiresAt se hace en cliente para evitar
+     requerir índices que el usuario debe crear manualmente. */
   db.collection('sketches')
     .where('to', '==', uid)
-    .where('viewed', '==', false)
-    .where('expiresAt', '>', ahora)
-    .orderBy('expiresAt')
     .onSnapshot(snap => {
-      bandejaEntrada = snap.docs.map(doc => ({
-        id: doc.id,
-        sender: doc.data().fromName,
-        senderId: doc.data().from,
-        strokes: doc.data().strokes,
-        receivedAt: doc.data().createdAt?.toMillis() || Date.now(),
-        expiresAt: doc.data().expiresAt?.toMillis() || (Date.now() + 24*3600*1000),
-        visto: false
-      }));
+      const ahora = Date.now();
+      bandejaEntrada = snap.docs
+        .map(doc => ({
+          id: doc.id,
+          sender: doc.data().fromName,
+          senderId: doc.data().from,
+          strokes: doc.data().strokes,
+          receivedAt: doc.data().createdAt?.toMillis() || ahora,
+          expiresAt: doc.data().expiresAt?.toMillis() || (ahora + 24*3600*1000),
+          visto: doc.data().viewed || false
+        }))
+        .filter(m => !m.visto && m.expiresAt > ahora)
+        .sort((a, b) => a.expiresAt - b.expiresAt);
       actualizarBadge();
     }, err => {
       console.warn('Error escuchando bandeja:', err.message);
