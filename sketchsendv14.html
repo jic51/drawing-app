@@ -700,6 +700,7 @@
 
     @keyframes aparecer { from{opacity:0} to{opacity:1} }
     @keyframes subir { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
 
   </style>
 </head>
@@ -709,29 +710,66 @@
 <div id="auth-screen">
   <div class="titulo" id="titulo-fantasma" style="visibility:hidden;">SketchSend ✏️</div>
   <p class="tagline">Donde cada mensaje es un dibujo</p>
-  <div class="card">
-    <h2>Empezar a dibujar</h2>
-    <p>Elige un nombre para continuar.</p>
-    <input type="text" id="nombre-inp" class="inp" placeholder="Tu nombre">
-    <button id="entrar-btn" class="btn btn-p">Entrar →</button>
+
+  <!-- TABS: Registrarse / Iniciar sesión -->
+  <div class="card" style="gap:0;">
+    <div style="display:flex;border-bottom:1px solid var(--border);margin:-8px -32px 16px;padding:0 32px;">
+      <button id="tab-register" style="flex:1;padding:12px 0;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-family:var(--sans);font-size:0.9rem;font-weight:600;cursor:pointer;">Registrarse</button>
+      <button id="tab-login" style="flex:1;padding:12px 0;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--sans);font-size:0.9rem;cursor:pointer;">Iniciar sesión</button>
+    </div>
+
+    <!-- FORMULARIO REGISTRO -->
+    <div id="form-register">
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <input type="text"  id="reg-nombre"   class="inp" placeholder="Tu nombre (ej: José)" maxlength="20">
+        <input type="text"  id="reg-username" class="inp" placeholder="@usuario (ej: joselo)" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+        <input type="email" id="reg-email"    class="inp" placeholder="tu@email.com" autocomplete="email">
+        <input type="password" id="reg-pass"  class="inp" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="new-password">
+        <div id="reg-error" style="font-size:0.8rem;color:var(--danger);display:none;min-height:18px;"></div>
+        <button id="reg-btn" class="btn btn-p">Crear cuenta →</button>
+      </div>
+    </div>
+
+    <!-- FORMULARIO LOGIN -->
+    <div id="form-login" style="display:none;">
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <input type="email"    id="login-email" class="inp" placeholder="tu@email.com" autocomplete="email">
+        <input type="password" id="login-pass"  class="inp" placeholder="Contraseña" autocomplete="current-password">
+        <button id="forgot-btn" style="background:none;border:none;color:var(--muted);font-size:0.78rem;cursor:pointer;text-align:left;padding:0;">¿Olvidaste tu contraseña?</button>
+        <div id="login-error" style="font-size:0.8rem;color:var(--danger);display:none;min-height:18px;"></div>
+        <button id="login-btn" class="btn btn-p">Entrar →</button>
+      </div>
+    </div>
+
     <div class="sep">o continúa con</div>
     <button class="btn btn-s" id="google-btn">🔵 Continuar con Google</button>
     <button class="btn btn-s" onclick="toast('🚧 Apple Sign-In — próximamente')">🍎 Continuar con Apple</button>
   </div>
 </div>
 
-<!-- ══ PANTALLA DE ELECCIÓN DE @USERNAME ══ -->
-<div id="username-screen" style="display:none;">
-  <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:100%;gap:24px;animation:aparecer 0.5s ease;">
-    <div class="titulo">SketchSend ✏️</div>
-    <p class="tagline">Donde cada mensaje es un dibujo</p>
-    <div class="card">
-      <h2>Elige tu @usuario</h2>
-      <p>Este será tu nombre en SketchSend. No podrás cambiarlo después.</p>
-      <input type="text" id="username-inp" class="inp" placeholder="@tuusuario" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-      <div id="username-error" style="font-size:0.8rem;color:var(--danger);display:none;"></div>
-      <button id="username-confirm-btn" class="btn btn-p">Confirmar →</button>
-    </div>
+<!-- ══ PANTALLA: VERIFICA TU EMAIL ══ -->
+<div id="verify-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
+  <p class="tagline">Donde cada mensaje es un dibujo</p>
+  <div class="card" style="text-align:center;gap:16px;">
+    <div style="font-size:2.5rem;">📬</div>
+    <h2 id="lbl-verify-title">Verifica tu email</h2>
+    <p id="verify-email-text" style="color:var(--muted);font-size:0.88rem;">Te enviamos un link de verificación. Ábrelo y luego vuelve aquí.</p>
+    <button id="verify-check-btn" class="btn btn-p">Ya verifiqué ✓</button>
+    <button id="verify-resend-btn" class="btn btn-s">Reenviar email</button>
+    <button id="verify-logout-btn" style="background:none;border:none;color:var(--muted);font-size:0.8rem;cursor:pointer;margin-top:4px;">Usar otra cuenta</button>
+  </div>
+</div>
+
+<!-- ══ PANTALLA DE @USERNAME (solo para Google) ══ -->
+<div id="username-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
+  <p class="tagline">Donde cada mensaje es un dibujo</p>
+  <div class="card">
+    <h2 id="lbl-choose-username">Elige tu @usuario</h2>
+    <p style="color:var(--muted);font-size:0.85rem;">Con este nombre tus amigos te podrán buscar en SketchSend.</p>
+    <div id="username-screen-displayname" style="font-size:0.82rem;color:var(--muted);margin-bottom:2px;"></div>
+    <input type="text" id="username-inp" class="inp" placeholder="@tuusuario" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+    <div id="username-error" style="font-size:0.8rem;color:var(--danger);display:none;"></div>
+    <button id="username-confirm-btn" class="btn btn-p">Confirmar →</button>
   </div>
 </div>
 
@@ -871,39 +909,51 @@
     </div>
 
     <div class="settings-section">
-      <div class="settings-label">Perfil</div>
+      <div class="settings-label" id="lbl-profile">Perfil</div>
       <div class="settings-avatar-row">
         <img id="settings-avatar" class="settings-avatar" src="" alt="">
         <div>
           <div class="settings-name" id="settings-name">—</div>
-          <div class="settings-email" id="settings-email">🚧 Email con Firebase Auth</div>
+          <div class="settings-email" id="settings-email"></div>
         </div>
       </div>
       <div class="settings-row">
         <div>
-          <div class="settings-row-label">Cambiar nombre</div>
+          <div class="settings-row-label" id="lbl-change-name">Cambiar nombre</div>
           <div class="settings-row-sub">Máximo 15 caracteres</div>
         </div>
         <button class="settings-row-action" id="settings-rename">Editar</button>
       </div>
       <div class="settings-row">
         <div>
-          <div class="settings-row-label">Cambiar foto</div>
+          <div class="settings-row-label" id="lbl-change-photo">Cambiar foto</div>
           <div class="settings-row-sub">🚧 Disponible con Firebase</div>
         </div>
-        <button class="settings-row-action" disabled style="opacity:0.4">Subir</button>
+        <button class="settings-row-action" disabled style="opacity:0.4" id="lbl-upload">Subir</button>
+      </div>
+      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+        <div>
+          <div class="settings-row-label" id="lbl-your-code">Tu código de invitación</div>
+          <div class="settings-row-sub">Compártelo para que te agreguen como amigo</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;width:100%;">
+          <div id="user-shortcode" style="font-family:monospace;font-size:1.4rem;font-weight:700;letter-spacing:4px;color:var(--accent2);background:var(--surface2);padding:8px 16px;border-radius:8px;border:1px solid var(--border);flex:1;text-align:center;">——</div>
+          <button id="copy-code-btn" class="btn-g" style="white-space:nowrap;">Copiar</button>
+        </div>
+        <canvas id="qr-canvas" style="display:none;border-radius:8px;width:100%;max-width:200px;margin:0 auto;"></canvas>
+        <button id="show-qr-btn" class="btn btn-s" style="width:100%;font-size:0.82rem;">📱 Mostrar QR</button>
       </div>
     </div>
 
     <div class="settings-section">
-      <div class="settings-label">Amigos</div>
+      <div class="settings-label" id="lbl-friends-section">Amigos</div>
       <div class="settings-friends" id="settings-friends">
         <!-- generado por JS -->
       </div>
       <div class="settings-row">
         <div>
-          <div class="settings-row-label">Invitar amigos</div>
-          <div class="settings-row-sub">Comparte un link para que descarguen la app</div>
+          <div class="settings-row-label" id="lbl-invite">Invitar amigos</div>
+          <div class="settings-row-sub" id="lbl-invite-sub">Link único para que te agreguen</div>
         </div>
         <button class="settings-row-action rainbow-hover-bg" id="settings-invite">Invitar 🔗</button>
       </div>
@@ -942,13 +992,20 @@
     </div>
 
     <div class="settings-section">
-      <div class="settings-label">App</div>
+      <div class="settings-label" id="lbl-app-section">App</div>
       <div class="settings-row">
-        <div class="settings-row-label">Versión</div>
-        <div style="font-size:0.82rem;color:var(--muted);">0.5.0 beta</div>
+        <div class="settings-row-label" id="lbl-language">Idioma</div>
+        <div style="display:flex;gap:6px;">
+          <button id="lang-es-btn" class="btn-g" style="font-size:0.8rem;">🇪🇸 ES</button>
+          <button id="lang-en-btn" class="btn-g" style="font-size:0.8rem;opacity:0.5;">🇺🇸 EN</button>
+        </div>
       </div>
       <div class="settings-row">
-        <div class="settings-row-label">Cerrar sesión</div>
+        <div class="settings-row-label" id="lbl-version">Versión</div>
+        <div style="font-size:0.82rem;color:var(--muted);">1.0.0-beta</div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label" id="lbl-cerrar-sesion">Cerrar sesión</div>
         <button class="settings-row-action danger" id="settings-logout">Salir</button>
       </div>
     </div>
@@ -975,11 +1032,107 @@
    - FIX: inicialización directa (no DOMContentLoaded)
 ══════════════════════════════════════════════════════════════ */
 
+/* ══════════════════════════════════════════════════════
+   SISTEMA I18N — inglés / español
+══════════════════════════════════════════════════════ */
+const I18N = {
+  es: {
+    tab_register: 'Registrarse', tab_login: 'Iniciar sesión',
+    name_placeholder: 'Tu nombre (ej: José)', username_placeholder: '@usuario (ej: joselo)',
+    email_placeholder: 'tu@email.com', pass_placeholder: 'Contraseña (mín. 6 caracteres)',
+    create_account: 'Crear cuenta →', enter: 'Entrar →',
+    forgot_pass: '¿Olvidaste tu contraseña?', google_btn: '🔵 Continuar con Google',
+    apple_btn: '🍎 Continuar con Apple',
+    verify_title: 'Verifica tu email', already_verified: 'Ya verifiqué ✓',
+    resend_email: 'Reenviar email', use_other_account: 'Usar otra cuenta',
+    choose_username: 'Elige tu @usuario', confirm: 'Confirmar →',
+    send: 'Enviar ✉️', send_to: 'Enviar a', inbox: 'Bandeja', save: '💾 Guardar',
+    clear: '🗑️ Limpiar', exit: 'Salir',
+    settings_title: '⚙️ Configuración', profile: 'Perfil', friends: 'Amigos',
+    store: 'Tienda', app_section: 'App', edit: 'Editar', upload: 'Subir',
+    invite_friends: 'Invitar amigos', your_code: 'Tu código de invitación',
+    copy_code: 'Copiar', share_link: 'Compartir link', version: 'Versión',
+    logout: 'Salir', change_name: 'Cambiar nombre', change_photo: 'Cambiar foto',
+    language: 'Idioma', lang_es: 'Español', lang_en: 'English',
+    draw_first: '✏️ ¡Dibuja algo primero!', select_contact: '👆 Selecciona a quién enviar',
+    sent_to: '✉️ Enviado a', no_friends: 'Agrega amigos para enviarles dibujos →',
+    friend_added: '✅ Amigo agregado', friend_not_found: '❌ Usuario no encontrado',
+    copied: '✓ Copiado',
+  },
+  en: {
+    tab_register: 'Sign up', tab_login: 'Log in',
+    name_placeholder: 'Your name (e.g. Jose)', username_placeholder: '@username (e.g. joselo)',
+    email_placeholder: 'you@email.com', pass_placeholder: 'Password (min. 6 chars)',
+    create_account: 'Create account →', enter: 'Log in →',
+    forgot_pass: 'Forgot your password?', google_btn: '🔵 Continue with Google',
+    apple_btn: '🍎 Continue with Apple',
+    verify_title: 'Verify your email', already_verified: 'I verified ✓',
+    resend_email: 'Resend email', use_other_account: 'Use another account',
+    choose_username: 'Choose your @username', confirm: 'Confirm →',
+    send: 'Send ✉️', send_to: 'Send to', inbox: 'Inbox', save: '💾 Save',
+    clear: '🗑️ Clear', exit: 'Sign out',
+    settings_title: '⚙️ Settings', profile: 'Profile', friends: 'Friends',
+    store: 'Store', app_section: 'App', edit: 'Edit', upload: 'Upload',
+    invite_friends: 'Invite friends', your_code: 'Your invite code',
+    copy_code: 'Copy', share_link: 'Share link', version: 'Version',
+    logout: 'Sign out', change_name: 'Change name', change_photo: 'Change photo',
+    language: 'Language', lang_es: 'Español', lang_en: 'English',
+    draw_first: '✏️ Draw something first!', select_contact: '👆 Select who to send to',
+    sent_to: '✉️ Sent to', no_friends: 'Add friends to send them drawings →',
+    friend_added: '✅ Friend added', friend_not_found: '❌ User not found',
+    copied: '✓ Copied',
+  }
+};
+
+let lang = localStorage.getItem('ss_lang') || 'es';
+function t(key) { return I18N[lang][key] || I18N['es'][key] || key; }
+
+function applyLang() {
+  // Login tabs
+  const tabRegister = document.getElementById('tab-register');
+  const tabLogin = document.getElementById('tab-login');
+  if (tabRegister) tabRegister.textContent = t('tab_register');
+  if (tabLogin) tabLogin.textContent = t('tab_login');
+  // Placeholders
+  const regNombre = document.getElementById('reg-nombre');
+  const regUser = document.getElementById('reg-username');
+  const regEmail = document.getElementById('reg-email');
+  const regPass = document.getElementById('reg-pass');
+  if (regNombre) regNombre.placeholder = t('name_placeholder');
+  if (regUser) regUser.placeholder = t('username_placeholder');
+  if (regEmail) regEmail.placeholder = t('email_placeholder');
+  if (regPass) regPass.placeholder = t('pass_placeholder');
+  const regBtn = document.getElementById('reg-btn');
+  const loginBtn = document.getElementById('login-btn');
+  const forgotBtn = document.getElementById('forgot-btn');
+  const googleBtn = document.getElementById('google-btn');
+  if (regBtn) regBtn.textContent = t('create_account');
+  if (loginBtn) loginBtn.textContent = t('enter');
+  if (forgotBtn) forgotBtn.textContent = t('forgot_pass');
+  if (googleBtn) googleBtn.textContent = t('google_btn');
+  // Buttons in app
+  const enviarBtnEl = document.getElementById('enviar-btn');
+  if (enviarBtnEl) enviarBtnEl.textContent = t('send');
+  // Settings
+  const settingsLogoutEl = document.getElementById('settings-logout');
+  if (settingsLogoutEl) settingsLogoutEl.textContent = t('logout');
+  // Language buttons opacity
+  const langEs = document.getElementById('lang-es-btn');
+  const langEn = document.getElementById('lang-en-btn');
+  if (langEs) langEs.style.opacity = lang === 'es' ? '1' : '0.5';
+  if (langEn) langEn.style.opacity = lang === 'en' ? '1' : '0.5';
+}
+
+function generarShortCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
 /* ── REFERENCIAS DOM ── */
 const authScreen = document.getElementById('auth-screen');
 const appEl      = document.getElementById('app');
-const nombreInp  = document.getElementById('nombre-inp');
-const entrarBtn  = document.getElementById('entrar-btn');
 const salirBtn   = document.getElementById('salir-btn');
 const avatarEl   = document.getElementById('av');
 const unameEl    = document.getElementById('uname');
@@ -1119,109 +1272,22 @@ const firebaseReady = (() => {
 })();
 
 /* ══════════════════════════════════════════════════════
-   AUTENTICACIÓN — Firebase Auth + fallback localStorage
+   AUTENTICACIÓN — Email/contraseña + Google + verificación
 ══════════════════════════════════════════════════════ */
 
-async function mostrarApp(nombre, fotoUrl) {
-  if (!firebaseReady || !auth.currentUser) {
-    /* Fallback localStorage — mostrar app directo */
-    finalizarLogin(nombre, nombre, fotoUrl);
-    return;
-  }
-  const uid = auth.currentUser.uid;
-  try {
-    const userDoc = await db.collection('users').doc(uid).get();
-    if (!userDoc.exists) {
-      /* Primera vez — mostrar pantalla de @username */
-      mostrarPantallaUsername(nombre, fotoUrl);
-    } else {
-      /* Ya tiene cuenta — ir directo a la app */
-      const data = userDoc.data();
-      finalizarLogin(data.username, data.displayName, fotoUrl || data.photoURL);
-    }
-  } catch(e) {
-    console.warn('Error consultando Firestore:', e.message);
-    finalizarLogin(nombre, nombre, fotoUrl);
-  }
-}
-
-function mostrarPantallaUsername(nombre, fotoUrl) {
+/* ── Helpers de pantalla ── */
+function ocultarTodasLasPantallas() {
   authScreen.style.display = 'none';
   appEl.style.display = 'none';
-  const usernameScreen = document.getElementById('username-screen');
-  usernameScreen.style.display = 'flex';
-
-  const usernameInp = document.getElementById('username-inp');
-  const confirmBtn  = document.getElementById('username-confirm-btn');
-  const errorEl     = document.getElementById('username-error');
-
-  /* Prefill con nombre limpio si es posible */
-  const pre = nombre.toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,20);
-  if (pre.length >= 3) usernameInp.value = pre;
-
-  function mostrarError(msg) {
-    errorEl.textContent = msg;
-    errorEl.style.display = 'block';
-  }
-  function ocultarError() { errorEl.style.display = 'none'; }
-
-  confirmBtn.addEventListener('click', async () => {
-    const raw = usernameInp.value.trim().toLowerCase().replace(/^@/, '');
-    if (!/^[a-z0-9_]{3,20}$/.test(raw)) {
-      mostrarError('Solo letras minúsculas, números y _ · mínimo 3, máximo 20 chars');
-      return;
-    }
-    ocultarError();
-    confirmBtn.disabled = true;
-    confirmBtn.textContent = 'Verificando…';
-
-    try {
-      const snap = await db.collection('users').where('username','==',raw).get();
-      if (!snap.empty) {
-        mostrarError('Ese @usuario ya está tomado, elige otro');
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = 'Confirmar →';
-        return;
-      }
-      const uid = auth.currentUser.uid;
-      await db.collection('users').doc(uid).set({
-        username: raw,
-        displayName: nombre,
-        photoURL: fotoUrl || '',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        uid
-      });
-      usernameScreen.style.display = 'none';
-      finalizarLogin(raw, nombre, fotoUrl);
-    } catch(e) {
-      mostrarError('Error al guardar: ' + e.message);
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = 'Confirmar →';
-    }
-  });
-
-  usernameInp.addEventListener('keydown', e => { if (e.key === 'Enter') confirmBtn.click(); });
-}
-
-function finalizarLogin(username, displayName, photoURL) {
-  usuario = username || displayName;
-  const avatarSrc = photoURL || genAvatar(displayName || username);
-  unameEl.textContent = usuario;
-  avatarEl.src = avatarSrc;
-  unameMob.textContent = usuario;
-  avMob.src = avatarSrc;
-  authScreen.style.display = 'none';
-  document.getElementById('username-screen').style.display = 'none';
-  appEl.style.display = 'flex';
-  setupCanvas();
-  buildCarousel();
-  cargarBandeja();
-  requestAnimationFrame(() => requestAnimationFrame(volarAlHeader));
+  const us = document.getElementById('username-screen');
+  const vs = document.getElementById('verify-screen');
+  if (us) us.style.display = 'none';
+  if (vs) vs.style.display = 'none';
 }
 
 function mostrarLogin() {
+  ocultarTodasLasPantallas();
   authScreen.style.display = 'flex';
-  appEl.style.display = 'none';
   const ph = document.getElementById('hdr-logo-placeholder');
   if (ph) { ph.style.visibility='hidden'; ph.style.animation=''; ph.style.backgroundPosition=''; }
   volador.style.opacity = '1';
@@ -1229,84 +1295,265 @@ function mostrarLogin() {
   setTimeout(posicionarVoladorEnLogin, 50);
 }
 
-function checkLogin() {
-  if (firebaseReady) {
-    /* Firebase gestiona el estado — onAuthStateChanged se encarga */
-    return;
+function mostrarVerificacion(email) {
+  ocultarTodasLasPantallas();
+  volador.style.opacity = '0';
+  const vs = document.getElementById('verify-screen');
+  if (vs) vs.style.display = 'flex';
+  const txt = document.getElementById('verify-email-text');
+  if (txt) txt.textContent = `Enviamos un link a ${email}. Ábrelo y luego pulsa "Ya verifiqué".`;
+}
+
+function mostrarPantallaUsername(nombre, fotoUrl) {
+  ocultarTodasLasPantallas();
+  volador.style.opacity = '0';
+  const usernameScreen = document.getElementById('username-screen');
+  usernameScreen.style.display = 'flex';
+  const dnEl = document.getElementById('username-screen-displayname');
+  if (dnEl) dnEl.textContent = 'Hola, ' + nombre + ' 👋 — tu nombre real ya está guardado';
+  const usernameInp = document.getElementById('username-inp');
+  const confirmBtn  = document.getElementById('username-confirm-btn');
+  const errorEl     = document.getElementById('username-error');
+  const pre = nombre.toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,20);
+  if (pre.length >= 3) usernameInp.value = pre;
+
+  /* Remover listener previo clonando el botón */
+  const newBtn = confirmBtn.cloneNode(true);
+  confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+
+  newBtn.addEventListener('click', async () => {
+    const raw = usernameInp.value.trim().toLowerCase().replace(/^@/, '');
+    if (!/^[a-z0-9_]{3,20}$/.test(raw)) {
+      errorEl.textContent = 'Solo letras minúsculas, números y _ · mínimo 3 chars'; errorEl.style.display='block'; return;
+    }
+    errorEl.style.display = 'none';
+    newBtn.disabled = true; newBtn.textContent = 'Verificando…';
+    try {
+      const snap = await db.collection('users').where('username','==',raw).get();
+      if (!snap.empty) {
+        errorEl.textContent = 'Ese @usuario ya está tomado, elige otro'; errorEl.style.display='block';
+        newBtn.disabled = false; newBtn.textContent = t('confirm'); return;
+      }
+      const uid = auth.currentUser.uid;
+      await db.collection('users').doc(uid).set({
+        username: raw, displayName: nombre, photoURL: fotoUrl || '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(), uid,
+        shortCode: generarShortCode()
+      });
+      finalizarLogin(raw, nombre, fotoUrl);
+    } catch(e) {
+      errorEl.textContent = 'Error: ' + e.message; errorEl.style.display='block';
+      newBtn.disabled = false; newBtn.textContent = t('confirm');
+    }
+  });
+  usernameInp.addEventListener('keydown', e => { if (e.key === 'Enter') newBtn.click(); });
+}
+
+async function mostrarApp(nombre, fotoUrl) {
+  if (!firebaseReady || !auth.currentUser) {
+    finalizarLogin(nombre, nombre, fotoUrl); return;
   }
-  /* Fallback: localStorage (sin Firebase) */
+  const uid = auth.currentUser.uid;
+  try {
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists) {
+      mostrarPantallaUsername(nombre, fotoUrl);
+    } else {
+      const data = userDoc.data();
+      finalizarLogin(data.username, data.displayName, fotoUrl || data.photoURL);
+    }
+  } catch(e) {
+    console.warn('Error Firestore:', e.message);
+    finalizarLogin(nombre, nombre, fotoUrl);
+  }
+}
+
+function finalizarLogin(username, displayName, photoURL) {
+  usuario = username || displayName;
+  const nombreMostrar = displayName || username;
+  const avatarSrc = photoURL || genAvatar(nombreMostrar);
+  unameEl.textContent = nombreMostrar; avatarEl.src = avatarSrc;
+  unameMob.textContent = nombreMostrar; avMob.src = avatarSrc;
+  ocultarTodasLasPantallas();
+  appEl.style.display = 'flex';
+  setupCanvas(); buildCarousel(); cargarBandeja();
+  requestAnimationFrame(() => requestAnimationFrame(volarAlHeader));
+
+  /* Manejar ?add=CODE en URL */
+  const urlParams = new URLSearchParams(window.location.search);
+  const addCode = urlParams.get('add');
+  if (addCode) {
+    history.replaceState({}, '', location.pathname);
+    setTimeout(() => agregarAmigo(addCode), 1000);
+  }
+}
+
+function checkLogin() {
+  if (firebaseReady) return;
   const n = localStorage.getItem('ss_user');
-  if (n) mostrarApp(n, null);
-  else mostrarLogin();
+  if (n) finalizarLogin(n, n, null); else mostrarLogin();
 }
 
 function doLogout() {
-  if (firebaseReady && auth) {
-    auth.signOut().catch(e => console.warn('signOut error:', e));
-  } else {
-    localStorage.removeItem('ss_user');
-    checkLogin();
-  }
+  if (firebaseReady && auth) auth.signOut().catch(() => {});
+  else { localStorage.removeItem('ss_user'); mostrarLogin(); }
 }
 
-/* ── Observer Firebase: reacciona a login/logout en tiempo real ── */
+/* ── Observer principal ── */
 if (firebaseReady && auth) {
-  auth.onAuthStateChanged(user => {
-    if (user) {
+  auth.onAuthStateChanged(async user => {
+    if (!user) { mostrarLogin(); return; }
+    if (user.providerData[0]?.providerId === 'password' && !user.emailVerified) {
+      mostrarVerificacion(user.email);
+      return;
+    }
+    try {
+      const doc = await db.collection('users').doc(user.uid).get();
+      if (!doc.exists) {
+        const nombre = user.displayName || user.email.split('@')[0];
+        mostrarPantallaUsername(nombre, user.photoURL);
+      } else {
+        const d = doc.data();
+        finalizarLogin(d.username, d.displayName, user.photoURL || d.photoURL);
+      }
+    } catch(e) {
       const nombre = user.displayName || user.email?.split('@')[0] || 'Usuario';
-      mostrarApp(nombre, user.photoURL);
-    } else {
-      mostrarLogin();
+      finalizarLogin(nombre, nombre, user.photoURL);
     }
   });
 }
 
-/* ── Entrar con nombre (anónimo en Firebase, o localStorage como fallback) ── */
-entrarBtn.addEventListener('click', async () => {
-  const n = nombreInp.value.trim();
-  if (!n) { toast('⚠️ Escribe un nombre'); return; }
-  if (n.length > 15) { toast('⚠️ Máximo 15 caracteres'); return; }
+/* ── TABS Registrarse / Iniciar sesión ── */
+document.getElementById('tab-register').addEventListener('click', () => {
+  document.getElementById('form-register').style.display = 'block';
+  document.getElementById('form-login').style.display = 'none';
+  document.getElementById('tab-register').style.borderBottomColor = 'var(--accent)';
+  document.getElementById('tab-register').style.color = 'var(--text)';
+  document.getElementById('tab-login').style.borderBottomColor = 'transparent';
+  document.getElementById('tab-login').style.color = 'var(--muted)';
+});
+document.getElementById('tab-login').addEventListener('click', () => {
+  document.getElementById('form-register').style.display = 'none';
+  document.getElementById('form-login').style.display = 'block';
+  document.getElementById('tab-login').style.borderBottomColor = 'var(--accent)';
+  document.getElementById('tab-login').style.color = 'var(--text)';
+  document.getElementById('tab-register').style.borderBottomColor = 'transparent';
+  document.getElementById('tab-register').style.color = 'var(--muted)';
+});
 
-  if (firebaseReady && auth) {
-    entrarBtn.disabled = true;
-    entrarBtn.textContent = 'Entrando…';
-    try {
-      const cred = await auth.signInAnonymously();
-      await cred.user.updateProfile({ displayName: n });
-      /* onAuthStateChanged se dispara y llama mostrarApp() */
-    } catch(e) {
-      toast('⚠️ Error de conexión — entrando sin cuenta');
-      localStorage.setItem('ss_user', n);
-      mostrarApp(n, null);
-    } finally {
-      entrarBtn.disabled = false;
-      entrarBtn.textContent = 'Entrar →';
-    }
-  } else {
-    localStorage.setItem('ss_user', n);
-    mostrarApp(n, null);
+/* ── REGISTRO con email + contraseña ── */
+document.getElementById('reg-btn').addEventListener('click', async () => {
+  const nombre = document.getElementById('reg-nombre').value.trim();
+  const rawU   = document.getElementById('reg-username').value.trim().toLowerCase().replace(/^@/,'');
+  const email  = document.getElementById('reg-email').value.trim();
+  const pass   = document.getElementById('reg-pass').value;
+  const errEl  = document.getElementById('reg-error');
+  const mostrarErr = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+  errEl.style.display = 'none';
+  if (!nombre)  { mostrarErr('Escribe tu nombre'); return; }
+  if (!/^[a-z0-9_]{3,20}$/.test(rawU)) { mostrarErr('@usuario: solo letras minúsculas, números y _ · mínimo 3 chars'); return; }
+  if (!email)   { mostrarErr('Escribe tu email'); return; }
+  if (pass.length < 6) { mostrarErr('La contraseña debe tener al menos 6 caracteres'); return; }
+  const btn = document.getElementById('reg-btn');
+  btn.disabled = true; btn.textContent = 'Creando cuenta…';
+  try {
+    const snapU = await db.collection('users').where('username','==',rawU).get();
+    if (!snapU.empty) { mostrarErr('El @' + rawU + ' ya está tomado, elige otro'); btn.disabled=false; btn.textContent=t('create_account'); return; }
+    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    await cred.user.updateProfile({ displayName: nombre });
+    await db.collection('users').doc(cred.user.uid).set({
+      username: rawU, displayName: nombre, photoURL: '',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(), uid: cred.user.uid,
+      shortCode: generarShortCode()
+    });
+    await cred.user.sendEmailVerification();
+  } catch(e) {
+    const msgs = {
+      'auth/email-already-in-use': 'Ese email ya tiene cuenta — usa "Iniciar sesión"',
+      'auth/invalid-email': 'Email no válido',
+      'auth/weak-password': 'Contraseña muy débil'
+    };
+    mostrarErr(msgs[e.code] || e.message);
+    btn.disabled = false; btn.textContent = t('create_account');
   }
+});
+
+/* ── INICIO DE SESIÓN con email + contraseña ── */
+document.getElementById('login-btn').addEventListener('click', async () => {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  if (!email || !pass) { errEl.textContent = 'Completa email y contraseña'; errEl.style.display='block'; return; }
+  const btn = document.getElementById('login-btn');
+  btn.disabled = true; btn.textContent = 'Entrando…';
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+  } catch(e) {
+    const msgs = {
+      'auth/user-not-found': 'No existe cuenta con ese email',
+      'auth/wrong-password': 'Contraseña incorrecta',
+      'auth/invalid-credential': 'Email o contraseña incorrectos',
+      'auth/too-many-requests': 'Demasiados intentos, espera un momento'
+    };
+    errEl.textContent = msgs[e.code] || e.message; errEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = t('enter');
+  }
+});
+
+/* ── Recuperar contraseña ── */
+document.getElementById('forgot-btn').addEventListener('click', async () => {
+  const email = document.getElementById('login-email').value.trim();
+  if (!email) { toast('📧 Escribe tu email primero'); return; }
+  try {
+    await auth.sendPasswordResetEmail(email);
+    toast('📬 Email de recuperación enviado a ' + email);
+  } catch(e) { toast('❌ ' + (e.code === 'auth/user-not-found' ? 'No existe cuenta con ese email' : e.message)); }
+});
+
+/* ── Botones de verificación de email ── */
+document.getElementById('verify-check-btn').addEventListener('click', async () => {
+  if (!auth.currentUser) { mostrarLogin(); return; }
+  await auth.currentUser.reload();
+  if (auth.currentUser.emailVerified) {
+    toast('✅ Email verificado, entrando…');
+    auth.currentUser.getIdToken(true);
+  } else {
+    toast('📬 Aún no hemos recibido la verificación, revisa tu email');
+  }
+});
+
+document.getElementById('verify-resend-btn').addEventListener('click', async () => {
+  if (!auth.currentUser) return;
+  try {
+    await auth.currentUser.sendEmailVerification();
+    toast('📬 Email reenviado');
+  } catch(e) { toast('⚠️ ' + e.message); }
+});
+
+document.getElementById('verify-logout-btn').addEventListener('click', () => {
+  if (auth) auth.signOut();
 });
 
 /* ── Google Sign-In ── */
 document.getElementById('google-btn').addEventListener('click', async () => {
-  if (!firebaseReady || !auth) {
-    toast('🚧 Primero configura Firebase — ver instrucciones');
-    return;
-  }
+  if (!firebaseReady || !auth) { toast('🚧 Firebase no configurado'); return; }
   try {
     const provider = new firebase.auth.GoogleAuthProvider();
     await auth.signInWithPopup(provider);
-    /* onAuthStateChanged maneja el resto */
   } catch(e) {
-    if (e.code !== 'auth/popup-closed-by-user') {
-      toast('⚠️ Error con Google: ' + e.message);
-    }
+    if (e.code !== 'auth/popup-closed-by-user') toast('⚠️ Error con Google: ' + e.message);
   }
 });
 
-nombreInp.addEventListener('keydown', e => { if (e.key === 'Enter') entrarBtn.click(); });
-nombreInp.setAttribute('maxlength', '15');
+/* Enter en campos de formulario */
+['login-email','login-pass'].forEach(id => {
+  document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('login-btn').click(); });
+});
+['reg-nombre','reg-username','reg-email','reg-pass'].forEach(id => {
+  document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('reg-btn').click(); });
+});
+
 salirBtn.addEventListener('click', doLogout);
 salirBtnMob.addEventListener('click', doLogout);
 
@@ -1591,12 +1838,17 @@ async function cargarAmigos() {
   }
 }
 
-async function agregarAmigo(username) {
+async function agregarAmigo(input) {
   if (!firebaseReady || !auth.currentUser) { toast('❌ Necesitas iniciar sesión'); return; }
   const uid = auth.currentUser.uid;
+  const isCode = /^[A-Z0-9]{6}$/.test(input.toUpperCase());
+  const query = isCode
+    ? db.collection('users').where('shortCode', '==', input.toUpperCase())
+    : db.collection('users').where('username', '==', input.toLowerCase());
+  const username = isCode ? input.toUpperCase() : input.toLowerCase();
   try {
-    const snap = await db.collection('users').where('username','==',username).get();
-    if (snap.empty) { toast('❌ Usuario @' + username + ' no encontrado'); return; }
+    const snap = await query.get();
+    if (snap.empty) { toast(t('friend_not_found') + ' ' + (isCode ? input.toUpperCase() : '@' + username)); return; }
     const otroUser = snap.docs[0].data();
     if (otroUser.uid === uid) { toast('❌ No puedes agregarte a ti mismo'); return; }
     /* Verificar si ya hay amistad */
@@ -1620,7 +1872,9 @@ async function agregarAmigo(username) {
 }
 
 async function buildCarousel() {
-  carouselEl.innerHTML = '';
+  /* Skeleton loading */
+  carouselEl.innerHTML = '<div style="display:flex;gap:8px;padding:4px 0;">' +
+    Array(3).fill('<div style="width:52px;height:72px;border-radius:12px;background:var(--surface2);animation:pulse 1.5s infinite;"></div>').join('') + '</div>';
 
   let amigos = [];
   if (firebaseReady && auth.currentUser) {
@@ -1630,11 +1884,12 @@ async function buildCarousel() {
     amigos = CONTACTOS.map(c => ({ id: c.id, nombre: c.nombre, username: c.nombre.toLowerCase(), photoURL: '' }));
   }
 
+  carouselEl.innerHTML = '';
+
   if (amigos.length === 0 && firebaseReady) {
-    /* Estado vacío con instrucción */
     const empty = document.createElement('div');
     empty.style.cssText = 'display:flex;align-items:center;gap:8px;color:var(--muted);font-size:0.8rem;padding:4px 0;';
-    empty.textContent = 'Agrega amigos para enviarles dibujos →';
+    empty.textContent = t('no_friends');
     carouselEl.appendChild(empty);
   }
 
@@ -1656,7 +1911,7 @@ async function buildCarousel() {
   addBtn.className = 'citem';
   addBtn.innerHTML = `<div class="cwrap" style="background:var(--surface2);border:2px dashed var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="font-size:1.5rem">+</span></div><span class="cname">Agregar</span>`;
   addBtn.addEventListener('click', () => {
-    const raw = prompt('Ingresa el @usuario de tu amigo:');
+    const raw = prompt('Buscar amigo por @usuario o código (ej: XK9P2M):');
     if (raw) agregarAmigo(raw.replace(/^@/,'').toLowerCase().trim());
   });
   carouselEl.appendChild(addBtn);
@@ -2229,7 +2484,7 @@ vidBtn.addEventListener('click', async () => {
    Estructura:
    {
      "format": "SKS",
-     "version": "1.0",
+     "version": "1.0.0-beta",
      "meta": {
        "creator": "nombre",
        "createdAt": "ISO date",
@@ -2272,7 +2527,7 @@ sksBtn.addEventListener('click', () => {
       creator: usuario || 'Anónimo',
       createdAt: new Date().toISOString(),
       app: 'SketchSend',
-      appVersion: '0.4.0',
+      appVersion: '1.0.0-beta',
       canvasWidth: Math.round(cv.width / DPR),
       canvasHeight: Math.round(cv.height / DPR),
       dpr: DPR,
@@ -2479,15 +2734,46 @@ function abrirSettings() {
   /* Actualizar datos del perfil */
   document.getElementById('settings-avatar').src = genAvatar(usuario || '?');
   document.getElementById('settings-name').textContent = usuario || '—';
+  document.getElementById('settings-email').textContent = auth?.currentUser?.email || auth?.currentUser?.displayName || '';
 
-  /* Renderizar lista de amigos */
-  settingsFriends.innerHTML = '';
-  CONTACTOS.forEach(c => {
-    const chip = document.createElement('div');
-    chip.className = 'settings-friend-chip';
-    chip.innerHTML = `<span class="settings-friend-av-wrap rainbow-hover-ring"><img class="settings-friend-av" src="${genAvatar(c.nombre)}" alt="${c.nombre}"></span>${c.nombre}`;
-    settingsFriends.appendChild(chip);
-  });
+  /* Cargar shortCode y email desde Firestore */
+  if (firebaseReady && auth.currentUser) {
+    db.collection('users').doc(auth.currentUser.uid).get().then(doc => {
+      if (doc.exists) {
+        const code = doc.data().shortCode;
+        const emailUser = doc.data().email || auth.currentUser.email || '';
+        document.getElementById('user-shortcode').textContent = code || '——';
+        document.getElementById('settings-email').textContent = emailUser || auth.currentUser.email || auth.currentUser.displayName || '';
+        document.getElementById('settings-name').textContent = doc.data().displayName || usuario;
+      }
+    });
+  }
+
+  /* Renderizar lista de amigos reales */
+  settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">Cargando...</span>';
+  if (firebaseReady && auth.currentUser) {
+    cargarAmigos().then(amigos => {
+      settingsFriends.innerHTML = '';
+      if (amigos.length === 0) {
+        settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">Aún no tienes amigos en SketchSend</span>';
+        return;
+      }
+      amigos.forEach(c => {
+        const chip = document.createElement('div');
+        chip.className = 'settings-friend-chip';
+        chip.innerHTML = `<span class="settings-friend-av-wrap rainbow-hover-ring"><img class="settings-friend-av" src="${c.photoURL || genAvatar(c.nombre)}" alt="${c.nombre}"></span>${c.nombre}`;
+        settingsFriends.appendChild(chip);
+      });
+    });
+  } else {
+    settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">Inicia sesión para ver tus amigos</span>';
+  }
+
+  /* Reiniciar QR */
+  const qrCanvas = document.getElementById('qr-canvas');
+  const showQrBtn = document.getElementById('show-qr-btn');
+  if (qrCanvas) qrCanvas.style.display = 'none';
+  if (showQrBtn) showQrBtn.style.display = '';
 
   settingsOverlay.classList.add('activo');
 }
@@ -2524,9 +2810,49 @@ settingsRename.addEventListener('click', async () => {
 });
 
 settingsInvite.addEventListener('click', () => {
-  const shareData = { title:'SketchSend', text:'¡Descarga SketchSend y dibujemos juntos! ✏️🌈', url:location.href };
+  const code = document.getElementById('user-shortcode').textContent;
+  const inviteUrl = code && code !== '——'
+    ? location.origin + location.pathname + '?add=' + code
+    : location.href;
+  const shareData = { title:'SketchSend', text:'¡Dibujemos juntos en SketchSend! ✏️🌈', url:inviteUrl };
   if (navigator.share) { navigator.share(shareData).catch(()=>{}); }
-  else { navigator.clipboard.writeText(location.href).then(()=>toast('🔗 Link copiado al portapapeles')).catch(()=>toast('🔗 Comparte: '+location.href)); }
+  else { navigator.clipboard.writeText(inviteUrl).then(()=>toast('🔗 Link copiado al portapapeles')).catch(()=>toast('🔗 Comparte: '+inviteUrl)); }
+});
+
+/* Copiar shortCode */
+document.getElementById('copy-code-btn').addEventListener('click', () => {
+  const code = document.getElementById('user-shortcode').textContent;
+  if (code === '——') return;
+  navigator.clipboard.writeText(code).then(() => toast(t('copied') + ': ' + code));
+});
+
+/* Mostrar QR */
+document.getElementById('show-qr-btn').addEventListener('click', () => {
+  const code = document.getElementById('user-shortcode').textContent;
+  if (code === '——') return;
+  const qrCanvas = document.getElementById('qr-canvas');
+  const appUrl = encodeURIComponent(location.origin + location.pathname + '?add=' + code);
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${appUrl}`;
+  img.onload = () => {
+    qrCanvas.width = 200; qrCanvas.height = 200;
+    qrCanvas.getContext('2d').drawImage(img, 0, 0);
+    qrCanvas.style.display = 'block';
+    document.getElementById('show-qr-btn').style.display = 'none';
+  };
+});
+
+/* Botones de idioma */
+document.getElementById('lang-es-btn').addEventListener('click', () => {
+  lang = 'es'; localStorage.setItem('ss_lang', 'es');
+  applyLang();
+  toast('🇪🇸 Español');
+});
+document.getElementById('lang-en-btn').addEventListener('click', () => {
+  lang = 'en'; localStorage.setItem('ss_lang', 'en');
+  applyLang();
+  toast('🇺🇸 English');
 });
 
 settingsLogout.addEventListener('click', () => {
@@ -2546,6 +2872,7 @@ document.querySelectorAll('.settings-row-action.premium').forEach(btn => {
    ya existe. Ejecutamos directamente.
 ══════════════════════════════════════════════════════ */
 applySeason();
+applyLang();
 /* Si Firebase está activo, onAuthStateChanged gestiona login/logout.
    Si no, checkLogin() usa localStorage. En ambos casos arrancamos en login. */
 if (!firebaseReady) checkLogin();
