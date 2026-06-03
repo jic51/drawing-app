@@ -2964,6 +2964,32 @@ cargarBandeja();
   if (!soportaVideo) vidBtn.style.display = 'none';
 })();
 
+/* ── PWA Service Worker ── */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+
+/* ── PWA Install prompt ── */
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // Mostrar botón de instalar en settings si está disponible
+  const installRow = document.getElementById('install-row');
+  if (installRow) installRow.style.display = 'flex';
+});
+
+document.getElementById('install-btn')?.addEventListener('click', async () => {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  if (outcome === 'accepted') toast('✅ SketchSend instalado');
+  deferredInstallPrompt = null;
+  document.getElementById('install-row').style.display = 'none';
+});
+
 </script>
 </body>
 </html>
