@@ -2284,22 +2284,25 @@ function cargarBandeja() {
   }
 
   const uid = auth.currentUser.uid;
-  const ahora = new Date();
+  const ahora = Date.now();
   db.collection('sketches')
     .where('to', '==', uid)
-    .where('viewed', '==', false)
-    .where('expiresAt', '>', ahora)
-    .orderBy('expiresAt')
     .onSnapshot(snap => {
-      bandejaEntrada = snap.docs.map(doc => ({
-        id: doc.id,
-        sender: doc.data().fromName,
-        senderId: doc.data().from,
-        strokes: doc.data().strokes,
-        receivedAt: doc.data().createdAt?.toMillis() || Date.now(),
-        expiresAt: doc.data().expiresAt?.toMillis() || (Date.now() + 24*3600*1000),
-        visto: false
-      }));
+      bandejaEntrada = snap.docs
+        .map(doc => {
+          const d = doc.data();
+          return {
+            id: doc.id,
+            sender: d.fromName,
+            senderId: d.from,
+            strokes: d.strokes,
+            receivedAt: d.createdAt?.toMillis() || Date.now(),
+            expiresAt: d.expiresAt?.toMillis() || (Date.now() + 24*3600*1000),
+            viewed: d.viewed || false,
+            visto: false
+          };
+        })
+        .filter(m => !m.viewed && m.expiresAt > ahora);
       actualizarBadge();
     }, err => {
       console.warn('Error escuchando bandeja:', err.message);

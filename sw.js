@@ -1,6 +1,5 @@
-const CACHE = 'sketchsend-v1';
-const PRECACHE = [
-  './sketchsendv14.html',
+const CACHE = 'sketchsend-v3';
+const STATIC = [
   'https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Sans:wght@400;500;600&display=swap',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js',
@@ -9,7 +8,7 @@ const PRECACHE = [
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(PRECACHE).catch(() => {}))
+    caches.open(CACHE).then(cache => cache.addAll(STATIC).catch(() => {}))
   );
   self.skipWaiting();
 });
@@ -24,16 +23,29 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Solo cachear GET, no peticiones de Firebase/Firestore (tiempo real)
   if (e.request.method !== 'GET') return;
   const url = e.request.url;
-  if (url.includes('firestore.googleapis.com') || url.includes('identitytoolkit')) return;
 
+  // Never intercept Firebase real-time / auth endpoints
+  if (url.includes('firestore.googleapis.com') ||
+      url.includes('identitytoolkit') ||
+      url.includes('firebaseauth') ||
+      url.includes('googleapis.com/google.firestore')) return;
+
+  // HTML pages: network-first so updates are always picked up
+  if (url.includes('.html') || url.endsWith('/')) {
+    e.respondWith(
+      fetch(e.request).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // Static assets (fonts, Firebase SDK): cache-first
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(response => {
-        if (response.ok && e.request.url.startsWith('https://fonts.') || e.request.url.includes('gstatic.com')) {
+        if (response.ok) {
           const clone = response.clone();
           caches.open(CACHE).then(cache => cache.put(e.request, clone));
         }
