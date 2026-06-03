@@ -1080,50 +1080,115 @@
 ══════════════════════════════════════════════════════ */
 const I18N = {
   es: {
+    welcome: 'Bienvenido', welcome_sub: 'Entra con tu cuenta Google para empezar a dibujar',
     tab_register: 'Registrarse', tab_login: 'Iniciar sesión',
     name_placeholder: 'Tu nombre (ej: José)', username_placeholder: '@usuario (ej: joselo)',
     email_placeholder: 'tu@email.com', pass_placeholder: 'Contraseña (mín. 6 caracteres)',
+    pass_placeholder2: 'Contraseña',
     create_account: 'Crear cuenta →', enter: 'Entrar →',
-    forgot_pass: '¿Olvidaste tu contraseña?', google_btn: '🔵 Continuar con Google',
-    apple_btn: '🍎 Continuar con Apple',
-    verify_title: 'Verifica tu email', already_verified: 'Ya verifiqué ✓',
-    resend_email: 'Reenviar email', use_other_account: 'Usar otra cuenta',
-    choose_username: 'Elige tu @usuario', confirm: 'Confirmar →',
-    send: 'Enviar ✉️', send_to: 'Enviar a', inbox: 'Bandeja', save: '💾 Guardar',
-    clear: '🗑️ Limpiar', exit: 'Salir',
-    settings_title: '⚙️ Configuración', profile: 'Perfil', friends: 'Amigos',
-    store: 'Tienda', app_section: 'App', edit: 'Editar', upload: 'Subir',
-    invite_friends: 'Invitar amigos', your_code: 'Tu código de invitación',
-    copy_code: 'Copiar', share_link: 'Compartir link', version: 'Versión',
-    logout: 'Salir', change_name: 'Cambiar nombre', change_photo: 'Cambiar foto',
-    language: 'Idioma', lang_es: 'Español', lang_en: 'English',
+    forgot_pass: '¿Olvidaste tu contraseña?',
+    google_btn: '🔵 Continuar con Google', apple_btn: '🍎 Continuar con Apple',
+    use_email: 'Usar email y contraseña ↓', hide_email: 'Ocultar ↑',
+    security_msg: '🔒 Tus dibujos son privados y se eliminan en 24h',
+    verify_title: 'Verifica tu email',
+    already_verified: 'Ya verifiqué ✓', resend_email: 'Reenviar email',
+    use_other_account: 'Usar otra cuenta',
+    choose_username: 'Elige tu @usuario',
+    choose_username_sub: 'Con este nombre tus amigos te podrán buscar en SketchSend.',
+    confirm: 'Confirmar →', verifying: 'Verificando…',
+    save: '💾 Guardar', clear: '🗑️ Limpiar', inbox: 'Bandeja', exit: 'Salir',
+    send: 'Enviar ✉️', send_to: 'Enviar a',
+    save_modal_title: '💾 Guardar dibujo', save_modal_sub: '¿En qué formato?',
+    save_png: '⬇️ Imagen (.PNG)', save_video: '🎬 Video replay (.WEBM)',
+    save_sks: '📦 Proyecto (.SKS)', cancel: 'Cancelar',
+    inbox_title: '✉️ Dibujos recibidos', inbox_close: 'Cerrar',
+    inbox_empty: 'No tienes dibujos nuevos', inbox_sent_you: 'Te envió un dibujo',
+    settings_title: '⚙️ Configuración',
+    profile: 'Perfil', friends: 'Amigos', store: 'Tienda', app_section: 'App',
+    change_name: 'Cambiar nombre', change_name_sub: 'Máximo 20 caracteres',
+    change_photo: 'Cambiar foto', change_photo_sub: '🚧 Próximamente',
+    edit: 'Editar', upload: 'Subir',
+    your_code: 'Tu código de invitación',
+    your_code_sub: 'Compártelo para que te agreguen como amigo',
+    copy_code: 'Copiar', show_qr: '📱 Mostrar QR',
+    invite_friends: 'Invitar amigos', invite_friends_sub: 'Link único para que te agreguen',
+    invite_btn: 'Invitar 🔗',
+    store_colors: '🎨 Colores premium', store_colors_sub: 'Paleta completa con selector libre',
+    store_brushes: '🖌️ Pinceles especiales', store_brushes_sub: 'Acuarela, neón, caligrafía, pixel',
+    store_themes: '🌈 Temas de temporada', store_themes_sub: 'Halloween, Navidad, San Valentín',
+    store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Dibujos permanentes, 4K, sin firma',
+    install_app: 'Instalar app', install_app_sub: 'Agregar SketchSend a tu pantalla de inicio',
+    install_btn: 'Instalar 📲', language: 'Idioma', version: 'Versión', logout: 'Cerrar sesión',
+    no_friends: 'Agrega amigos para enviarles dibujos →',
+    add_friend: 'Agregar', share_label: 'Compartir',
+    add_friend_prompt: 'Buscar amigo por @usuario o código (ej: XK9P2M):',
     draw_first: '✏️ ¡Dibuja algo primero!', select_contact: '👆 Selecciona a quién enviar',
-    sent_to: '✉️ Enviado a', no_friends: 'Agrega amigos para enviarles dibujos →',
-    friend_added: '✅ Amigo agregado', friend_not_found: '❌ Usuario no encontrado',
-    copied: '✓ Copiado',
+    sent_to: '✉️ Enviado a', friend_added: '✅ Amigo agregado',
+    friend_not_found: '❌ Usuario no encontrado', friend_self: '❌ No puedes agregarte a ti mismo',
+    friend_exists: 'Ya tienes amistad con ese usuario', copied: '✓ Copiado',
+    loading: 'Cargando…', creating: 'Creando cuenta…', entering: 'Entrando…',
+    no_friends_yet: 'Aún no tienes amigos en SketchSend',
+    login_to_see: 'Inicia sesión para ver tus amigos',
+    err_fill_all: 'Completa todos los campos',
+    err_email_pass: 'Completa email y contraseña',
+    err_username_fmt: 'Solo letras minúsculas, números y _ · mínimo 3 chars',
+    err_username_taken: 'Ese @usuario ya está tomado, elige otro',
+    err_saving: 'Error al guardar: ',
   },
   en: {
+    welcome: 'Welcome', welcome_sub: 'Sign in with your Google account to start drawing',
     tab_register: 'Sign up', tab_login: 'Log in',
     name_placeholder: 'Your name (e.g. Jose)', username_placeholder: '@username (e.g. joselo)',
     email_placeholder: 'you@email.com', pass_placeholder: 'Password (min. 6 chars)',
+    pass_placeholder2: 'Password',
     create_account: 'Create account →', enter: 'Log in →',
-    forgot_pass: 'Forgot your password?', google_btn: '🔵 Continue with Google',
-    apple_btn: '🍎 Continue with Apple',
-    verify_title: 'Verify your email', already_verified: 'I verified ✓',
-    resend_email: 'Resend email', use_other_account: 'Use another account',
-    choose_username: 'Choose your @username', confirm: 'Confirm →',
-    send: 'Send ✉️', send_to: 'Send to', inbox: 'Inbox', save: '💾 Save',
-    clear: '🗑️ Clear', exit: 'Sign out',
-    settings_title: '⚙️ Settings', profile: 'Profile', friends: 'Friends',
-    store: 'Store', app_section: 'App', edit: 'Edit', upload: 'Upload',
-    invite_friends: 'Invite friends', your_code: 'Your invite code',
-    copy_code: 'Copy', share_link: 'Share link', version: 'Version',
-    logout: 'Sign out', change_name: 'Change name', change_photo: 'Change photo',
-    language: 'Language', lang_es: 'Español', lang_en: 'English',
+    forgot_pass: 'Forgot your password?',
+    google_btn: '🔵 Continue with Google', apple_btn: '🍎 Continue with Apple',
+    use_email: 'Use email and password ↓', hide_email: 'Hide ↑',
+    security_msg: '🔒 Your drawings are private and deleted in 24h',
+    verify_title: 'Verify your email',
+    already_verified: 'I verified ✓', resend_email: 'Resend email',
+    use_other_account: 'Use another account',
+    choose_username: 'Choose your @username',
+    choose_username_sub: 'Friends will use this to find you on SketchSend.',
+    confirm: 'Confirm →', verifying: 'Verifying…',
+    save: '💾 Save', clear: '🗑️ Clear', inbox: 'Inbox', exit: 'Sign out',
+    send: 'Send ✉️', send_to: 'Send to',
+    save_modal_title: '💾 Save drawing', save_modal_sub: 'Choose format:',
+    save_png: '⬇️ Image (.PNG)', save_video: '🎬 Video replay (.WEBM)',
+    save_sks: '📦 Project (.SKS)', cancel: 'Cancel',
+    inbox_title: '✉️ Received drawings', inbox_close: 'Close',
+    inbox_empty: 'No new drawings', inbox_sent_you: 'sent you a drawing',
+    settings_title: '⚙️ Settings',
+    profile: 'Profile', friends: 'Friends', store: 'Store', app_section: 'App',
+    change_name: 'Change name', change_name_sub: 'Maximum 20 characters',
+    change_photo: 'Change photo', change_photo_sub: '🚧 Coming soon',
+    edit: 'Edit', upload: 'Upload',
+    your_code: 'Your invite code', your_code_sub: 'Share it so friends can add you',
+    copy_code: 'Copy', show_qr: '📱 Show QR',
+    invite_friends: 'Invite friends', invite_friends_sub: 'Unique link to add you',
+    invite_btn: 'Invite 🔗',
+    store_colors: '🎨 Premium colors', store_colors_sub: 'Full palette with free selector',
+    store_brushes: '🖌️ Special brushes', store_brushes_sub: 'Watercolor, neon, calligraphy, pixel',
+    store_themes: '🌈 Seasonal themes', store_themes_sub: "Halloween, Christmas, Valentine's",
+    store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Permanent drawings, 4K, no watermark',
+    install_app: 'Install app', install_app_sub: 'Add SketchSend to your home screen',
+    install_btn: 'Install 📲', language: 'Language', version: 'Version', logout: 'Sign out',
+    no_friends: 'Add friends to send them drawings →',
+    add_friend: 'Add', share_label: 'Share',
+    add_friend_prompt: 'Search friend by @username or code (e.g. XK9P2M):',
     draw_first: '✏️ Draw something first!', select_contact: '👆 Select who to send to',
-    sent_to: '✉️ Sent to', no_friends: 'Add friends to send them drawings →',
-    friend_added: '✅ Friend added', friend_not_found: '❌ User not found',
-    copied: '✓ Copied',
+    sent_to: '✉️ Sent to', friend_added: '✅ Friend added',
+    friend_not_found: '❌ User not found', friend_self: "❌ You can't add yourself",
+    friend_exists: 'Already friends with that user', copied: '✓ Copied',
+    loading: 'Loading…', creating: 'Creating account…', entering: 'Logging in…',
+    no_friends_yet: 'You have no friends on SketchSend yet',
+    login_to_see: 'Log in to see your friends',
+    err_fill_all: 'Fill in all fields',
+    err_email_pass: 'Enter your email and password',
+    err_username_fmt: 'Only lowercase letters, numbers and _ · minimum 3 chars',
+    err_username_taken: 'That @username is taken, choose another',
+    err_saving: 'Error saving: ',
   }
 };
 
@@ -1131,39 +1196,108 @@ let lang = localStorage.getItem('ss_lang') || 'es';
 function t(key) { return I18N[lang][key] || I18N['es'][key] || key; }
 
 function applyLang() {
-  // Login tabs
-  const tabRegister = document.getElementById('tab-register');
-  const tabLogin = document.getElementById('tab-login');
-  if (tabRegister) tabRegister.textContent = t('tab_register');
-  if (tabLogin) tabLogin.textContent = t('tab_login');
-  // Placeholders
-  const regNombre = document.getElementById('reg-nombre');
-  const regUser = document.getElementById('reg-username');
-  const regEmail = document.getElementById('reg-email');
-  const regPass = document.getElementById('reg-pass');
-  if (regNombre) regNombre.placeholder = t('name_placeholder');
-  if (regUser) regUser.placeholder = t('username_placeholder');
-  if (regEmail) regEmail.placeholder = t('email_placeholder');
-  if (regPass) regPass.placeholder = t('pass_placeholder');
-  const regBtn = document.getElementById('reg-btn');
-  const loginBtn = document.getElementById('login-btn');
-  const forgotBtn = document.getElementById('forgot-btn');
-  const googleBtn = document.getElementById('google-btn');
-  if (regBtn) regBtn.textContent = t('create_account');
-  if (loginBtn) loginBtn.textContent = t('enter');
-  if (forgotBtn) forgotBtn.textContent = t('forgot_pass');
-  if (googleBtn) googleBtn.textContent = t('google_btn');
-  // Buttons in app
-  const enviarBtnEl = document.getElementById('enviar-btn');
-  if (enviarBtnEl) enviarBtnEl.textContent = t('send');
-  // Settings
-  const settingsLogoutEl = document.getElementById('settings-logout');
-  if (settingsLogoutEl) settingsLogoutEl.textContent = t('logout');
-  // Language buttons opacity
-  const langEs = document.getElementById('lang-es-btn');
-  const langEn = document.getElementById('lang-en-btn');
-  if (langEs) langEs.style.opacity = lang === 'es' ? '1' : '0.5';
-  if (langEn) langEn.style.opacity = lang === 'en' ? '1' : '0.5';
+  const q = id => document.getElementById(id);
+  const set = (id, key) => { const el = q(id); if (el) el.textContent = t(key); };
+  const ph  = (id, key) => { const el = q(id); if (el) el.placeholder = t(key); };
+
+  // ── Login ──
+  set('google-btn', 'google_btn');
+  set('tab-register', 'tab_register');
+  set('tab-login', 'tab_login');
+  set('reg-btn', 'create_account');
+  set('login-btn', 'enter');
+  set('forgot-btn', 'forgot_pass');
+  set('toggle-email-btn', 'use_email');
+  set('username-confirm-btn', 'confirm');
+  set('verify-check-btn', 'already_verified');
+  set('verify-resend-btn', 'resend_email');
+  set('verify-logout-btn', 'use_other_account');
+  ph('reg-nombre', 'name_placeholder');
+  ph('reg-username', 'username_placeholder');
+  ph('reg-email', 'email_placeholder');
+  ph('reg-pass', 'pass_placeholder');
+  ph('login-email', 'email_placeholder');
+  ph('login-pass', 'pass_placeholder2');
+
+  // ── Header / app ──
+  set('enviar-btn', 'send');
+  set('salir-btn', 'exit');
+  set('salir-btn-mob', 'exit');
+  ['guardar-btn','guardar-btn-mob'].forEach(id => {
+    const el = q(id); if (!el) return;
+    const sp = el.querySelector('.hbtn-text');
+    if (sp) sp.textContent = lang==='en' ? 'Save' : 'Guardar';
+  });
+  ['limpiar-btn','limpiar-btn-mob'].forEach(id => {
+    const el = q(id); if (!el) return;
+    const sp = el.querySelector('.hbtn-text');
+    if (sp) sp.textContent = lang==='en' ? 'Clear' : 'Limpiar';
+  });
+  ['inbox-btn','inbox-btn-mob'].forEach(id => {
+    const el = q(id); if (!el) return;
+    const sp = el.querySelector('.hbtn-text');
+    if (sp) sp.textContent = t('inbox');
+  });
+  const stripLabel = q('strip-label');
+  if (stripLabel) {
+    const cnt = q('sel-count');
+    stripLabel.innerHTML = t('send_to') + ' <span id="sel-count" style="color:var(--accent2)">' + (cnt ? cnt.textContent : '') + '</span>';
+  }
+
+  // ── Modal guardar ──
+  const modalH = document.querySelector('#modal h3');
+  if (modalH) modalH.textContent = t('save_modal_title');
+  const modalP = document.querySelector('#modal p');
+  if (modalP) modalP.textContent = t('save_modal_sub');
+  set('png-btn', 'save_png');
+  set('vid-btn', 'save_video');
+  set('sks-btn', 'save_sks');
+  set('cerrar-btn', 'cancel');
+
+  // ── Bandeja ──
+  const inboxTitle = document.querySelector('.inbox-title');
+  if (inboxTitle) inboxTitle.textContent = t('inbox_title');
+  set('inbox-close', 'inbox_close');
+
+  // ── Settings ──
+  const settingsH = document.querySelector('.settings-header h3');
+  if (settingsH) settingsH.textContent = t('settings_title');
+  set('settings-rename', 'edit');
+  set('settings-invite', 'invite_btn');
+  set('settings-logout', 'logout');
+  set('copy-code-btn', 'copy_code');
+  set('show-qr-btn', 'show_qr');
+  set('install-btn', 'install_btn');
+  // Labels en settings con IDs del HTML
+  set('lbl-profile', 'profile');
+  set('lbl-friends-section', 'friends');
+  set('lbl-app-section', 'app_section');
+  set('lbl-change-name', 'change_name');
+  set('lbl-change-photo', 'change_photo');
+  set('lbl-your-code', 'your_code');
+  set('lbl-invite', 'invite_friends');
+  set('lbl-invite-sub', 'invite_friends_sub');
+  set('lbl-language', 'language');
+  set('lbl-version', 'version');
+  // Tienda — filas con botones premium (sin ID fijo, por orden)
+  const premiumKeys = [
+    ['store_colors','store_colors_sub'],['store_brushes','store_brushes_sub'],
+    ['store_themes','store_themes_sub'],['store_pro','store_pro_sub'],
+  ];
+  document.querySelectorAll('.settings-row-action.premium').forEach((btn, i) => {
+    const row = btn.closest('.settings-row');
+    if (!row || !premiumKeys[i]) return;
+    const lbl = row.querySelector('.settings-row-label');
+    const sub = row.querySelector('.settings-row-sub');
+    if (lbl) lbl.textContent = t(premiumKeys[i][0]);
+    if (sub) sub.textContent = t(premiumKeys[i][1]);
+  });
+
+  // ── Language buttons ──
+  const langEs = q('lang-es-btn'); if (langEs) langEs.style.opacity = lang==='es' ? '1' : '0.5';
+  const langEn = q('lang-en-btn'); if (langEn) langEn.style.opacity = lang==='en' ? '1' : '0.5';
+
+  document.documentElement.lang = lang;
 }
 
 function generarShortCode() {
