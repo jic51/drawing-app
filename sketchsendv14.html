@@ -3,6 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7c3aed">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SketchSend">
+  <!-- Apple touch icon SVG inline -->
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%230f0f13'/><text y='340' x='60' font-size='360'>✏️</text></svg>">
   <title>SketchSend</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -752,7 +760,7 @@
   <p class="tagline">Donde cada mensaje es un dibujo</p>
   <div class="card" style="text-align:center;gap:16px;">
     <div style="font-size:2.5rem;">📬</div>
-    <h2>Verifica tu email</h2>
+    <h2 id="lbl-verify-title">Verifica tu email</h2>
     <p id="verify-email-text" style="color:var(--muted);font-size:0.88rem;">Te enviamos un link de verificación. Ábrelo y luego vuelve aquí.</p>
     <button id="verify-check-btn" class="btn btn-p">Ya verifiqué ✓</button>
     <button id="verify-resend-btn" class="btn btn-s">Reenviar email</button>
@@ -764,7 +772,7 @@
 <div id="username-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
   <p class="tagline">Donde cada mensaje es un dibujo</p>
   <div class="card">
-    <h2>Elige tu @usuario</h2>
+    <h2 id="lbl-choose-username">Elige tu @usuario</h2>
     <p style="color:var(--muted);font-size:0.85rem;">Con este nombre tus amigos te podrán buscar en SketchSend.</p>
     <div id="username-screen-displayname" style="font-size:0.82rem;color:var(--muted);margin-bottom:2px;"></div>
     <input type="text" id="username-inp" class="inp" placeholder="@tuusuario" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
@@ -929,7 +937,7 @@
           <div class="settings-row-label" id="lbl-change-photo">Cambiar foto</div>
           <div class="settings-row-sub">🚧 Disponible con Firebase</div>
         </div>
-        <button class="settings-row-action" disabled style="opacity:0.4">Subir</button>
+        <button class="settings-row-action" disabled style="opacity:0.4" id="lbl-upload">Subir</button>
       </div>
       <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
         <div>
@@ -993,6 +1001,13 @@
 
     <div class="settings-section">
       <div class="settings-label" id="lbl-app-section">App</div>
+      <div class="settings-row" id="install-row" style="display:none;">
+        <div>
+          <div class="settings-row-label">Instalar app</div>
+          <div class="settings-row-sub">Agregar SketchSend a tu pantalla de inicio</div>
+        </div>
+        <button class="settings-row-action rainbow-hover-bg" id="install-btn">Instalar 📲</button>
+      </div>
       <div class="settings-row">
         <div class="settings-row-label" id="lbl-language">Idioma</div>
         <div style="display:flex;gap:6px;">
@@ -1088,10 +1103,12 @@ let lang = localStorage.getItem('ss_lang') || 'es';
 function t(key) { return I18N[lang][key] || I18N['es'][key] || key; }
 
 function applyLang() {
+  // Login tabs
   const tabRegister = document.getElementById('tab-register');
   const tabLogin = document.getElementById('tab-login');
   if (tabRegister) tabRegister.textContent = t('tab_register');
   if (tabLogin) tabLogin.textContent = t('tab_login');
+  // Placeholders
   const regNombre = document.getElementById('reg-nombre');
   const regUser = document.getElementById('reg-username');
   const regEmail = document.getElementById('reg-email');
@@ -1108,10 +1125,13 @@ function applyLang() {
   if (loginBtn) loginBtn.textContent = t('enter');
   if (forgotBtn) forgotBtn.textContent = t('forgot_pass');
   if (googleBtn) googleBtn.textContent = t('google_btn');
+  // Buttons in app
   const enviarBtnEl = document.getElementById('enviar-btn');
   if (enviarBtnEl) enviarBtnEl.textContent = t('send');
+  // Settings
   const settingsLogoutEl = document.getElementById('settings-logout');
   if (settingsLogoutEl) settingsLogoutEl.textContent = t('logout');
+  // Language buttons opacity
   const langEs = document.getElementById('lang-es-btn');
   const langEn = document.getElementById('lang-en-btn');
   if (langEs) langEs.style.opacity = lang === 'es' ? '1' : '0.5';
@@ -1274,8 +1294,10 @@ const firebaseReady = (() => {
 function ocultarTodasLasPantallas() {
   authScreen.style.display = 'none';
   appEl.style.display = 'none';
-  document.getElementById('username-screen').style.display = 'none';
-  document.getElementById('verify-screen').style.display = 'none';
+  const us = document.getElementById('username-screen');
+  const vs = document.getElementById('verify-screen');
+  if (us) us.style.display = 'none';
+  if (vs) vs.style.display = 'none';
 }
 
 function mostrarLogin() {
@@ -1291,7 +1313,8 @@ function mostrarLogin() {
 function mostrarVerificacion(email) {
   ocultarTodasLasPantallas();
   volador.style.opacity = '0';
-  document.getElementById('verify-screen').style.display = 'flex';
+  const vs = document.getElementById('verify-screen');
+  if (vs) vs.style.display = 'flex';
   const txt = document.getElementById('verify-email-text');
   if (txt) txt.textContent = `Enviamos un link a ${email}. Ábrelo y luego pulsa "Ya verifiqué".`;
 }
@@ -1324,7 +1347,7 @@ function mostrarPantallaUsername(nombre, fotoUrl) {
       const snap = await db.collection('users').where('username','==',raw).get();
       if (!snap.empty) {
         errorEl.textContent = 'Ese @usuario ya está tomado, elige otro'; errorEl.style.display='block';
-        newBtn.disabled = false; newBtn.textContent = 'Confirmar →'; return;
+        newBtn.disabled = false; newBtn.textContent = t('confirm'); return;
       }
       const uid = auth.currentUser.uid;
       await db.collection('users').doc(uid).set({
@@ -1335,7 +1358,7 @@ function mostrarPantallaUsername(nombre, fotoUrl) {
       finalizarLogin(raw, nombre, fotoUrl);
     } catch(e) {
       errorEl.textContent = 'Error: ' + e.message; errorEl.style.display='block';
-      newBtn.disabled = false; newBtn.textContent = 'Confirmar →';
+      newBtn.disabled = false; newBtn.textContent = t('confirm');
     }
   });
   usernameInp.addEventListener('keydown', e => { if (e.key === 'Enter') newBtn.click(); });
@@ -1345,7 +1368,6 @@ async function mostrarApp(nombre, fotoUrl) {
   if (!firebaseReady || !auth.currentUser) {
     finalizarLogin(nombre, nombre, fotoUrl); return;
   }
-  /* Usuario con Google: verificar si ya tiene @username en Firestore */
   const uid = auth.currentUser.uid;
   try {
     const userDoc = await db.collection('users').doc(uid).get();
@@ -1382,7 +1404,7 @@ function finalizarLogin(username, displayName, photoURL) {
 }
 
 function checkLogin() {
-  if (firebaseReady) return; /* Firebase maneja todo */
+  if (firebaseReady) return;
   const n = localStorage.getItem('ss_user');
   if (n) finalizarLogin(n, n, null); else mostrarLogin();
 }
@@ -1396,18 +1418,13 @@ function doLogout() {
 if (firebaseReady && auth) {
   auth.onAuthStateChanged(async user => {
     if (!user) { mostrarLogin(); return; }
-
-    /* Email/contraseña: bloquear si no verificó el email */
     if (user.providerData[0]?.providerId === 'password' && !user.emailVerified) {
       mostrarVerificacion(user.email);
       return;
     }
-
-    /* Usuario con email verificado o Google: buscar su doc en Firestore */
     try {
       const doc = await db.collection('users').doc(user.uid).get();
       if (!doc.exists) {
-        /* Google por primera vez: pedir @username */
         const nombre = user.displayName || user.email.split('@')[0];
         mostrarPantallaUsername(nombre, user.photoURL);
       } else {
@@ -1446,35 +1463,25 @@ document.getElementById('reg-btn').addEventListener('click', async () => {
   const email  = document.getElementById('reg-email').value.trim();
   const pass   = document.getElementById('reg-pass').value;
   const errEl  = document.getElementById('reg-error');
-
   const mostrarErr = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
   errEl.style.display = 'none';
-
   if (!nombre)  { mostrarErr('Escribe tu nombre'); return; }
   if (!/^[a-z0-9_]{3,20}$/.test(rawU)) { mostrarErr('@usuario: solo letras minúsculas, números y _ · mínimo 3 chars'); return; }
   if (!email)   { mostrarErr('Escribe tu email'); return; }
   if (pass.length < 6) { mostrarErr('La contraseña debe tener al menos 6 caracteres'); return; }
-
   const btn = document.getElementById('reg-btn');
   btn.disabled = true; btn.textContent = 'Creando cuenta…';
-
   try {
-    /* Verificar @username disponible */
     const snapU = await db.collection('users').where('username','==',rawU).get();
-    if (!snapU.empty) { mostrarErr('El @' + rawU + ' ya está tomado, elige otro'); btn.disabled=false; btn.textContent='Crear cuenta →'; return; }
-
+    if (!snapU.empty) { mostrarErr('El @' + rawU + ' ya está tomado, elige otro'); btn.disabled=false; btn.textContent=t('create_account'); return; }
     const cred = await auth.createUserWithEmailAndPassword(email, pass);
     await cred.user.updateProfile({ displayName: nombre });
-
-    /* Guardar doc antes de enviar verificación */
     await db.collection('users').doc(cred.user.uid).set({
       username: rawU, displayName: nombre, photoURL: '',
       createdAt: firebase.firestore.FieldValue.serverTimestamp(), uid: cred.user.uid,
       shortCode: generarShortCode()
     });
-
     await cred.user.sendEmailVerification();
-    /* onAuthStateChanged detectará que emailVerified=false → mostrarVerificacion() */
   } catch(e) {
     const msgs = {
       'auth/email-already-in-use': 'Ese email ya tiene cuenta — usa "Iniciar sesión"',
@@ -1482,7 +1489,7 @@ document.getElementById('reg-btn').addEventListener('click', async () => {
       'auth/weak-password': 'Contraseña muy débil'
     };
     mostrarErr(msgs[e.code] || e.message);
-    btn.disabled = false; btn.textContent = 'Crear cuenta →';
+    btn.disabled = false; btn.textContent = t('create_account');
   }
 });
 
@@ -1492,15 +1499,11 @@ document.getElementById('login-btn').addEventListener('click', async () => {
   const pass  = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
-
   if (!email || !pass) { errEl.textContent = 'Completa email y contraseña'; errEl.style.display='block'; return; }
-
   const btn = document.getElementById('login-btn');
   btn.disabled = true; btn.textContent = 'Entrando…';
-
   try {
     await auth.signInWithEmailAndPassword(email, pass);
-    /* onAuthStateChanged maneja el resto */
   } catch(e) {
     const msgs = {
       'auth/user-not-found': 'No existe cuenta con ese email',
@@ -1509,7 +1512,7 @@ document.getElementById('login-btn').addEventListener('click', async () => {
       'auth/too-many-requests': 'Demasiados intentos, espera un momento'
     };
     errEl.textContent = msgs[e.code] || e.message; errEl.style.display = 'block';
-    btn.disabled = false; btn.textContent = 'Entrar →';
+    btn.disabled = false; btn.textContent = t('enter');
   }
 });
 
@@ -1528,9 +1531,8 @@ document.getElementById('verify-check-btn').addEventListener('click', async () =
   if (!auth.currentUser) { mostrarLogin(); return; }
   await auth.currentUser.reload();
   if (auth.currentUser.emailVerified) {
-    /* Ya verificó — onAuthStateChanged se dispara automáticamente */
     toast('✅ Email verificado, entrando…');
-    auth.currentUser.getIdToken(true); /* forzar refresh del token */
+    auth.currentUser.getIdToken(true);
   } else {
     toast('📬 Aún no hemos recibido la verificación, revisa tu email');
   }
@@ -1545,7 +1547,7 @@ document.getElementById('verify-resend-btn').addEventListener('click', async () 
 });
 
 document.getElementById('verify-logout-btn').addEventListener('click', () => {
-  auth.signOut();
+  if (auth) auth.signOut();
 });
 
 /* ── Google Sign-In ── */
@@ -2063,25 +2065,22 @@ function cargarBandeja() {
   }
 
   const uid = auth.currentUser.uid;
-  /* Query simple sin índice compuesto: solo filtrar por destinatario.
-     El filtro de viewed y expiresAt se hace en cliente para evitar
-     requerir índices que el usuario debe crear manualmente. */
+  const ahora = new Date();
   db.collection('sketches')
     .where('to', '==', uid)
+    .where('viewed', '==', false)
+    .where('expiresAt', '>', ahora)
+    .orderBy('expiresAt')
     .onSnapshot(snap => {
-      const ahora = Date.now();
-      bandejaEntrada = snap.docs
-        .map(doc => ({
-          id: doc.id,
-          sender: doc.data().fromName,
-          senderId: doc.data().from,
-          strokes: doc.data().strokes,
-          receivedAt: doc.data().createdAt?.toMillis() || ahora,
-          expiresAt: doc.data().expiresAt?.toMillis() || (ahora + 24*3600*1000),
-          visto: doc.data().viewed || false
-        }))
-        .filter(m => !m.visto && m.expiresAt > ahora)
-        .sort((a, b) => a.expiresAt - b.expiresAt);
+      bandejaEntrada = snap.docs.map(doc => ({
+        id: doc.id,
+        sender: doc.data().fromName,
+        senderId: doc.data().from,
+        strokes: doc.data().strokes,
+        receivedAt: doc.data().createdAt?.toMillis() || Date.now(),
+        expiresAt: doc.data().expiresAt?.toMillis() || (Date.now() + 24*3600*1000),
+        visto: false
+      }));
       actualizarBadge();
     }, err => {
       console.warn('Error escuchando bandeja:', err.message);
