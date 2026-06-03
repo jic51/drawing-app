@@ -1974,14 +1974,71 @@ enviarBtn.addEventListener('click', async () => {
   enviarBtn.disabled = true;
 });
 
+function comprimirStrokes(strokes) {
+  if (!strokes || !strokes.length) return [];
+  const t0 = strokes[0].t || 0;
+  return strokes.map(s => {
+    if (s.tipo === 'inicio') {
+      const c = [0, Math.round(s.x*2)/2, Math.round(s.y*2)/2, s.sid, s.t - t0];
+      if (s.origW) c.push(Math.round(s.origW), Math.round(s.origH));
+      if (s.h === 'rainbow') c.push('r');
+      return c;
+    }
+    if (s.tipo === 'seg') {
+      let col = s.color || '';
+      const hslMatch = col.match(/hsl\((\d+(?:\.\d+)?),/);
+      const colComp = hslMatch ? Math.round(parseFloat(hslMatch[1])) : col;
+      return [1,
+        Math.round(s.de.x*2)/2, Math.round(s.de.y*2)/2,
+        Math.round(s.a.x*2)/2,  Math.round(s.a.y*2)/2,
+        colComp, Math.round(s.gw*10)/10, s.sid, s.t - t0
+      ];
+    }
+    if (s.tipo === 'fin') {
+      return [2, s.sid, s.t - t0];
+    }
+    return s;
+  });
+}
+
+function descomprimirStrokes(compressed) {
+  if (!compressed || !compressed.length) return [];
+  if (typeof compressed[0] === 'object' && !Array.isArray(compressed[0])) return compressed;
+  const t0 = Date.now();
+  return compressed.map(c => {
+    if (!Array.isArray(c)) return c;
+    if (c[0] === 0) {
+      const obj = { tipo:'inicio', x:c[1], y:c[2], sid:c[3], t:t0 + c[4] };
+      if (c.length > 5 && typeof c[5] === 'number') { obj.origW = c[5]; obj.origH = c[6]; }
+      if (c.includes('r')) obj.h = 'rainbow';
+      return obj;
+    }
+    if (c[0] === 1) {
+      const hue = typeof c[5] === 'number';
+      return {
+        tipo:'seg',
+        de:{x:c[1], y:c[2]}, a:{x:c[3], y:c[4]},
+        color: hue ? `hsl(${c[5]},100%,55%)` : c[5],
+        gw:c[6], sid:c[7], t:t0 + c[8]
+      };
+    }
+    if (c[0] === 2) {
+      return { tipo:'fin', sid:c[1], t:t0 + c[2] };
+    }
+    return c;
+  });
+}
+
 async function enviarSketchFirestore(toUid) {
   const uid = auth.currentUser.uid;
   try {
+    const strokesComprimidos = comprimirStrokes(trazos);
     await db.collection('sketches').add({
       from: uid,
       fromName: usuario,
       to: toUid,
-      strokes: trazos,
+      strokes: strokesComprimidos,
+      compressed: true,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       expiresAt: new Date(Date.now() + 24*3600*1000),
       viewed: false
@@ -2076,7 +2133,9 @@ function cargarBandeja() {
         id: doc.id,
         sender: doc.data().fromName,
         senderId: doc.data().from,
-        strokes: doc.data().strokes,
+        strokes: doc.data().compressed
+          ? descomprimirStrokes(doc.data().strokes)
+          : doc.data().strokes,
         receivedAt: doc.data().createdAt?.toMillis() || Date.now(),
         expiresAt: doc.data().expiresAt?.toMillis() || (Date.now() + 24*3600*1000),
         visto: false
