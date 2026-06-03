@@ -714,44 +714,59 @@
 </head>
 <body>
 
+<!-- ══ SPLASH SCREEN ══ -->
+<div id="splash-screen" style="position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity 0.6s ease;">
+  <div class="titulo" style="font-size:2.8rem;">SketchSend ✏️</div>
+  <p style="color:var(--muted);font-size:0.95rem;animation:aparecer 1s ease 0.3s both;">Donde cada mensaje es un dibujo</p>
+  <div style="width:40px;height:3px;background:var(--accent);border-radius:2px;margin-top:8px;animation:pulse 1.5s infinite;"></div>
+</div>
+
 <!-- ══ PANTALLA DE LOGIN ══ -->
 <div id="auth-screen">
-  <div class="titulo" id="titulo-fantasma" style="visibility:hidden;">SketchSend ✏️</div>
+  <div class="titulo" id="titulo-fantasma">SketchSend ✏️</div>
   <p class="tagline">Donde cada mensaje es un dibujo</p>
+  <div class="card" style="gap:12px;">
+    <h2 style="text-align:center;">Bienvenido</h2>
+    <p style="color:var(--muted);font-size:0.85rem;text-align:center;">Entra con tu cuenta Google para empezar a dibujar</p>
 
-  <!-- TABS: Registrarse / Iniciar sesión -->
-  <div class="card" style="gap:0;">
-    <div style="display:flex;border-bottom:1px solid var(--border);margin:-8px -32px 16px;padding:0 32px;">
-      <button id="tab-register" style="flex:1;padding:12px 0;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-family:var(--sans);font-size:0.9rem;font-weight:600;cursor:pointer;">Registrarse</button>
-      <button id="tab-login" style="flex:1;padding:12px 0;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--sans);font-size:0.9rem;cursor:pointer;">Iniciar sesión</button>
-    </div>
+    <!-- Google es el botón principal -->
+    <button class="btn btn-p" id="google-btn" style="font-size:1rem;padding:14px;">🔵 Continuar con Google</button>
 
-    <!-- FORMULARIO REGISTRO -->
-    <div id="form-register">
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <input type="text"  id="reg-nombre"   class="inp" placeholder="Tu nombre (ej: José)" maxlength="20">
-        <input type="text"  id="reg-username" class="inp" placeholder="@usuario (ej: joselo)" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-        <input type="email" id="reg-email"    class="inp" placeholder="tu@email.com" autocomplete="email">
-        <input type="password" id="reg-pass"  class="inp" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="new-password">
-        <div id="reg-error" style="font-size:0.8rem;color:var(--danger);display:none;min-height:18px;"></div>
-        <button id="reg-btn" class="btn btn-p">Crear cuenta →</button>
+    <div class="sep">o usa email</div>
+
+    <!-- Email/contraseña colapsado por defecto -->
+    <div id="email-section" style="display:none;flex-direction:column;gap:10px;">
+      <div style="display:flex;border-bottom:1px solid var(--border);margin:0 -4px 4px;">
+        <button id="tab-register" style="flex:1;padding:10px 0;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-family:var(--sans);font-size:0.85rem;font-weight:600;cursor:pointer;">Registrarse</button>
+        <button id="tab-login" style="flex:1;padding:10px 0;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--sans);font-size:0.85rem;cursor:pointer;">Iniciar sesión</button>
+      </div>
+      <div id="form-register">
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <input type="text"  id="reg-nombre"   class="inp" placeholder="Tu nombre (ej: José)" maxlength="20">
+          <input type="text"  id="reg-username" class="inp" placeholder="@usuario (ej: joselo)" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+          <input type="email" id="reg-email"    class="inp" placeholder="tu@email.com" autocomplete="email">
+          <input type="password" id="reg-pass"  class="inp" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="new-password">
+          <div id="reg-error" style="font-size:0.8rem;color:var(--danger);display:none;min-height:16px;"></div>
+          <button id="reg-btn" class="btn btn-s">Crear cuenta →</button>
+        </div>
+      </div>
+      <div id="form-login" style="display:none;">
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <input type="email"    id="login-email" class="inp" placeholder="tu@email.com" autocomplete="email">
+          <input type="password" id="login-pass"  class="inp" placeholder="Contraseña" autocomplete="current-password">
+          <button id="forgot-btn" style="background:none;border:none;color:var(--muted);font-size:0.78rem;cursor:pointer;text-align:left;padding:0;">¿Olvidaste tu contraseña?</button>
+          <div id="login-error" style="font-size:0.8rem;color:var(--danger);display:none;min-height:16px;"></div>
+          <button id="login-btn" class="btn btn-s">Entrar →</button>
+        </div>
       </div>
     </div>
 
-    <!-- FORMULARIO LOGIN -->
-    <div id="form-login" style="display:none;">
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <input type="email"    id="login-email" class="inp" placeholder="tu@email.com" autocomplete="email">
-        <input type="password" id="login-pass"  class="inp" placeholder="Contraseña" autocomplete="current-password">
-        <button id="forgot-btn" style="background:none;border:none;color:var(--muted);font-size:0.78rem;cursor:pointer;text-align:left;padding:0;">¿Olvidaste tu contraseña?</button>
-        <div id="login-error" style="font-size:0.8rem;color:var(--danger);display:none;min-height:18px;"></div>
-        <button id="login-btn" class="btn btn-p">Entrar →</button>
-      </div>
-    </div>
+    <button id="toggle-email-btn" style="background:none;border:none;color:var(--muted);font-size:0.8rem;cursor:pointer;padding:4px 0;">Usar email y contraseña ↓</button>
 
-    <div class="sep">o continúa con</div>
-    <button class="btn btn-s" id="google-btn">🔵 Continuar con Google</button>
     <button class="btn btn-s" onclick="toast('🚧 Apple Sign-In — próximamente')">🍎 Continuar con Apple</button>
+
+    <!-- Mensaje de seguridad -->
+    <p style="font-size:0.72rem;color:var(--muted);text-align:center;margin-top:4px;">🔒 Tus dibujos son privados y se eliminan en 24h</p>
   </div>
 </div>
 
@@ -840,6 +855,19 @@
     <div class="czone">
       <div class="carea" id="carea">
         <canvas id="canvas"></canvas>
+        <div id="drawing-prompts" style="
+          position:absolute; bottom:60px; left:50%; transform:translateX(-50%);
+          display:flex; flex-direction:column; align-items:center; gap:8px;
+          pointer-events:none; transition:opacity 0.5s ease; z-index:10;
+        ">
+          <div id="prompt-text" style="
+            background:rgba(15,15,19,0.85); backdrop-filter:blur(8px);
+            border:1px solid var(--border); border-radius:20px;
+            padding:8px 18px; font-size:0.82rem; color:var(--muted);
+            white-space:nowrap;
+          "></div>
+          <div style="font-size:0.68rem;color:var(--muted);opacity:0.6;">✏️ empieza a dibujar</div>
+        </div>
         <div id="preview"></div>
         <div class="fbtns" id="fbtns">
           <button class="fbtn" id="undo-btn">↩ Deshacer</button>
@@ -1305,8 +1333,7 @@ function mostrarLogin() {
   authScreen.style.display = 'flex';
   const ph = document.getElementById('hdr-logo-placeholder');
   if (ph) { ph.style.visibility='hidden'; ph.style.animation=''; ph.style.backgroundPosition=''; }
-  volador.style.opacity = '1';
-  volador.style.transition = 'none';
+  volador.style.opacity = '0';
   setTimeout(posicionarVoladorEnLogin, 50);
 }
 
@@ -1812,6 +1839,7 @@ function limpiarCanvas() {
   const w = cv.width/DPR, h = cv.height/DPR;
   ctx.clearRect(0, 0, w, h); fondoCanvas(ctx, w, h);
   actualizarBotones(); toast('🗑️ Canvas limpiado');
+  setTimeout(mostrarPrompt, 1000);
 }
 
 /* ══════════════════════════════════════════════════════
@@ -2701,15 +2729,8 @@ volador.textContent = 'SketchSend ✏️';
 document.body.appendChild(volador);
 
 function posicionarVoladorEnLogin() {
-  const fantasma = document.getElementById('titulo-fantasma');
-  if (!fantasma) return;
-  const r = fantasma.getBoundingClientRect();
-  const fs = getComputedStyle(fantasma).fontSize;
+  volador.style.opacity = '0';
   volador.style.transition = 'none';
-  volador.style.fontSize = fs;
-  volador.style.top = r.top + 'px';
-  volador.style.left = r.left + 'px';
-  volador.style.opacity = '1';
 }
 
 function volarAlHeader() {
@@ -2903,6 +2924,25 @@ cargarBandeja();
   const soportaVideo = typeof MediaRecorder !== 'undefined' &&
                        typeof probe.captureStream === 'function';
   if (!soportaVideo) vidBtn.style.display = 'none';
+})();
+
+/* Toggle email/contraseña colapsable */
+document.getElementById('toggle-email-btn')?.addEventListener('click', () => {
+  const section = document.getElementById('email-section');
+  const btn = document.getElementById('toggle-email-btn');
+  const visible = section.style.display !== 'none';
+  section.style.display = visible ? 'none' : 'flex';
+  btn.textContent = visible ? 'Usar email y contraseña ↓' : 'Ocultar ↑';
+});
+
+/* Splash screen: mostrar 1.8s luego fade out */
+(function() {
+  const splash = document.getElementById('splash-screen');
+  if (!splash) return;
+  setTimeout(() => {
+    splash.style.opacity = '0';
+    splash.addEventListener('transitionend', () => splash.remove(), { once: true });
+  }, 1800);
 })();
 
 </script>
