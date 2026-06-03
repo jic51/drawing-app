@@ -636,6 +636,20 @@
       width:100%; max-width:360px; max-height:85vh; overflow-y:auto;
       box-shadow:0 24px 80px rgba(0,0,0,0.5); animation:subir 0.25s ease;
     }
+    @media(min-width:700px){
+      .settings-panel { max-width:520px; }
+      .settings-section { padding:22px 32px; }
+      .settings-header { padding:24px 32px 20px; }
+      .settings-header h3 { font-size:1.2rem; }
+      .settings-label { font-size:0.75rem; margin-bottom:14px; }
+      .settings-row { padding:13px 0; }
+      .settings-row-label { font-size:0.95rem; }
+      .settings-row-sub { font-size:0.78rem; }
+      .settings-row-action { font-size:0.85rem; padding:8px 18px; }
+      .settings-avatar { width:72px; height:72px; }
+      .settings-name { font-size:1.1rem; }
+      .settings-email { font-size:0.85rem; }
+    }
     .settings-header {
       display:flex; align-items:center; gap:12px; padding:20px 20px 16px;
       border-bottom:1px solid var(--border); position:sticky; top:0;
@@ -658,10 +672,39 @@
     }
 
     .settings-avatar-row { display:flex; align-items:center; gap:14px; }
+    .settings-avatar-wrap { position:relative; flex-shrink:0; }
     .settings-avatar {
       width:56px; height:56px; border-radius:50%; border:3px solid var(--accent);
-      object-fit:cover;
+      object-fit:cover; display:block;
     }
+    .settings-avatar-edit {
+      position:absolute; bottom:0; right:0; width:20px; height:20px;
+      border-radius:50%; background:var(--accent); border:2px solid var(--surface);
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; font-size:0.65rem; color:#fff; transition:transform 0.15s;
+      user-select:none;
+    }
+    .settings-avatar-edit:hover { transform:scale(1.15); }
+    /* Share toggle buttons */
+    .share-toggle { display:flex; gap:6px; margin-top:10px; }
+    .share-toggle-btn {
+      flex:1; padding:8px 0; border-radius:10px; border:2px solid var(--border);
+      background:var(--surface2); color:var(--text); font-family:var(--sans);
+      font-size:0.82rem; cursor:pointer; transition:all 0.2s;
+    }
+    .share-toggle-btn.active {
+      border-color:var(--accent); background:var(--accent);
+      color:#fff;
+    }
+    .share-content { margin-top:12px; }
+    .share-code-box {
+      font-family:monospace; font-size:1.4rem; font-weight:700;
+      letter-spacing:4px; color:var(--accent2); background:var(--surface2);
+      padding:8px 16px; border-radius:8px; border:1px solid var(--border);
+      text-align:center; width:100%; box-sizing:border-box;
+    }
+    .share-code-row { display:flex; gap:8px; align-items:center; margin-top:8px; }
+    #share-qr-canvas { display:block; border-radius:10px; width:180px; height:180px; margin:8px auto 0; }
     .settings-name { font-weight:600; font-size:1rem; }
     .settings-email { font-size:0.8rem; color:var(--muted); }
 
@@ -946,7 +989,10 @@
     <div class="settings-section">
       <div class="settings-label" id="lbl-profile">Perfil</div>
       <div class="settings-avatar-row">
-        <img id="settings-avatar" class="settings-avatar" src="" alt="">
+        <div class="settings-avatar-wrap">
+          <img id="settings-avatar" class="settings-avatar" src="" alt="">
+          <div class="settings-avatar-edit" id="settings-edit-photo" title="Cambiar foto">✏️</div>
+        </div>
         <div>
           <div class="settings-name" id="settings-name">—</div>
           <div class="settings-email" id="settings-email"></div>
@@ -959,25 +1005,6 @@
         </div>
         <button class="settings-row-action" id="settings-rename">Editar</button>
       </div>
-      <div class="settings-row">
-        <div>
-          <div class="settings-row-label" id="lbl-change-photo">Cambiar foto</div>
-          <div class="settings-row-sub">🚧 Disponible con Firebase</div>
-        </div>
-        <button class="settings-row-action" disabled style="opacity:0.4" id="lbl-upload">Subir</button>
-      </div>
-      <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
-        <div>
-          <div class="settings-row-label" id="lbl-your-code">Tu código de invitación</div>
-          <div class="settings-row-sub">Compártelo para que te agreguen como amigo</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;width:100%;">
-          <div id="user-shortcode" style="font-family:monospace;font-size:1.4rem;font-weight:700;letter-spacing:4px;color:var(--accent2);background:var(--surface2);padding:8px 16px;border-radius:8px;border:1px solid var(--border);flex:1;text-align:center;">——</div>
-          <button id="copy-code-btn" class="btn-g" style="white-space:nowrap;">Copiar</button>
-        </div>
-        <canvas id="qr-canvas" style="display:none;border-radius:8px;width:100%;max-width:200px;margin:0 auto;"></canvas>
-        <button id="show-qr-btn" class="btn btn-s" style="width:100%;font-size:0.82rem;">📱 Mostrar QR</button>
-      </div>
     </div>
 
     <div class="settings-section">
@@ -985,12 +1012,28 @@
       <div class="settings-friends" id="settings-friends">
         <!-- generado por JS -->
       </div>
-      <div class="settings-row">
-        <div>
-          <div class="settings-row-label" id="lbl-invite">Invitar amigos</div>
-          <div class="settings-row-sub" id="lbl-invite-sub">Link único para que te agreguen</div>
+      <div style="margin-top:14px;">
+        <div class="settings-row-label" id="lbl-invite">Invitar amigos</div>
+        <div class="settings-row-sub" id="lbl-invite-sub">Comparte tu código o QR para que te agreguen</div>
+        <div class="share-toggle" id="share-toggle">
+          <button class="share-toggle-btn active" id="share-tab-code" id="lbl-share-code">📋 Código</button>
+          <button class="share-toggle-btn" id="share-tab-qr">📱 QR</button>
+          <button class="share-toggle-btn" id="share-tab-link">🔗 Link</button>
         </div>
-        <button class="settings-row-action rainbow-hover-bg" id="settings-invite">Invitar 🔗</button>
+        <div class="share-content" id="share-content-code">
+          <div class="share-code-box" id="user-shortcode">——</div>
+          <div class="share-code-row">
+            <button class="settings-row-action" style="flex:1" id="copy-code-btn" id="lbl-copy-code">Copiar código</button>
+          </div>
+        </div>
+        <div class="share-content" id="share-content-qr" style="display:none;text-align:center;">
+          <canvas id="share-qr-canvas" width="180" height="180"></canvas>
+        </div>
+        <div class="share-content" id="share-content-link" style="display:none;">
+          <div class="share-code-row">
+            <button class="settings-row-action rainbow-hover-bg" style="flex:1" id="settings-invite">Compartir link 🔗</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1109,9 +1152,9 @@ const I18N = {
     edit: 'Editar', upload: 'Subir',
     your_code: 'Tu código de invitación',
     your_code_sub: 'Compártelo para que te agreguen como amigo',
-    copy_code: 'Copiar', show_qr: '📱 Mostrar QR',
-    invite_friends: 'Invitar amigos', invite_friends_sub: 'Link único para que te agreguen',
-    invite_btn: 'Invitar 🔗',
+    copy_code: 'Copiar código',
+    invite_friends: 'Invitar amigos', invite_friends_sub: 'Comparte tu código o QR para que te agreguen',
+    invite_btn: 'Compartir link 🔗',
     store_colors: '🎨 Colores premium', store_colors_sub: 'Paleta completa con selector libre',
     store_brushes: '🖌️ Pinceles especiales', store_brushes_sub: 'Acuarela, neón, caligrafía, pixel',
     store_themes: '🌈 Temas de temporada', store_themes_sub: 'Halloween, Navidad, San Valentín',
@@ -1164,9 +1207,9 @@ const I18N = {
     change_photo: 'Change photo', change_photo_sub: '🚧 Coming soon',
     edit: 'Edit', upload: 'Upload',
     your_code: 'Your invite code', your_code_sub: 'Share it so friends can add you',
-    copy_code: 'Copy', show_qr: '📱 Show QR',
-    invite_friends: 'Invite friends', invite_friends_sub: 'Unique link to add you',
-    invite_btn: 'Invite 🔗',
+    copy_code: 'Copy code',
+    invite_friends: 'Invite friends', invite_friends_sub: 'Share your code or QR to get added',
+    invite_btn: 'Share link 🔗',
     store_colors: '🎨 Premium colors', store_colors_sub: 'Full palette with free selector',
     store_brushes: '🖌️ Special brushes', store_brushes_sub: 'Watercolor, neon, calligraphy, pixel',
     store_themes: '🌈 Seasonal themes', store_themes_sub: "Halloween, Christmas, Valentine's",
@@ -1265,15 +1308,12 @@ function applyLang() {
   set('settings-invite', 'invite_btn');
   set('settings-logout', 'logout');
   set('copy-code-btn', 'copy_code');
-  set('show-qr-btn', 'show_qr');
   set('install-btn', 'install_btn');
   // Labels en settings con IDs del HTML
   set('lbl-profile', 'profile');
   set('lbl-friends-section', 'friends');
   set('lbl-app-section', 'app_section');
   set('lbl-change-name', 'change_name');
-  set('lbl-change-photo', 'change_photo');
-  set('lbl-your-code', 'your_code');
   set('lbl-invite', 'invite_friends');
   set('lbl-invite-sub', 'invite_friends_sub');
   set('lbl-language', 'language');
@@ -3012,11 +3052,8 @@ function abrirSettings() {
     settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">Inicia sesión para ver tus amigos</span>';
   }
 
-  /* Reiniciar QR */
-  const qrCanvas = document.getElementById('qr-canvas');
-  const showQrBtn = document.getElementById('show-qr-btn');
-  if (qrCanvas) qrCanvas.style.display = 'none';
-  if (showQrBtn) showQrBtn.style.display = '';
+  /* Reset share tabs to code tab */
+  document.getElementById('share-tab-code')?.click();
 
   settingsOverlay.classList.add('activo');
 }
@@ -3062,28 +3099,44 @@ settingsInvite.addEventListener('click', () => {
   else { navigator.clipboard.writeText(inviteUrl).then(()=>toast('🔗 Link copiado al portapapeles')).catch(()=>toast('🔗 Comparte: '+inviteUrl)); }
 });
 
+/* Share tabs */
+(function(){
+  const tabs = [
+    { btn: document.getElementById('share-tab-code'),  panel: document.getElementById('share-content-code') },
+    { btn: document.getElementById('share-tab-qr'),    panel: document.getElementById('share-content-qr') },
+    { btn: document.getElementById('share-tab-link'),  panel: document.getElementById('share-content-link') },
+  ];
+  let qrLoaded = false;
+  function activate(idx) {
+    tabs.forEach((t, i) => {
+      t.btn.classList.toggle('active', i === idx);
+      t.panel.style.display = i === idx ? '' : 'none';
+    });
+    if (idx === 1 && !qrLoaded) {
+      const code = document.getElementById('user-shortcode').textContent;
+      if (code === '——') return;
+      qrLoaded = true;
+      const appUrl = encodeURIComponent(location.origin + location.pathname + '?add=' + code);
+      const qrCanvas = document.getElementById('share-qr-canvas');
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=${appUrl}`;
+      img.onload = () => { qrCanvas.width=360; qrCanvas.height=360; qrCanvas.getContext('2d').drawImage(img,0,0); };
+    }
+  }
+  tabs.forEach((t, i) => t.btn.addEventListener('click', () => activate(i)));
+})();
+
 /* Copiar shortCode */
 document.getElementById('copy-code-btn').addEventListener('click', () => {
   const code = document.getElementById('user-shortcode').textContent;
   if (code === '——') return;
-  navigator.clipboard.writeText(code).then(() => toast(t('copied') + ': ' + code));
+  navigator.clipboard.writeText(code).then(() => toast('📋 ' + code));
 });
 
-/* Mostrar QR */
-document.getElementById('show-qr-btn').addEventListener('click', () => {
-  const code = document.getElementById('user-shortcode').textContent;
-  if (code === '——') return;
-  const qrCanvas = document.getElementById('qr-canvas');
-  const appUrl = encodeURIComponent(location.origin + location.pathname + '?add=' + code);
-  const img = new Image();
-  img.crossOrigin = 'anonymous';
-  img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${appUrl}`;
-  img.onload = () => {
-    qrCanvas.width = 200; qrCanvas.height = 200;
-    qrCanvas.getContext('2d').drawImage(img, 0, 0);
-    qrCanvas.style.display = 'block';
-    document.getElementById('show-qr-btn').style.display = 'none';
-  };
+/* Avatar pencil — coming soon toast */
+document.getElementById('settings-edit-photo').addEventListener('click', () => {
+  toast('🚧 Cambio de foto disponible pronto');
 });
 
 /* Botones de idioma */
