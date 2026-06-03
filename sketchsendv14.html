@@ -1418,7 +1418,7 @@ function finalizarLogin(username, displayName, photoURL) {
   unameMob.textContent = nombreMostrar; avMob.src = avatarSrc;
   ocultarTodasLasPantallas();
   appEl.style.display = 'flex';
-  setupCanvas(); buildCarousel(); cargarBandeja();
+  setupCanvas(); buildCarousel(); cargarBandeja(); iniciarPromptsCanvas();
   requestAnimationFrame(() => requestAnimationFrame(volarAlHeader));
 
   /* Manejar ?add=CODE en URL */
@@ -1828,6 +1828,87 @@ function redibujar() {
     }
   }
   ctx.restore();
+}
+
+/* ══ PROMPTS DE DIBUJO ══ */
+const PROMPTS_ES = [
+  '¿Cómo te sientes ahora? 😊',
+  'Dibuja tu comida favorita 🍕',
+  'Dibuja el clima de hoy ☀️',
+  '¿Dónde estás ahora mismo? 📍',
+  'Dibuja algo que te haga reír 😄',
+  'Tu animal favorito 🐶',
+  'Dibuja un sueño que tuviste 💭',
+  '¿Qué quieres hacer este fin de semana?',
+  'Dibuja tu lugar favorito 🌎',
+  'Un mensaje sin palabras ✨',
+];
+const PROMPTS_EN = [
+  'How are you feeling? 😊',
+  'Draw your favorite food 🍕',
+  "Draw today's weather ☀️",
+  'Where are you right now? 📍',
+  'Draw something that makes you laugh 😄',
+  'Your favorite animal 🐶',
+  'Draw a dream you had 💭',
+  'What do you want to do this weekend?',
+  'Draw your favorite place 🌎',
+  'A message without words ✨',
+];
+
+let promptTimer = null;
+let promptVisible = false;
+let currentPromptIdx = Math.floor(Math.random() * PROMPTS_ES.length);
+
+function getPrompts() { return lang === 'en' ? PROMPTS_EN : PROMPTS_ES; }
+
+function mostrarPrompt() {
+  const el = document.getElementById('drawing-prompts');
+  const txt = document.getElementById('prompt-text');
+  if (!el || !txt) return;
+  const prompts = getPrompts();
+  currentPromptIdx = (currentPromptIdx + 1) % prompts.length;
+  txt.textContent = prompts[currentPromptIdx];
+  el.style.opacity = '1';
+  el.style.pointerEvents = 'none';
+  promptVisible = true;
+}
+
+function ocultarPrompt() {
+  const el = document.getElementById('drawing-prompts');
+  if (!el) return;
+  el.style.opacity = '0';
+  promptVisible = false;
+}
+
+function resetPromptTimer() {
+  clearTimeout(promptTimer);
+  promptTimer = setTimeout(() => {
+    if (!trazos.length) mostrarPrompt();
+  }, 60000);
+}
+
+let promptsInicializados = false;
+function iniciarPromptsCanvas() {
+  if (promptsInicializados) return;
+  promptsInicializados = true;
+
+  /* Mostrar prompt al abrir si el canvas está vacío */
+  setTimeout(() => {
+    if (!trazos.length) mostrarPrompt();
+  }, 2000);
+  resetPromptTimer();
+
+  /* Ocultar cuando empieza a dibujar */
+  cv.addEventListener('pointerdown', () => {
+    if (promptVisible) ocultarPrompt();
+    clearTimeout(promptTimer);
+  });
+
+  /* Reiniciar timer cuando levanta el dedo */
+  cv.addEventListener('pointerup', () => {
+    resetPromptTimer();
+  });
 }
 
 /* ── LIMPIAR ── */
