@@ -18,6 +18,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
   <style>
 
     /* ══════════════════════════════════════════════════════
@@ -635,7 +636,9 @@
       background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
       width:100%; max-width:360px; max-height:85vh; overflow-y:auto;
       box-shadow:0 24px 80px rgba(0,0,0,0.5); animation:subir 0.25s ease;
+      scrollbar-width:none;
     }
+    .settings-panel::-webkit-scrollbar { display:none; }
     @media(min-width:700px){
       .settings-panel { max-width:520px; }
       .settings-section { padding:22px 32px; }
@@ -992,6 +995,7 @@
         <div class="settings-avatar-wrap">
           <img id="settings-avatar" class="settings-avatar" src="" alt="">
           <div class="settings-avatar-edit" id="settings-edit-photo" title="Cambiar foto">✏️</div>
+          <input type="file" id="photo-file-input" accept="image/*" style="display:none;">
         </div>
         <div>
           <div class="settings-name" id="settings-name">—</div>
@@ -1016,24 +1020,21 @@
         <div class="settings-row-label" id="lbl-invite">Invitar amigos</div>
         <div class="settings-row-sub" id="lbl-invite-sub">Comparte tu código o QR para que te agreguen</div>
         <div class="share-toggle" id="share-toggle">
-          <button class="share-toggle-btn active" id="share-tab-code" id="lbl-share-code">📋 Código</button>
-          <button class="share-toggle-btn" id="share-tab-qr">📱 QR</button>
+          <button class="share-toggle-btn active" id="share-tab-qr">📱 QR Code</button>
           <button class="share-toggle-btn" id="share-tab-link">🔗 Link</button>
         </div>
-        <div class="share-content" id="share-content-code">
-          <div class="share-code-box" id="user-shortcode">——</div>
-          <div class="share-code-row">
-            <button class="settings-row-action" style="flex:1" id="copy-code-btn" id="lbl-copy-code">Copiar código</button>
-          </div>
-        </div>
-        <div class="share-content" id="share-content-qr" style="display:none;text-align:center;">
-          <canvas id="share-qr-canvas" width="180" height="180"></canvas>
+        <div class="share-content" id="share-content-qr" style="text-align:center;">
+          <canvas id="share-qr-canvas" width="200" height="200" style="border-radius:10px;max-width:200px;"></canvas>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;" id="lbl-qr-hint">Escanea para agregar automáticamente</div>
         </div>
         <div class="share-content" id="share-content-link" style="display:none;">
           <div class="share-code-row">
             <button class="settings-row-action rainbow-hover-bg" style="flex:1" id="settings-invite">Compartir link 🔗</button>
           </div>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;" id="lbl-link-hint">El link agrega automáticamente a quien lo abra</div>
         </div>
+        <!-- shortcode oculto (usado internamente) -->
+        <div id="user-shortcode" style="display:none;">——</div>
       </div>
     </div>
 
@@ -1041,31 +1042,31 @@
       <div class="settings-label">Tienda</div>
       <div class="settings-row">
         <div>
-          <div class="settings-row-label">🎨 Colores premium</div>
-          <div class="settings-row-sub">Paleta completa con selector libre</div>
+          <div class="settings-row-label">🎨 <span id="store-colors-lbl">Colores premium</span></div>
+          <div class="settings-row-sub" id="store-colors-sub">Paleta completa con selector libre</div>
         </div>
-        <button class="settings-row-action premium rainbow-hover-bg">$1.99</button>
+        <button class="settings-row-action premium rainbow-hover-bg store-soon" id="store-btn-colors">Pronto</button>
       </div>
       <div class="settings-row">
         <div>
-          <div class="settings-row-label">🖌️ Pinceles especiales</div>
-          <div class="settings-row-sub">Acuarela, neón, caligrafía, pixel</div>
+          <div class="settings-row-label">🖌️ <span id="store-brushes-lbl">Pinceles especiales</span></div>
+          <div class="settings-row-sub" id="store-brushes-sub">Acuarela, neón, caligrafía, pixel</div>
         </div>
-        <button class="settings-row-action premium rainbow-hover-bg">$2.99</button>
+        <button class="settings-row-action premium rainbow-hover-bg store-soon" id="store-btn-brushes">Pronto</button>
       </div>
       <div class="settings-row">
         <div>
-          <div class="settings-row-label">🌈 Temas de temporada</div>
-          <div class="settings-row-sub">Halloween, Navidad, San Valentín</div>
+          <div class="settings-row-label">🌈 <span id="store-themes-lbl">Temas de temporada</span></div>
+          <div class="settings-row-sub" id="store-themes-sub">Halloween, Navidad, San Valentín</div>
         </div>
-        <button class="settings-row-action premium rainbow-hover-bg">$0.99</button>
+        <button class="settings-row-action premium rainbow-hover-bg store-soon" id="store-btn-themes">Pronto</button>
       </div>
       <div class="settings-row">
         <div>
-          <div class="settings-row-label">⭐ SketchSend Pro</div>
-          <div class="settings-row-sub">Dibujos permanentes, 4K, sin firma</div>
+          <div class="settings-row-label">⭐ <span id="store-pro-lbl">SketchSend Pro</span></div>
+          <div class="settings-row-sub" id="store-pro-sub">Dibujos permanentes, 4K, sin firma</div>
         </div>
-        <button class="settings-row-action premium rainbow-hover-bg">$4.99/mes</button>
+        <button class="settings-row-action premium rainbow-hover-bg store-soon" id="store-btn-pro">Pronto</button>
       </div>
     </div>
 
@@ -1153,9 +1154,10 @@ const I18N = {
     your_code: 'Tu código de invitación',
     your_code_sub: 'Compártelo para que te agreguen como amigo',
     copy_code: 'Copiar código',
-    invite_friends: 'Invitar amigos', invite_friends_sub: 'Comparte tu código o QR para que te agreguen',
+    invite_friends: 'Invitar amigos', invite_friends_sub: 'Comparte tu QR o link para que te agreguen',
     invite_btn: 'Compartir link 🔗',
-    store_colors: '🎨 Colores premium', store_colors_sub: 'Paleta completa con selector libre',
+    qr_hint: 'Escanea para agregar automáticamente', link_hint: 'El link agrega automáticamente a quien lo abra',
+    store_colors: 'Colores premium', store_colors_sub: 'Paleta completa con selector libre',
     store_brushes: '🖌️ Pinceles especiales', store_brushes_sub: 'Acuarela, neón, caligrafía, pixel',
     store_themes: '🌈 Temas de temporada', store_themes_sub: 'Halloween, Navidad, San Valentín',
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Dibujos permanentes, 4K, sin firma',
@@ -1208,9 +1210,10 @@ const I18N = {
     edit: 'Edit', upload: 'Upload',
     your_code: 'Your invite code', your_code_sub: 'Share it so friends can add you',
     copy_code: 'Copy code',
-    invite_friends: 'Invite friends', invite_friends_sub: 'Share your code or QR to get added',
+    invite_friends: 'Invite friends', invite_friends_sub: 'Share your QR or link to get added',
     invite_btn: 'Share link 🔗',
-    store_colors: '🎨 Premium colors', store_colors_sub: 'Full palette with free selector',
+    qr_hint: 'Scan to add automatically', link_hint: 'Whoever opens the link gets added automatically',
+    store_colors: 'Premium colors', store_colors_sub: 'Full palette with free selector',
     store_brushes: '🖌️ Special brushes', store_brushes_sub: 'Watercolor, neon, calligraphy, pixel',
     store_themes: '🌈 Seasonal themes', store_themes_sub: "Halloween, Christmas, Valentine's",
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Permanent drawings, 4K, no watermark',
@@ -1318,19 +1321,15 @@ function applyLang() {
   set('lbl-invite-sub', 'invite_friends_sub');
   set('lbl-language', 'language');
   set('lbl-version', 'version');
-  // Tienda — filas con botones premium (sin ID fijo, por orden)
-  const premiumKeys = [
-    ['store_colors','store_colors_sub'],['store_brushes','store_brushes_sub'],
-    ['store_themes','store_themes_sub'],['store_pro','store_pro_sub'],
-  ];
-  document.querySelectorAll('.settings-row-action.premium').forEach((btn, i) => {
-    const row = btn.closest('.settings-row');
-    if (!row || !premiumKeys[i]) return;
-    const lbl = row.querySelector('.settings-row-label');
-    const sub = row.querySelector('.settings-row-sub');
-    if (lbl) lbl.textContent = t(premiumKeys[i][0]);
-    if (sub) sub.textContent = t(premiumKeys[i][1]);
-  });
+  // Tienda — labels con IDs, botones con "Pronto"/"Coming soon"
+  set('store-colors-lbl', 'store_colors'); set('store-colors-sub', 'store_colors_sub');
+  set('store-brushes-lbl', 'store_brushes'); set('store-brushes-sub', 'store_brushes_sub');
+  set('store-themes-lbl', 'store_themes'); set('store-themes-sub', 'store_themes_sub');
+  set('store-pro-lbl', 'store_pro'); set('store-pro-sub', 'store_pro_sub');
+  const soonText = lang === 'es' ? 'Pronto' : 'Coming soon';
+  document.querySelectorAll('.store-soon').forEach(btn => { btn.textContent = soonText; });
+  // Share hints
+  set('lbl-qr-hint', 'qr_hint'); set('lbl-link-hint', 'link_hint');
 
   // ── Language buttons ──
   const langEs = q('lang-es-btn'); if (langEs) langEs.style.opacity = lang==='es' ? '1' : '0.5';
@@ -1465,10 +1464,12 @@ const FIREBASE_CONFIG = {
   appId:             "1:445386471766:web:6f8c0681a676d5a5b67ef7"
 };
 
-// Firestore Rules recomendadas (configurar en Firebase Console):
+// Firestore Rules (Firebase Console → Firestore → Rules):
 // users: read si está autenticado, write solo el propio uid
 // friendships: read/write si tu uid está en el array users[]
 // sketches: write si from==uid, read si to==uid, delete si to==uid
+// Storage Rules (Firebase Console → Storage → Rules):
+// match /avatars/{uid} { allow read: if true; allow write: if request.auth.uid == uid; }
 
 /* ── Inicializar Firebase (solo si el config es real) ── */
 let auth = null;
@@ -1479,6 +1480,7 @@ const firebaseReady = (() => {
     firebase.initializeApp(FIREBASE_CONFIG);
     auth = firebase.auth();
     db = firebase.firestore();
+    window.storage = firebase.storage();
     auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
     return true;
   } catch(e) {
@@ -2269,8 +2271,8 @@ async function enviarSketchFirestore(toUid) {
       viewed: false
     });
   } catch(e) {
-    console.warn('Error enviando sketch:', e.message);
-    toast('⚠️ Error al enviar');
+    console.error('Error enviando sketch:', e);
+    toast('⚠️ Error al enviar: ' + e.message);
   }
 }
 
@@ -3044,7 +3046,21 @@ function abrirSettings() {
       amigos.forEach(c => {
         const chip = document.createElement('div');
         chip.className = 'settings-friend-chip';
-        chip.innerHTML = `<span class="settings-friend-av-wrap rainbow-hover-ring"><img class="settings-friend-av" src="${c.photoURL || genAvatar(c.nombre)}" alt="${c.nombre}"></span>${c.nombre}`;
+        chip.title = 'Toca para eliminar';
+        chip.innerHTML = `<span class="settings-friend-av-wrap rainbow-hover-ring"><img class="settings-friend-av" src="${c.photoURL || genAvatar(c.nombre)}" alt="${c.nombre}"></span>${c.nombre}<span style="margin-left:4px;opacity:0.4;font-size:0.7rem;">✕</span>`;
+        chip.addEventListener('click', async () => {
+          if (!confirm(`¿Eliminar a ${c.nombre} de tus amigos?`)) return;
+          try {
+            const uid = auth.currentUser.uid;
+            const snap = await db.collection('friendships')
+              .where('users', 'array-contains', uid).get();
+            const docToDelete = snap.docs.find(d => d.data().users.includes(c.id));
+            if (docToDelete) await docToDelete.ref.delete();
+            toast('✅ Amigo eliminado');
+            chip.remove();
+            buildCarousel();
+          } catch(e) { toast('❌ ' + e.message); }
+        });
         settingsFriends.appendChild(chip);
       });
     });
@@ -3052,8 +3068,8 @@ function abrirSettings() {
     settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">Inicia sesión para ver tus amigos</span>';
   }
 
-  /* Reset share tabs to code tab */
-  document.getElementById('share-tab-code')?.click();
+  /* Reset share tabs — reload QR with current shortcode */
+  if (window._reloadShareQR) window._reloadShareQR();
 
   settingsOverlay.classList.add('activo');
 }
@@ -3099,44 +3115,64 @@ settingsInvite.addEventListener('click', () => {
   else { navigator.clipboard.writeText(inviteUrl).then(()=>toast('🔗 Link copiado al portapapeles')).catch(()=>toast('🔗 Comparte: '+inviteUrl)); }
 });
 
-/* Share tabs */
+/* Share tabs — QR + Link */
 (function(){
   const tabs = [
-    { btn: document.getElementById('share-tab-code'),  panel: document.getElementById('share-content-code') },
-    { btn: document.getElementById('share-tab-qr'),    panel: document.getElementById('share-content-qr') },
-    { btn: document.getElementById('share-tab-link'),  panel: document.getElementById('share-content-link') },
+    { btn: document.getElementById('share-tab-qr'),   panel: document.getElementById('share-content-qr') },
+    { btn: document.getElementById('share-tab-link'), panel: document.getElementById('share-content-link') },
   ];
   let qrLoaded = false;
+  function loadQR() {
+    const code = document.getElementById('user-shortcode').textContent;
+    if (!code || code === '——') return;
+    qrLoaded = true;
+    const appUrl = encodeURIComponent(location.origin + location.pathname + '?add=' + code);
+    const qrCanvas = document.getElementById('share-qr-canvas');
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${appUrl}`;
+    img.onload = () => { qrCanvas.width=400; qrCanvas.height=400; qrCanvas.getContext('2d').drawImage(img,0,0); };
+  }
   function activate(idx) {
     tabs.forEach((t, i) => {
       t.btn.classList.toggle('active', i === idx);
       t.panel.style.display = i === idx ? '' : 'none';
     });
-    if (idx === 1 && !qrLoaded) {
-      const code = document.getElementById('user-shortcode').textContent;
-      if (code === '——') return;
-      qrLoaded = true;
-      const appUrl = encodeURIComponent(location.origin + location.pathname + '?add=' + code);
-      const qrCanvas = document.getElementById('share-qr-canvas');
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = `https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=${appUrl}`;
-      img.onload = () => { qrCanvas.width=360; qrCanvas.height=360; qrCanvas.getContext('2d').drawImage(img,0,0); };
-    }
+    if (idx === 0 && !qrLoaded) loadQR();
   }
   tabs.forEach((t, i) => t.btn.addEventListener('click', () => activate(i)));
+  window._reloadShareQR = () => { qrLoaded = false; loadQR(); };
+  /* load QR immediately on first open */
+  activate(0);
 })();
 
-/* Copiar shortCode */
-document.getElementById('copy-code-btn').addEventListener('click', () => {
-  const code = document.getElementById('user-shortcode').textContent;
-  if (code === '——') return;
-  navigator.clipboard.writeText(code).then(() => toast('📋 ' + code));
-});
-
-/* Avatar pencil — coming soon toast */
+/* Avatar pencil → open file picker for real photo upload */
+const photoFileInput = document.getElementById('photo-file-input');
 document.getElementById('settings-edit-photo').addEventListener('click', () => {
-  toast('🚧 Cambio de foto disponible pronto');
+  if (!firebaseReady || !auth.currentUser) { toast('❌ Debes iniciar sesión'); return; }
+  photoFileInput.click();
+});
+photoFileInput.addEventListener('change', async () => {
+  const file = photoFileInput.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('⚠️ La imagen debe pesar menos de 5 MB'); return; }
+  const uid = auth.currentUser.uid;
+  try {
+    toast('⏳ Subiendo foto...');
+    const ref = window.storage.ref(`avatars/${uid}`);
+    await ref.put(file);
+    const url = await ref.getDownloadURL();
+    await auth.currentUser.updateProfile({ photoURL: url });
+    await db.collection('users').doc(uid).update({ photoURL: url });
+    const avatarSrc = url;
+    document.getElementById('settings-avatar').src = avatarSrc;
+    avatarEl.src = avatarSrc; avMob.src = avatarSrc;
+    toast('✅ Foto actualizada');
+  } catch(e) {
+    console.error('Error subiendo foto:', e);
+    toast('❌ Error al subir foto: ' + e.message);
+  }
+  photoFileInput.value = '';
 });
 
 /* Botones de idioma */
@@ -3156,9 +3192,9 @@ settingsLogout.addEventListener('click', () => {
   doLogout();
 });
 
-/* Los botones de la tienda por ahora solo muestran toast */
-document.querySelectorAll('.settings-row-action.premium').forEach(btn => {
-  btn.addEventListener('click', () => toast('🚧 Tienda disponible pronto'));
+/* Botones de tienda */
+document.querySelectorAll('.store-soon').forEach(btn => {
+  btn.addEventListener('click', () => toast('🚧 ' + (lang === 'es' ? 'Disponible pronto' : 'Coming soon')));
 });
 
 /* ══════════════════════════════════════════════════════
