@@ -763,7 +763,6 @@
 
     <button id="toggle-email-btn" style="background:none;border:none;color:var(--muted);font-size:0.8rem;cursor:pointer;padding:4px 0;">Usar email y contraseña ↓</button>
 
-    <button class="btn btn-s" onclick="toast('🚧 Apple Sign-In — próximamente')">🍎 Continuar con Apple</button>
 
     <!-- Mensaje de seguridad -->
     <p style="font-size:0.72rem;color:var(--muted);text-align:center;margin-top:4px;">🔒 Tus dibujos son privados y se eliminan en 24h</p>
@@ -2279,30 +2278,7 @@ function generarDibujoSimulado(senderName) {
 
 function cargarBandeja() {
   if (!firebaseReady || !auth.currentUser) {
-    /* Fallback — datos simulados */
-    bandejaEntrada = [
-      {
-        id:'msg1', sender:'Ana', senderId:'1',
-        strokes: generarDibujoSimulado('Ana'),
-        receivedAt: Date.now() - 300000,
-        expiresAt: Date.now() + 23*3600000,
-        visto: false
-      },
-      {
-        id:'msg2', sender:'Carlos', senderId:'2',
-        strokes: generarDibujoSimulado('Carlos'),
-        receivedAt: Date.now() - 1800000,
-        expiresAt: Date.now() + 20*3600000,
-        visto: false
-      },
-      {
-        id:'msg3', sender:'Diego', senderId:'6',
-        strokes: generarDibujoSimulado('Diego'),
-        receivedAt: Date.now() - 7200000,
-        expiresAt: Date.now() + 15*3600000,
-        visto: false
-      },
-    ];
+    bandejaEntrada = [];
     actualizarBadge();
     return;
   }
@@ -2950,7 +2926,22 @@ function posicionarVoladorEnLogin() {
 
 function volarAlHeader() {
   const ph = document.getElementById('hdr-logo-placeholder');
-  if (!ph) return;
+  const fantasma = document.getElementById('titulo-fantasma');
+  if (!ph || !fantasma) return;
+
+  /* Posicionar volador ENCIMA del título del login antes de animar */
+  const rf = fantasma.getBoundingClientRect();
+  const fsSrc = getComputedStyle(fantasma).fontSize;
+  volador.style.transition = 'none';
+  volador.style.fontSize = fsSrc;
+  volador.style.top = rf.top + 'px';
+  volador.style.left = rf.left + 'px';
+  volador.style.opacity = '1';
+
+  /* Forzar reflow para que la transición arranque desde aquí */
+  volador.getBoundingClientRect();
+
+  /* Ahora animar hacia el header */
   const r = ph.getBoundingClientRect();
   const fs = getComputedStyle(ph).fontSize;
   volador.style.transition = '';
@@ -2958,11 +2949,9 @@ function volarAlHeader() {
   volador.style.top = r.top + 'px';
   volador.style.left = r.left + 'px';
   volador.addEventListener('transitionend', () => {
-    /* Activar animación rainbow en el placeholder del header */
     ph.style.animation = 'mover 2.5s linear infinite';
     ph.style.visibility = 'visible';
     volador.style.opacity = '0';
-    /* Detener la animación a los 20 segundos */
     setTimeout(() => {
       const pos = getComputedStyle(ph).backgroundPosition;
       ph.style.backgroundPosition = pos;
