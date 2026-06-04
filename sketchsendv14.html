@@ -1131,6 +1131,9 @@ const I18N = {
     create_account: 'Crear cuenta →', enter: 'Entrar →',
     forgot_pass: '¿Olvidaste tu contraseña?',
     google_btn: '🔵 Continuar con Google', apple_btn: '🍎 Continuar con Apple',
+    wb_title: 'Abre esto en tu navegador',
+    wb_body: 'Estás dentro de otra app. El login con Google no funciona aquí.',
+    wb_hint: 'Toca los 3 puntos (⋯) y elige "Abrir en Safari" o "Abrir en Chrome".',
     use_email: 'Usar email y contraseña ↓', hide_email: 'Ocultar ↑',
     security_msg: '🔒 Tus dibujos son privados y se eliminan en 24h',
     verify_title: 'Verifica tu email',
@@ -1188,6 +1191,9 @@ const I18N = {
     create_account: 'Create account →', enter: 'Log in →',
     forgot_pass: 'Forgot your password?',
     google_btn: '🔵 Continue with Google', apple_btn: '🍎 Continue with Apple',
+    wb_title: 'Open this in your browser',
+    wb_body: "You're inside another app. Google login doesn't work here.",
+    wb_hint: 'Tap the 3 dots (⋯) and choose "Open in Safari" or "Open in Chrome".',
     use_email: 'Use email and password ↓', hide_email: 'Hide ↑',
     security_msg: '🔒 Your drawings are private and deleted in 24h',
     verify_title: 'Verify your email',
@@ -1244,6 +1250,9 @@ function applyLang() {
   const q = id => document.getElementById(id);
   const set = (id, key) => { const el = q(id); if (el) el.textContent = t(key); };
   const ph  = (id, key) => { const el = q(id); if (el) el.placeholder = t(key); };
+
+  // ── WebView banner ──
+  set('wb-title', 'wb_title'); set('wb-body', 'wb_body'); set('wb-hint', 'wb_hint');
 
   // ── Login ──
   set('google-btn', 'google_btn');
@@ -1616,6 +1625,15 @@ function doLogout() {
   else { localStorage.removeItem('ss_user'); mostrarLogin(); }
 }
 
+/* ── Manejar resultado de signInWithRedirect (móvil) ── */
+if (firebaseReady && auth) {
+  auth.getRedirectResult().catch(e => {
+    if (e.code && e.code !== 'auth/popup-closed-by-user') {
+      console.warn('Redirect result error:', e.code);
+    }
+  });
+}
+
 /* ── Observer principal ── */
 if (firebaseReady && auth) {
   auth.onAuthStateChanged(async user => {
@@ -1752,14 +1770,67 @@ document.getElementById('verify-logout-btn').addEventListener('click', () => {
   if (auth) auth.signOut();
 });
 
+/* ── Detección de navegador embebido (WebView) ── */
+const ua = navigator.userAgent || '';
+const esWebView = (
+  /FBAN|FBAV|Instagram|FB_IAB|FB4A|FBIOS/.test(ua) ||   /* Facebook / Instagram */
+  /\bMessa\b/.test(ua) ||                                 /* Messenger */
+  /Twitter|TikTok|Snapchat|Pinterest|Line\//.test(ua) || /* otras apps */
+  (/Android/.test(ua) && /wv\b/.test(ua)) ||             /* Android WebView genérico */
+  (/iPhone|iPad/.test(ua) && !/Safari\//.test(ua) && !/CriOS\//.test(ua) && !/FxiOS\//.test(ua)) /* iOS in-app sin Safari */
+);
+
+/* Mostrar banner de aviso si estamos en WebView */
+if (esWebView) {
+  const banner = document.createElement('div');
+  banner.id = 'webview-banner';
+  banner.innerHTML = `
+    <div style="
+      position:fixed;top:0;left:0;right:0;z-index:9999;
+      background:#1a0a00;border-bottom:2px solid #f97316;
+      padding:14px 18px;display:flex;align-items:flex-start;gap:12px;
+      font-family:'DM Sans',sans-serif;font-size:0.85rem;color:#fed7aa;
+      animation:aparecer 0.3s ease;
+    ">
+      <span style="font-size:1.4rem;flex-shrink:0;">⚠️</span>
+      <div>
+        <strong style="color:#fb923c;display:block;margin-bottom:4px;" id="wb-title">Abre esto en tu navegador</strong>
+        <span id="wb-body">Estás dentro de otra app. El login con Google <strong>no funciona aquí</strong>.</span>
+        <br><br>
+        <span style="color:#fdba74;" id="wb-hint">Toca los 3 puntos (⋯) y elige <strong>"Abrir en Safari"</strong> o <strong>"Abrir en Chrome"</strong>.</span>
+      </div>
+    </div>`;
+  document.body.appendChild(banner);
+}
+
 /* ── Google Sign-In ── */
 document.getElementById('google-btn').addEventListener('click', async () => {
   if (!firebaseReady || !auth) { toast('🚧 Firebase no configurado'); return; }
+
+  if (esWebView) {
+    /* En WebView, popup falla con disallowed_useragent. Redirigir al usuario. */
+    toast('⚠️ Abre la app en Chrome o Safari para entrar con Google');
+    return;
+  }
+
+  const provider = new firebase.auth.GoogleAuthProvider();
+  const esMobile = /Android|iPhone|iPad|iPod/.test(ua);
+
   try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    await auth.signInWithPopup(provider);
+    if (esMobile) {
+      /* En móvil real, redirect es más confiable que popup */
+      await auth.signInWithRedirect(provider);
+    } else {
+      await auth.signInWithPopup(provider);
+    }
   } catch(e) {
-    if (e.code !== 'auth/popup-closed-by-user') toast('⚠️ Error con Google: ' + e.message);
+    if (e.code === 'auth/popup-closed-by-user') return;
+    if (e.code === 'auth/popup-blocked') {
+      /* Popup bloqueado por el navegador — caer a redirect */
+      try { await auth.signInWithRedirect(provider); } catch(e2) { toast('⚠️ Error: ' + e2.message); }
+    } else {
+      toast('⚠️ Error con Google: ' + e.message);
+    }
   }
 });
 
