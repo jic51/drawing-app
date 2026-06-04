@@ -295,6 +295,21 @@
     .color-dot.rainbow-dot {
       background:conic-gradient(#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000);
     }
+    /* Black dot needs a visible outline in dark theme */
+    .color-dot[data-color="#1a1a2e"] { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35); }
+    .color-dot[data-color="#1a1a2e"].activo { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.6), 0 0 0 2px var(--glow); }
+
+    /* Brush size popup */
+    #brush-popup {
+      position:fixed; z-index:300; background:rgba(15,15,19,0.82); backdrop-filter:blur(14px);
+      border:1px solid var(--border); border-radius:16px; padding:16px 20px;
+      display:flex; flex-direction:column; gap:10px; min-width:180px;
+      box-shadow:0 8px 32px rgba(0,0,0,0.45); transition:opacity 0.15s;
+    }
+    #brush-popup.hidden { display:none; }
+    #brush-popup-label { font-size:0.75rem; color:var(--muted); text-align:center; }
+    #brush-size-slider { width:100%; accent-color:var(--accent2); cursor:pointer; }
+    #brush-size-val { font-size:0.85rem; font-weight:600; text-align:center; color:var(--text); }
     /* En mobile toolbar la paleta va horizontal */
     .mob-toolbar .color-picker { flex-direction:row; padding:0; gap:5px; }
     .carousel {
@@ -855,17 +870,16 @@
     <!-- Toolbar lateral (solo desktop) -->
     <aside class="toolbar" id="desktop-toolbar">
       <button class="tbtn activo" data-tool="rainbow">🌈</button>
-      <div class="tlabel">Rainbow</div>
+      <div class="tlabel" id="lbl-tool-rainbow">Rainbow</div>
       <div class="tsep"></div>
       <button class="tbtn" data-tool="pincel">🖌️</button>
-      <div class="tlabel">Pincel</div>
+      <div class="tlabel" id="lbl-tool-pincel">Pincel</div>
       <div class="tsep"></div>
       <button class="tbtn" data-tool="borrador">⬜</button>
-      <div class="tlabel">Borrar</div>
+      <div class="tlabel" id="lbl-tool-borrar">Borrar</div>
       <div class="tsep"></div>
       <div class="tlabel">COLOR</div>
       <div class="color-picker" id="color-picker-desk">
-        <div class="color-dot rainbow-dot activo" data-color="rainbow" title="Rainbow"></div>
         <div class="color-dot" data-color="#ffffff" style="background:#fff;border-color:#ccc;" title="Blanco"></div>
         <div class="color-dot" data-color="#1a1a2e" style="background:#1a1a2e;" title="Negro"></div>
       </div>
@@ -898,18 +912,17 @@
       <div class="mob-toolbar" id="mob-toolbar">
         <button class="mob-tool activo" data-tool="rainbow">
           <div class="mob-tool-icon">🌈</div>
-          <div class="mob-tool-label">Rainbow</div>
+          <div class="mob-tool-label" id="lbl-mob-rainbow">Rainbow</div>
         </button>
         <button class="mob-tool" data-tool="pincel">
           <div class="mob-tool-icon">🖌️</div>
-          <div class="mob-tool-label">Pincel</div>
+          <div class="mob-tool-label" id="lbl-mob-pincel">Pincel</div>
         </button>
         <button class="mob-tool" data-tool="borrador">
           <div class="mob-tool-icon">⬜</div>
-          <div class="mob-tool-label">Borrar</div>
+          <div class="mob-tool-label" id="lbl-mob-borrar">Borrar</div>
         </button>
         <div class="color-picker" id="color-picker-mob">
-          <div class="color-dot rainbow-dot activo" data-color="rainbow" title="Rainbow" style="width:20px;height:20px;"></div>
           <div class="color-dot" data-color="#ffffff" style="background:#fff;border-color:#ccc;width:20px;height:20px;" title="Blanco"></div>
           <div class="color-dot" data-color="#1a1a2e" style="background:#1a1a2e;width:20px;height:20px;" title="Negro"></div>
         </div>
@@ -925,6 +938,13 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- BRUSH SIZE POPUP -->
+<div id="brush-popup" class="hidden">
+  <div id="brush-popup-label">Brush size / Tamaño</div>
+  <input type="range" id="brush-size-slider" min="2.5" max="5" step="0.1" value="4">
+  <div id="brush-size-val">4.0 px</div>
 </div>
 
 <!-- MODAL DE GUARDADO -->
@@ -1038,7 +1058,7 @@
     </div>
 
     <div class="settings-section">
-      <div class="settings-label">Tienda</div>
+      <div class="settings-label" id="lbl-store-section">Tienda</div>
       <div class="settings-row">
         <div>
           <div class="settings-row-label">🎨 <span id="store-colors-lbl">Colores premium</span></div>
@@ -1165,6 +1185,8 @@ const I18N = {
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Dibujos permanentes, 4K, sin firma',
     install_app: 'Instalar app', install_app_sub: 'Agregar SketchSend a tu pantalla de inicio',
     install_btn: 'Instalar 📲', language: 'Idioma', version: 'Versión', logout: 'Cerrar sesión',
+    tool_rainbow: 'Arcoíris', tool_brush: 'Pincel', tool_erase: 'Borrar',
+    store_section: 'Tienda',
     no_friends: 'Agrega amigos para enviarles dibujos →',
     add_friend: 'Agregar', share_label: 'Compartir',
     add_friend_prompt: 'Buscar amigo por @usuario o código (ej: XK9P2M):',
@@ -1224,6 +1246,8 @@ const I18N = {
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Permanent drawings, 4K, no watermark',
     install_app: 'Install app', install_app_sub: 'Add SketchSend to your home screen',
     install_btn: 'Install 📲', language: 'Language', version: 'Version', logout: 'Sign out',
+    tool_rainbow: 'Rainbow', tool_brush: 'Brush', tool_erase: 'Erase',
+    store_section: 'Store',
     no_friends: 'Add friends to send them drawings →',
     add_friend: 'Add', share_label: 'Share',
     add_friend_prompt: 'Search friend by @username or code (e.g. XK9P2M):',
@@ -1263,7 +1287,11 @@ function applyLang() {
   set('verify-logout-btn', 'use_other_email');
   set('username-confirm-btn', 'confirm');
   set('lbl-choose-username', 'choose_username');
-  set('lbl-username-explain', null); /* texto fijo, no se traduce aquí */
+  /* Translate username-explain block */
+  const uExp = q('lbl-username-explain');
+  if (uExp) uExp.innerHTML = lang === 'en'
+    ? '<strong style="color:var(--text);">📛 Name</strong> → what friends see when they receive your drawings.<br><strong style="color:var(--accent2);">🔍 @username</strong> → what they type to find and add you.'
+    : '<strong style="color:var(--text);">📛 Nombre</strong> → lo que ven tus amigos al recibir tus dibujos.<br><strong style="color:var(--accent2);">🔍 @usuario</strong> → lo que escriben para encontrarte y agregarte.';
   ph('magic-nombre', 'name_placeholder');
   ph('magic-email', 'email_placeholder');
   ph('username-inp', 'username_placeholder');
@@ -1324,6 +1352,7 @@ function applyLang() {
   set('lbl-friends-section', 'friends');
   set('lbl-app-section', 'app_section');
   set('lbl-change-name', 'change_name');
+  set('lbl-change-name-sub', 'change_name_sub');
   set('lbl-invite', 'invite_friends');
   set('lbl-invite-sub', 'invite_friends_sub');
   set('lbl-language', 'language');
@@ -1337,6 +1366,14 @@ function applyLang() {
   document.querySelectorAll('.store-soon').forEach(btn => { btn.textContent = soonText; });
   // Share hints
   set('lbl-qr-hint', 'qr_hint'); set('lbl-link-hint', 'link_hint');
+
+  // Toolbar tool labels
+  set('lbl-tool-rainbow', 'tool_rainbow'); set('lbl-mob-rainbow', 'tool_rainbow');
+  set('lbl-tool-pincel', 'tool_brush');   set('lbl-mob-pincel', 'tool_brush');
+  set('lbl-tool-borrar', 'tool_erase');   set('lbl-mob-borrar', 'tool_erase');
+
+  // Store section label
+  set('lbl-store-section', 'store_section');
 
   // ── Language buttons ──
   const langEs = q('lang-es-btn'); if (langEs) langEs.style.opacity = lang==='es' ? '1' : '0.5';
@@ -1874,7 +1911,6 @@ function coords(e) {
 
 function grosor(p, x, y) {
   if (tienePresionReal && p > 0.01) {
-    /* Presión real disponible — usar directamente */
     const pn = p < 0.05 ? 0.3 : p;
     return Math.max(1, Math.min(tamBase * pn * 2.8, tamBase * 3));
   }
@@ -1883,21 +1919,21 @@ function grosor(p, x, y) {
   const dt = now - lastDrawTime;
   if (dt < 1 || lastDrawTime === 0) {
     lastDrawTime = now; lastDrawX = x; lastDrawY = y;
-    return tamBase * 0.6; /* grosor medio por defecto */
+    return tamBase;
   }
   const dx = x - lastDrawX, dy = y - lastDrawY;
   const dist = Math.sqrt(dx*dx + dy*dy);
   const velocity = dist / dt; /* pixels/ms */
   lastDrawTime = now; lastDrawX = x; lastDrawY = y;
 
-  /*
-    velocity ~0.1 = muy lento → grosor máximo
-    velocity ~2.0 = muy rápido → grosor mínimo
-    Invertir: grosor = base * (1 - velocidad_normalizada)
-  */
-  const vNorm = Math.min(1, velocity / 1.5); /* normalizar a 0-1 */
-  const factor = 1 - vNorm * 0.7; /* rango: 0.3 (rápido) a 1.0 (lento) */
-  return Math.max(1, Math.min(tamBase * factor * 1.8, tamBase * 3));
+  /* Android touch: velocities are typically 0.05–3.0 px/ms
+     Slow (~0.05) → thick (tamBase * 2.5)
+     Fast (~2.0+) → thin (tamBase * 0.5)
+     Use a lower normalization ceiling so variation is more visible */
+  const vNorm = Math.min(1, velocity / 1.2);
+  const thick = tamBase * 2.5;
+  const thin  = tamBase * 0.5;
+  return Math.max(0.5, thick - vNorm * (thick - thin));
 }
 
 function iniciarDibujo(e) {
@@ -1960,34 +1996,59 @@ function actualizarBotones() {
   undoBtn.disabled = !hay; redoBtn.disabled = pilaRedo.length===0;
 }
 
+/* ── BRUSH SIZE POPUP ── */
+(function() {
+  const popup = document.getElementById('brush-popup');
+  const slider = document.getElementById('brush-size-slider');
+  const valLbl = document.getElementById('brush-size-val');
+
+  function openPopup(anchorEl) {
+    const rect = anchorEl.getBoundingClientRect();
+    popup.classList.remove('hidden');
+    slider.value = tamBase;
+    valLbl.textContent = tamBase.toFixed(1) + ' px';
+    /* Position above/beside the button */
+    const pw = 180, ph = 80;
+    let left = rect.left + rect.width / 2 - pw / 2;
+    let top  = rect.top - ph - 10;
+    if (top < 10) top = rect.bottom + 10;
+    left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+    popup.style.left = left + 'px';
+    popup.style.top  = top + 'px';
+  }
+
+  slider.addEventListener('input', () => {
+    tamBase = parseFloat(slider.value);
+    valLbl.textContent = tamBase.toFixed(1) + ' px';
+  });
+
+  document.addEventListener('pointerdown', e => {
+    if (!popup.classList.contains('hidden') && !popup.contains(e.target)) {
+      const clickedBrush = e.target.closest('[data-tool="pincel"]');
+      if (!clickedBrush) popup.classList.add('hidden');
+    }
+  }, true);
+
+  window._openBrushPopup = openPopup;
+})();
+
 /* ── SELECCIÓN DE HERRAMIENTA (sincronizada desktop + mobile) ── */
 allToolBtns.forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.tool === 'pincel') {
+    /* Pincel only controls size — show popup, don't switch drawing mode */
+    window._openBrushPopup(b);
+    return;
+  }
   allToolBtns.forEach(x => { x.classList.remove('activo'); });
   document.querySelectorAll(`[data-tool="${b.dataset.tool}"]`).forEach(x => x.classList.add('activo'));
   herramienta = b.dataset.tool;
-  /* Si selecciona rainbow, activar color rainbow automáticamente */
-  if (b.dataset.tool === 'rainbow') {
-    colorSeleccionado = 'rainbow';
-    allColorDots.forEach(d => d.classList.toggle('activo', d.dataset.color === 'rainbow'));
-  }
 }));
 
 /* ── SELECTOR DE COLOR (sincronizado desktop + mobile) ── */
 allColorDots.forEach(dot => dot.addEventListener('click', () => {
   colorSeleccionado = dot.dataset.color;
   allColorDots.forEach(d => d.classList.toggle('activo', d.dataset.color === colorSeleccionado));
-  /* Si elige un color sólido y está en rainbow, cambiar a pincel */
-  if (colorSeleccionado !== 'rainbow' && herramienta === 'rainbow') {
-    herramienta = 'pincel';
-    allToolBtns.forEach(x => x.classList.remove('activo'));
-    document.querySelectorAll('[data-tool="pincel"]').forEach(x => x.classList.add('activo'));
-  }
-  /* Si elige rainbow, cambiar herramienta a rainbow */
-  if (colorSeleccionado === 'rainbow') {
-    herramienta = 'rainbow';
-    allToolBtns.forEach(x => x.classList.remove('activo'));
-    document.querySelectorAll('[data-tool="rainbow"]').forEach(x => x.classList.add('activo'));
-  }
+  /* Selecting a color does NOT change the active tool */
 }));
 
 /* ── UNDO / REDO con strokeId ── */
@@ -3212,15 +3273,19 @@ settingsInvite.addEventListener('click', () => {
   ];
   let qrLoaded = false;
   function loadQR() {
-    const code = document.getElementById('user-shortcode').textContent;
-    if (!code || code === '——') return;
+    const code = document.getElementById('user-shortcode').textContent.trim();
+    if (!code || code === '——') return; /* shortcode not loaded yet — _reloadShareQR called again when settings opens */
     qrLoaded = true;
     const appUrl = encodeURIComponent(location.origin + location.pathname + '?add=' + code);
     const qrCanvas = document.getElementById('share-qr-canvas');
+    qrCanvas.width = 200; qrCanvas.height = 200;
+    const ctx2 = qrCanvas.getContext('2d');
+    ctx2.fillStyle = '#ccc'; ctx2.fillRect(0,0,200,200); /* placeholder while loading */
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.src = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${appUrl}`;
     img.onload = () => { qrCanvas.width=400; qrCanvas.height=400; qrCanvas.getContext('2d').drawImage(img,0,0); };
+    img.onerror = () => { qrLoaded = false; }; /* allow retry */
   }
   function activate(idx) {
     tabs.forEach((t, i) => {
@@ -3230,8 +3295,8 @@ settingsInvite.addEventListener('click', () => {
     if (idx === 0 && !qrLoaded) loadQR();
   }
   tabs.forEach((t, i) => t.btn.addEventListener('click', () => activate(i)));
-  window._reloadShareQR = () => { qrLoaded = false; loadQR(); };
-  /* load QR immediately on first open */
+  window._reloadShareQR = () => { qrLoaded = false; activate(0); };
+  /* Show first tab but don't pre-load QR — shortcode may not be set yet */
   activate(0);
 })();
 
