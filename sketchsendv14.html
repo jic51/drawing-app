@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#7c3aed">
   <meta name="mobile-web-app-capable" content="yes">
@@ -1659,6 +1661,7 @@ function checkLogin() {
 }
 
 function doLogout() {
+  if (window._resetAppVisible) window._resetAppVisible(); /* allow onAuthStateChanged null to show login */
   if (firebaseReady && auth) auth.signOut().catch(() => {});
   else { localStorage.removeItem('ss_user'); mostrarLogin(); }
 }
@@ -1699,12 +1702,22 @@ if (firebaseReady && auth && auth.isSignInWithEmailLink(window.location.href)) {
 
 /* ── Observer principal ── */
 if (firebaseReady && auth) {
+  /* appVisible: se pone true en cuanto el usuario entra a la app.
+     Evita que un null transitorio de ITP (iOS Safari) saque al usuario
+     de la app involuntariamente. Solo mostrarLogin() en null si aún
+     no habíamos entrado. doLogout() lo resetea para un logout real. */
+  let appVisible = false;
+
   auth.onAuthStateChanged(async user => {
-    if (!user) { mostrarLogin(); return; }
+    if (!user) {
+      if (!appVisible) mostrarLogin();
+      /* Si ya estamos en la app, ignorar el null (puede ser ITP/token refresh) */
+      return;
+    }
+    appVisible = true;
     try {
       const doc = await db.collection('users').doc(user.uid).get();
       if (!doc.exists) {
-        /* Usuario nuevo — necesita elegir @usuario */
         const nombre = user.displayName || localStorage.getItem('ss_nombre_pending') || user.email.split('@')[0];
         localStorage.removeItem('ss_nombre_pending');
         mostrarPantallaUsername(nombre, user.photoURL);
@@ -1713,10 +1726,24 @@ if (firebaseReady && auth) {
         finalizarLogin(d.username, d.displayName, user.photoURL || d.photoURL);
       }
     } catch(e) {
+      logRemoteError('onAuthStateChanged', e);
       const nombre = user.displayName || user.email?.split('@')[0] || 'Usuario';
       finalizarLogin(nombre, nombre, user.photoURL);
     }
   });
+
+  /* ── Manejar resultado de signInWithRedirect (fallback iOS) ── */
+  auth.getRedirectResult().then(result => {
+    if (result && result.user) {
+      /* El redirect completó — onAuthStateChanged se encargará del resto */
+    }
+  }).catch(e => {
+    if (e.code !== 'auth/no-auth-event') logRemoteError('getRedirectResult', e);
+  });
+
+  /* Patch doLogout para resetear el guard */
+  const _origDoLogout = window.doLogout;
+  window._resetAppVisible = () => { appVisible = false; };
 }
 
 /* ── Magic link: enviar enlace ── */
@@ -1807,25 +1834,43 @@ if (esWebView) {
 }
 
 /* ── Google Sign-In ── */
+/* Detectar iOS Safari: usa redirect porque los popups suelen estar bloqueados por defecto */
+const esIosSafari = /iPhone|iPad|iPod/.test(ua) && /WebKit/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
+
 document.getElementById('google-btn').addEventListener('click', async () => {
   if (!firebaseReady || !auth) { toast('🚧 Firebase no configurado'); return; }
 
   if (esWebView) {
-    /* En WebView, popup falla con disallowed_useragent. Redirigir al usuario. */
     toast('⚠️ Abre la app en Chrome o Safari para entrar con Google');
     return;
   }
 
   const provider = new firebase.auth.GoogleAuthProvider();
+
+  /* iOS Safari: popup suele estar bloqueado → usar redirect */
+  if (esIosSafari) {
+    try {
+      await auth.signInWithRedirect(provider);
+    } catch(e) {
+      logRemoteError('signInWithRedirect', e);
+      toast('⚠️ Error con Google: ' + e.message);
+    }
+    return;
+  }
+
+  /* Resto de navegadores: popup */
   try {
-    /* Popup funciona en todos los navegadores reales (Chrome, Safari, Firefox).
-       Redirect en móvil falla en iOS Safari con ITP activo — no lo usamos. */
     await auth.signInWithPopup(provider);
   } catch(e) {
     if (e.code === 'auth/popup-closed-by-user') return;
     if (e.code === 'auth/popup-blocked') {
-      toast('⚠️ Habilita los popups para este sitio e intenta de nuevo');
+      /* Popup bloqueado — intentar redirect como fallback */
+      try { await auth.signInWithRedirect(provider); } catch(e2) {
+        logRemoteError('signInWithRedirect-fallback', e2);
+        toast('⚠️ ' + (lang==='es' ? 'Habilita los popups para este sitio e intenta de nuevo' : 'Allow pop-ups for this site and try again'));
+      }
     } else {
+      logRemoteError('signInWithPopup', e);
       toast('⚠️ Error con Google: ' + e.message);
     }
   }
@@ -3376,6 +3421,56 @@ cargarBandeja();
   if (!soportaVideo) vidBtn.style.display = 'none';
 })();
 
+
+/* ══════════════════════════════════════════════════════
+   ERROR LOGGING — captura errores de dispositivos reales
+   y los guarda en Firestore para diagnóstico remoto.
+══════════════════════════════════════════════════════ */
+function logRemoteError(context, err) {
+  try {
+    if (!firebaseReady || !db) return;
+    const uid = (auth && auth.currentUser && auth.currentUser.uid) || 'anonymous';
+    db.collection('_errors').add({
+      uid, context,
+      msg: err ? (err.message || String(err)) : 'unknown',
+      stack: err && err.stack ? err.stack.slice(0, 500) : null,
+      ua: navigator.userAgent.slice(0, 200),
+      ts: Date.now(),
+      url: location.pathname
+    }).catch(() => {});
+  } catch(_) {}
+}
+window.onerror = (msg, src, line, col, err) => { logRemoteError('onerror:' + src?.split('/').pop() + ':' + line, err || { message: msg }); };
+window.onunhandledrejection = e => { logRemoteError('unhandledrejection', e.reason instanceof Error ? e.reason : { message: String(e.reason) }); };
+
+/* ══════════════════════════════════════════════════════
+   SERVICE WORKER — registro con detección de actualización
+   Cuando hay una nueva versión disponible, recarga la página
+   automáticamente para que todos los dispositivos actualicen.
+══════════════════════════════════════════════════════ */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    /* Forzar verificación de actualización en cada carga */
+    reg.update().catch(() => {});
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      if (!newWorker) return;
+      newWorker.addEventListener('statechange', () => {
+        /* Nueva versión lista y controlador activo → recargar */
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          /* Mandar mensaje al nuevo SW para que tome control */
+          newWorker.postMessage({ type: 'SKIP_WAITING' });
+        }
+      });
+    });
+  }).catch(e => console.warn('SW register failed:', e));
+
+  /* Cuando el SW toma control, recargar la página */
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) { refreshing = true; window.location.reload(); }
+  });
+}
 
 /* Splash screen: mostrar 1.8s luego fade out */
 (function() {

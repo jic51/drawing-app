@@ -1,4 +1,4 @@
-const CACHE = 'sketchsend-v3';
+const CACHE = 'sketchsend-v4';
 const STATIC = [
   'https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Sans:wght@400;500;600&display=swap',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
@@ -12,6 +12,11 @@ self.addEventListener('install', e => {
     caches.open(CACHE).then(cache => cache.addAll(STATIC).catch(() => {}))
   );
   self.skipWaiting();
+});
+
+/* Recibir mensaje SKIP_WAITING desde la página cuando hay actualización */
+self.addEventListener('message', e => {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
@@ -33,10 +38,10 @@ self.addEventListener('fetch', e => {
       url.includes('firebaseauth') ||
       url.includes('googleapis.com/google.firestore')) return;
 
-  // HTML pages: network-first so updates are always picked up
+  // HTML pages: network-first, bypass HTTP cache so GitHub Pages max-age is ignored
   if (url.includes('.html') || url.endsWith('/')) {
     e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
+      fetch(e.request, { cache: 'no-store' }).catch(() => caches.match(e.request))
     );
     return;
   }
