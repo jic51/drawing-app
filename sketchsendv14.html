@@ -770,71 +770,45 @@
 <!-- ══ PANTALLA DE LOGIN ══ -->
 <div id="auth-screen">
   <div class="titulo" id="titulo-fantasma">SketchSend ✏️</div>
-  <p class="tagline">Donde cada mensaje es un dibujo</p>
-  <div class="card" style="gap:12px;">
-    <h2 style="text-align:center;">Bienvenido</h2>
-    <p style="color:var(--muted);font-size:0.85rem;text-align:center;">Entra con tu cuenta Google para empezar a dibujar</p>
+  <p class="tagline" id="lbl-tagline">Donde cada mensaje es un dibujo</p>
+  <div class="card" style="gap:14px;">
+    <h2 style="text-align:center;" id="lbl-welcome">Bienvenido</h2>
+    <p style="color:var(--muted);font-size:0.85rem;text-align:center;" id="lbl-welcome-sub">Escribe tu nombre y correo para empezar</p>
 
-    <!-- Google es el botón principal -->
-    <button class="btn btn-p" id="google-btn" style="font-size:1rem;padding:14px;">🔵 Continuar con Google</button>
+    <input type="text"  id="magic-nombre" class="inp" placeholder="Tu nombre (ej: Joselo)" maxlength="20" autocomplete="name">
+    <input type="email" id="magic-email"  class="inp" placeholder="tu@correo.com" autocomplete="email">
+    <div id="magic-error" style="font-size:0.8rem;color:var(--danger);display:none;min-height:16px;"></div>
+    <button class="btn btn-p" id="magic-btn" id="lbl-enter-btn">Entrar →</button>
 
-    <div class="sep">o usa email</div>
+    <div class="sep" id="lbl-or">o</div>
+    <button class="btn btn-s" id="google-btn">🔵 Continuar con Google</button>
 
-    <!-- Email/contraseña colapsado por defecto -->
-    <div id="email-section" style="display:none;flex-direction:column;gap:10px;">
-      <div style="display:flex;border-bottom:1px solid var(--border);margin:0 -4px 4px;">
-        <button id="tab-register" style="flex:1;padding:10px 0;background:none;border:none;border-bottom:2px solid var(--accent);color:var(--text);font-family:var(--sans);font-size:0.85rem;font-weight:600;cursor:pointer;">Registrarse</button>
-        <button id="tab-login" style="flex:1;padding:10px 0;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);font-family:var(--sans);font-size:0.85rem;cursor:pointer;">Iniciar sesión</button>
-      </div>
-      <div id="form-register">
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <input type="text"  id="reg-nombre"   class="inp" placeholder="Tu nombre (ej: José)" maxlength="20">
-          <input type="text"  id="reg-username" class="inp" placeholder="@usuario (ej: joselo)" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
-          <input type="email" id="reg-email"    class="inp" placeholder="tu@email.com" autocomplete="email">
-          <input type="password" id="reg-pass"  class="inp" placeholder="Contraseña (mín. 6 caracteres)" autocomplete="new-password">
-          <div id="reg-error" style="font-size:0.8rem;color:var(--danger);display:none;min-height:16px;"></div>
-          <button id="reg-btn" class="btn btn-s">Crear cuenta →</button>
-        </div>
-      </div>
-      <div id="form-login" style="display:none;">
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <input type="email"    id="login-email" class="inp" placeholder="tu@email.com" autocomplete="email">
-          <input type="password" id="login-pass"  class="inp" placeholder="Contraseña" autocomplete="current-password">
-          <button id="forgot-btn" style="background:none;border:none;color:var(--muted);font-size:0.78rem;cursor:pointer;text-align:left;padding:0;">¿Olvidaste tu contraseña?</button>
-          <div id="login-error" style="font-size:0.8rem;color:var(--danger);display:none;min-height:16px;"></div>
-          <button id="login-btn" class="btn btn-s">Entrar →</button>
-        </div>
-      </div>
-    </div>
-
-    <button id="toggle-email-btn" style="background:none;border:none;color:var(--muted);font-size:0.8rem;cursor:pointer;padding:4px 0;">Usar email y contraseña ↓</button>
-
-
-    <!-- Mensaje de seguridad -->
-    <p style="font-size:0.72rem;color:var(--muted);text-align:center;margin-top:4px;">🔒 Tus dibujos son privados y se eliminan en 24h</p>
+    <p style="font-size:0.72rem;color:var(--muted);text-align:center;" id="lbl-security">🔒 Tus dibujos son privados y se eliminan en 24h</p>
   </div>
 </div>
 
-<!-- ══ PANTALLA: VERIFICA TU EMAIL ══ -->
+<!-- ══ PANTALLA: REVISA TU CORREO (magic link) ══ -->
 <div id="verify-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
   <p class="tagline">Donde cada mensaje es un dibujo</p>
   <div class="card" style="text-align:center;gap:16px;">
     <div style="font-size:2.5rem;">📬</div>
-    <h2 id="lbl-verify-title">Verifica tu email</h2>
-    <p id="verify-email-text" style="color:var(--muted);font-size:0.88rem;">Te enviamos un link de verificación. Ábrelo y luego vuelve aquí.</p>
-    <button id="verify-check-btn" class="btn btn-p">Ya verifiqué ✓</button>
-    <button id="verify-resend-btn" class="btn btn-s">Reenviar email</button>
-    <button id="verify-logout-btn" style="background:none;border:none;color:var(--muted);font-size:0.8rem;cursor:pointer;margin-top:4px;">Usar otra cuenta</button>
+    <h2 id="lbl-verify-title">Revisa tu correo</h2>
+    <p id="verify-email-text" style="color:var(--muted);font-size:0.88rem;">Te enviamos un enlace. Tócalo para entrar.</p>
+    <button id="verify-resend-btn" class="btn btn-s">Reenviar enlace</button>
+    <button id="verify-logout-btn" style="background:none;border:none;color:var(--muted);font-size:0.8rem;cursor:pointer;margin-top:4px;">Usar otro correo</button>
   </div>
 </div>
 
-<!-- ══ PANTALLA DE @USERNAME (solo para Google) ══ -->
+<!-- ══ PANTALLA DE @USERNAME (primera vez) ══ -->
 <div id="username-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
   <p class="tagline">Donde cada mensaje es un dibujo</p>
-  <div class="card">
+  <div class="card" style="gap:12px;">
     <h2 id="lbl-choose-username">Elige tu @usuario</h2>
-    <p style="color:var(--muted);font-size:0.85rem;">Con este nombre tus amigos te podrán buscar en SketchSend.</p>
-    <div id="username-screen-displayname" style="font-size:0.82rem;color:var(--muted);margin-bottom:2px;"></div>
+    <div id="username-screen-displayname" style="font-size:0.82rem;color:var(--muted);"></div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:0.82rem;color:var(--muted);line-height:1.5;" id="lbl-username-explain">
+      <strong style="color:var(--text);">📛 Nombre</strong> → lo que ven tus amigos al recibir tus dibujos.<br>
+      <strong style="color:var(--accent2);">🔍 @usuario</strong> → lo que escriben para encontrarte y agregarte.
+    </div>
     <input type="text" id="username-inp" class="inp" placeholder="@tuusuario" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
     <div id="username-error" style="font-size:0.8rem;color:var(--danger);display:none;"></div>
     <button id="username-confirm-btn" class="btn btn-p">Confirmar →</button>
@@ -997,17 +971,42 @@
           <div class="settings-avatar-edit" id="settings-edit-photo" title="Cambiar foto">✏️</div>
           <input type="file" id="photo-file-input" accept="image/*" style="display:none;">
         </div>
-        <div>
+        <div style="flex:1;min-width:0;">
           <div class="settings-name" id="settings-name">—</div>
-          <div class="settings-email" id="settings-email"></div>
+          <div class="settings-email" id="settings-email" style="font-size:0.75rem;color:var(--muted);margin-top:2px;"></div>
+          <div id="settings-username-display" style="font-size:0.78rem;color:var(--accent2);margin-top:3px;"></div>
         </div>
       </div>
-      <div class="settings-row">
+      <!-- Cambiar nombre inline -->
+      <div class="settings-row" id="rename-view-row">
         <div>
-          <div class="settings-row-label" id="lbl-change-name">Cambiar nombre</div>
-          <div class="settings-row-sub">Máximo 15 caracteres</div>
+          <div class="settings-row-label" id="lbl-change-name">Nombre</div>
+          <div class="settings-row-sub" id="lbl-change-name-sub">Lo que ven tus amigos al recibir dibujos</div>
         </div>
-        <button class="settings-row-action" id="settings-rename">Editar</button>
+        <button class="settings-row-action" id="settings-rename" id="lbl-edit-btn">Editar</button>
+      </div>
+      <div id="rename-edit-row" style="display:none;flex-direction:column;gap:8px;padding:8px 0;">
+        <input type="text" id="rename-inp" class="inp" placeholder="Tu nombre" maxlength="20" style="font-size:0.9rem;">
+        <div style="display:flex;gap:8px;">
+          <button class="settings-row-action" style="flex:1;background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;border-color:transparent;" id="rename-save-btn">Guardar</button>
+          <button class="settings-row-action" id="rename-cancel-btn">Cancelar</button>
+        </div>
+      </div>
+      <!-- Cambiar @usuario inline -->
+      <div class="settings-row" id="uname-view-row">
+        <div>
+          <div class="settings-row-label" id="lbl-change-username">@Usuario</div>
+          <div class="settings-row-sub" id="lbl-change-username-sub">Con este nombre te buscan para enviarte dibujos</div>
+        </div>
+        <button class="settings-row-action" id="settings-change-username">Editar</button>
+      </div>
+      <div id="uname-edit-row" style="display:none;flex-direction:column;gap:8px;padding:8px 0;">
+        <input type="text" id="uname-inp" class="inp" placeholder="@tuusuario" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="font-size:0.9rem;">
+        <div id="uname-edit-error" style="font-size:0.78rem;color:var(--danger);display:none;"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="settings-row-action" style="flex:1;background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;border-color:transparent;" id="uname-save-btn">Guardar</button>
+          <button class="settings-row-action" id="uname-cancel-btn">Cancelar</button>
+        </div>
       </div>
     </div>
 
@@ -1123,13 +1122,12 @@
 ══════════════════════════════════════════════════════ */
 const I18N = {
   es: {
-    welcome: 'Bienvenido', welcome_sub: 'Entra con tu cuenta Google para empezar a dibujar',
-    tab_register: 'Registrarse', tab_login: 'Iniciar sesión',
-    name_placeholder: 'Tu nombre (ej: José)', username_placeholder: '@usuario (ej: joselo)',
-    email_placeholder: 'tu@email.com', pass_placeholder: 'Contraseña (mín. 6 caracteres)',
-    pass_placeholder2: 'Contraseña',
-    create_account: 'Crear cuenta →', enter: 'Entrar →',
-    forgot_pass: '¿Olvidaste tu contraseña?',
+    welcome: 'Bienvenido', welcome_sub: 'Escribe tu nombre y correo para empezar',
+    name_placeholder: 'Tu nombre (ej: Joselo)', username_placeholder: '@tuusuario (ej: joselo23)',
+    email_placeholder: 'tu@correo.com',
+    enter_btn: 'Entrar →',
+    verify_title: 'Revisa tu correo',
+    resend_link: 'Reenviar enlace', use_other_email: 'Usar otro correo',
     google_btn: '🔵 Continuar con Google', apple_btn: '🍎 Continuar con Apple',
     wb_title: 'Abre esto en tu navegador',
     wb_body: 'Estás dentro de otra app. El login con Google no funciona aquí.',
@@ -1151,7 +1149,8 @@ const I18N = {
     inbox_empty: 'No tienes dibujos nuevos', inbox_sent_you: 'Te envió un dibujo',
     settings_title: '⚙️ Configuración',
     profile: 'Perfil', friends: 'Amigos', store: 'Tienda', app_section: 'App',
-    change_name: 'Cambiar nombre', change_name_sub: 'Máximo 20 caracteres',
+    change_name: 'Nombre', change_name_sub: 'Lo que ven tus amigos al recibir dibujos',
+    change_username: '@Usuario', change_username_sub: 'Con este nombre te buscan para enviarte dibujos',
     change_photo: 'Cambiar foto', change_photo_sub: '🚧 Próximamente',
     edit: 'Editar', upload: 'Subir',
     your_code: 'Tu código de invitación',
@@ -1183,13 +1182,12 @@ const I18N = {
     err_saving: 'Error al guardar: ',
   },
   en: {
-    welcome: 'Welcome', welcome_sub: 'Sign in with your Google account to start drawing',
-    tab_register: 'Sign up', tab_login: 'Log in',
-    name_placeholder: 'Your name (e.g. Jose)', username_placeholder: '@username (e.g. joselo)',
-    email_placeholder: 'you@email.com', pass_placeholder: 'Password (min. 6 chars)',
-    pass_placeholder2: 'Password',
-    create_account: 'Create account →', enter: 'Log in →',
-    forgot_pass: 'Forgot your password?',
+    welcome: 'Welcome', welcome_sub: 'Enter your name and email to get started',
+    name_placeholder: 'Your name (e.g. Joselo)', username_placeholder: '@username (e.g. joselo23)',
+    email_placeholder: 'you@email.com',
+    enter_btn: 'Continue →',
+    verify_title: 'Check your email',
+    resend_link: 'Resend link', use_other_email: 'Use a different email',
     google_btn: '🔵 Continue with Google', apple_btn: '🍎 Continue with Apple',
     wb_title: 'Open this in your browser',
     wb_body: "You're inside another app. Google login doesn't work here.",
@@ -1211,7 +1209,8 @@ const I18N = {
     inbox_empty: 'No new drawings', inbox_sent_you: 'sent you a drawing',
     settings_title: '⚙️ Settings',
     profile: 'Profile', friends: 'Friends', store: 'Store', app_section: 'App',
-    change_name: 'Change name', change_name_sub: 'Maximum 20 characters',
+    change_name: 'Name', change_name_sub: 'What your friends see when they receive drawings',
+    change_username: '@Username', change_username_sub: 'How friends search for and add you',
     change_photo: 'Change photo', change_photo_sub: '🚧 Coming soon',
     edit: 'Edit', upload: 'Upload',
     your_code: 'Your invite code', your_code_sub: 'Share it so friends can add you',
@@ -1255,23 +1254,19 @@ function applyLang() {
   set('wb-title', 'wb_title'); set('wb-body', 'wb_body'); set('wb-hint', 'wb_hint');
 
   // ── Login ──
+  set('lbl-welcome', 'welcome');
+  set('lbl-welcome-sub', 'welcome_sub');
+  set('magic-btn', 'enter_btn');
   set('google-btn', 'google_btn');
-  set('tab-register', 'tab_register');
-  set('tab-login', 'tab_login');
-  set('reg-btn', 'create_account');
-  set('login-btn', 'enter');
-  set('forgot-btn', 'forgot_pass');
-  set('toggle-email-btn', 'use_email');
+  set('lbl-verify-title', 'verify_title');
+  set('verify-resend-btn', 'resend_link');
+  set('verify-logout-btn', 'use_other_email');
   set('username-confirm-btn', 'confirm');
-  set('verify-check-btn', 'already_verified');
-  set('verify-resend-btn', 'resend_email');
-  set('verify-logout-btn', 'use_other_account');
-  ph('reg-nombre', 'name_placeholder');
-  ph('reg-username', 'username_placeholder');
-  ph('reg-email', 'email_placeholder');
-  ph('reg-pass', 'pass_placeholder');
-  ph('login-email', 'email_placeholder');
-  ph('login-pass', 'pass_placeholder2');
+  set('lbl-choose-username', 'choose_username');
+  set('lbl-username-explain', null); /* texto fijo, no se traduce aquí */
+  ph('magic-nombre', 'name_placeholder');
+  ph('magic-email', 'email_placeholder');
+  ph('username-inp', 'username_placeholder');
 
   // ── Header / app ──
   set('enviar-btn', 'send');
@@ -1317,6 +1312,9 @@ function applyLang() {
   const settingsH = document.querySelector('.settings-header h3');
   if (settingsH) settingsH.textContent = t('settings_title');
   set('settings-rename', 'edit');
+  set('settings-change-username', 'edit');
+  set('lbl-change-username', 'change_username');
+  set('lbl-change-username-sub', 'change_username_sub');
   set('settings-invite', 'invite_btn');
   set('settings-logout', 'logout');
   set('copy-code-btn', 'copy_code');
@@ -1527,7 +1525,9 @@ function mostrarVerificacion(email) {
   const vs = document.getElementById('verify-screen');
   if (vs) vs.style.display = 'flex';
   const txt = document.getElementById('verify-email-text');
-  if (txt) txt.textContent = `Enviamos un link a ${email}. Ábrelo y luego pulsa "Ya verifiqué".`;
+  if (txt) txt.innerHTML = lang === 'en'
+    ? `We sent a link to <strong>${email}</strong> — tap it to sign in.`
+    : `Enviamos un enlace a <strong>${email}</strong> — tócalo para entrar.`;
 }
 
 function mostrarPantallaUsername(nombre, fotoUrl) {
@@ -1564,7 +1564,8 @@ function mostrarPantallaUsername(nombre, fotoUrl) {
       await db.collection('users').doc(uid).set({
         username: raw, displayName: nombre, photoURL: fotoUrl || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(), uid,
-        shortCode: generarShortCode()
+        shortCode: generarShortCode(),
+        usernameHistory: [raw]
       });
       finalizarLogin(raw, nombre, fotoUrl);
     } catch(e) {
@@ -1625,18 +1626,50 @@ function doLogout() {
   else { localStorage.removeItem('ss_user'); mostrarLogin(); }
 }
 
+/* ══════════════════════════════════════════════════════
+   MAGIC LINK — completar inicio de sesión si la URL lo contiene
+   Esto corre ANTES de onAuthStateChanged para completar el auth
+   cuando el usuario toca el enlace desde su correo.
+══════════════════════════════════════════════════════ */
+if (firebaseReady && auth && auth.isSignInWithEmailLink(window.location.href)) {
+  let pendingEmail = localStorage.getItem('ss_email_pending');
+  let pendingNombre = localStorage.getItem('ss_nombre_pending') || '';
+  if (!pendingEmail) {
+    /* El usuario abrió el link en un dispositivo diferente */
+    pendingEmail = window.prompt('Confirma tu correo para entrar:') || '';
+  }
+  if (pendingEmail) {
+    auth.signInWithEmailLink(pendingEmail, window.location.href)
+      .then(result => {
+        localStorage.removeItem('ss_email_pending');
+        /* Guardar nombre pendiente para usarlo en onAuthStateChanged */
+        if (pendingNombre) {
+          /* updateProfile si el user es nuevo y no tiene displayName */
+          if (!result.user.displayName && pendingNombre) {
+            result.user.updateProfile({ displayName: pendingNombre }).catch(() => {});
+          }
+          localStorage.removeItem('ss_nombre_pending');
+        }
+        history.replaceState({}, '', location.pathname);
+      })
+      .catch(e => {
+        console.error('Magic link error:', e);
+        toast('❌ El enlace expiró o ya fue usado. Pide uno nuevo.');
+        mostrarLogin();
+      });
+  }
+}
+
 /* ── Observer principal ── */
 if (firebaseReady && auth) {
   auth.onAuthStateChanged(async user => {
     if (!user) { mostrarLogin(); return; }
-    if (user.providerData[0]?.providerId === 'password' && !user.emailVerified) {
-      mostrarVerificacion(user.email);
-      return;
-    }
     try {
       const doc = await db.collection('users').doc(user.uid).get();
       if (!doc.exists) {
-        const nombre = user.displayName || user.email.split('@')[0];
+        /* Usuario nuevo — necesita elegir @usuario */
+        const nombre = user.displayName || localStorage.getItem('ss_nombre_pending') || user.email.split('@')[0];
+        localStorage.removeItem('ss_nombre_pending');
         mostrarPantallaUsername(nombre, user.photoURL);
       } else {
         const d = doc.data();
@@ -1649,116 +1682,58 @@ if (firebaseReady && auth) {
   });
 }
 
-/* ── TABS Registrarse / Iniciar sesión ── */
-document.getElementById('tab-register').addEventListener('click', () => {
-  document.getElementById('form-register').style.display = 'block';
-  document.getElementById('form-login').style.display = 'none';
-  document.getElementById('tab-register').style.borderBottomColor = 'var(--accent)';
-  document.getElementById('tab-register').style.color = 'var(--text)';
-  document.getElementById('tab-login').style.borderBottomColor = 'transparent';
-  document.getElementById('tab-login').style.color = 'var(--muted)';
-});
-document.getElementById('tab-login').addEventListener('click', () => {
-  document.getElementById('form-register').style.display = 'none';
-  document.getElementById('form-login').style.display = 'block';
-  document.getElementById('tab-login').style.borderBottomColor = 'var(--accent)';
-  document.getElementById('tab-login').style.color = 'var(--text)';
-  document.getElementById('tab-register').style.borderBottomColor = 'transparent';
-  document.getElementById('tab-register').style.color = 'var(--muted)';
-});
-
-/* ── REGISTRO con email + contraseña ── */
-document.getElementById('reg-btn').addEventListener('click', async () => {
-  const nombre = document.getElementById('reg-nombre').value.trim();
-  const rawU   = document.getElementById('reg-username').value.trim().toLowerCase().replace(/^@/,'');
-  const email  = document.getElementById('reg-email').value.trim();
-  const pass   = document.getElementById('reg-pass').value;
-  const errEl  = document.getElementById('reg-error');
-  const mostrarErr = msg => { errEl.textContent = msg; errEl.style.display = 'block'; };
+/* ── Magic link: enviar enlace ── */
+document.getElementById('magic-btn').addEventListener('click', async () => {
+  if (!firebaseReady || !auth) { toast('🚧 Firebase no configurado'); return; }
+  const nombre = document.getElementById('magic-nombre').value.trim();
+  const email  = document.getElementById('magic-email').value.trim();
+  const errEl  = document.getElementById('magic-error');
   errEl.style.display = 'none';
-  if (!nombre)  { mostrarErr('Escribe tu nombre'); return; }
-  if (!/^[a-z0-9_]{3,20}$/.test(rawU)) { mostrarErr('@usuario: solo letras minúsculas, números y _ · mínimo 3 chars'); return; }
-  if (!email)   { mostrarErr('Escribe tu email'); return; }
-  if (pass.length < 6) { mostrarErr('La contraseña debe tener al menos 6 caracteres'); return; }
-  const btn = document.getElementById('reg-btn');
-  btn.disabled = true; btn.textContent = 'Creando cuenta…';
+  if (!nombre) { errEl.textContent = lang==='es' ? 'Escribe tu nombre' : 'Enter your name'; errEl.style.display='block'; return; }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent = lang==='es' ? 'Escribe un correo válido' : 'Enter a valid email'; errEl.style.display='block'; return;
+  }
+  const btn = document.getElementById('magic-btn');
+  btn.disabled = true; btn.textContent = lang==='es' ? 'Enviando…' : 'Sending…';
   try {
-    const snapU = await db.collection('users').where('username','==',rawU).get();
-    if (!snapU.empty) { mostrarErr('El @' + rawU + ' ya está tomado, elige otro'); btn.disabled=false; btn.textContent=t('create_account'); return; }
-    const cred = await auth.createUserWithEmailAndPassword(email, pass);
-    await cred.user.updateProfile({ displayName: nombre });
-    await db.collection('users').doc(cred.user.uid).set({
-      username: rawU, displayName: nombre, photoURL: '',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(), uid: cred.user.uid,
-      shortCode: generarShortCode()
-    });
-    await cred.user.sendEmailVerification();
+    const actionCodeSettings = {
+      url: location.origin + location.pathname,
+      handleCodeInApp: true
+    };
+    await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+    localStorage.setItem('ss_email_pending', email);
+    localStorage.setItem('ss_nombre_pending', nombre);
+    mostrarVerificacion(email);
   } catch(e) {
     const msgs = {
-      'auth/email-already-in-use': 'Ese email ya tiene cuenta — usa "Iniciar sesión"',
-      'auth/invalid-email': 'Email no válido',
-      'auth/weak-password': 'Contraseña muy débil'
+      'auth/invalid-email': lang==='es' ? 'Correo no válido' : 'Invalid email',
+      'auth/too-many-requests': lang==='es' ? 'Demasiados intentos, espera un momento' : 'Too many attempts, wait a moment'
     };
-    mostrarErr(msgs[e.code] || e.message);
-    btn.disabled = false; btn.textContent = t('create_account');
+    errEl.textContent = msgs[e.code] || e.message; errEl.style.display='block';
+    btn.disabled = false; btn.textContent = lang==='es' ? 'Entrar →' : 'Continue →';
   }
 });
 
-/* ── INICIO DE SESIÓN con email + contraseña ── */
-document.getElementById('login-btn').addEventListener('click', async () => {
-  const email = document.getElementById('login-email').value.trim();
-  const pass  = document.getElementById('login-pass').value;
-  const errEl = document.getElementById('login-error');
-  errEl.style.display = 'none';
-  if (!email || !pass) { errEl.textContent = 'Completa email y contraseña'; errEl.style.display='block'; return; }
-  const btn = document.getElementById('login-btn');
-  btn.disabled = true; btn.textContent = 'Entrando…';
-  try {
-    await auth.signInWithEmailAndPassword(email, pass);
-  } catch(e) {
-    const msgs = {
-      'auth/user-not-found': 'No existe cuenta con ese email',
-      'auth/wrong-password': 'Contraseña incorrecta',
-      'auth/invalid-credential': 'Email o contraseña incorrectos',
-      'auth/too-many-requests': 'Demasiados intentos, espera un momento'
-    };
-    errEl.textContent = msgs[e.code] || e.message; errEl.style.display = 'block';
-    btn.disabled = false; btn.textContent = t('enter');
-  }
+/* Enviar enlace con Enter */
+['magic-nombre','magic-email'].forEach(id => {
+  document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('magic-btn').click(); });
 });
 
-/* ── Recuperar contraseña ── */
-document.getElementById('forgot-btn').addEventListener('click', async () => {
-  const email = document.getElementById('login-email').value.trim();
-  if (!email) { toast('📧 Escribe tu email primero'); return; }
-  try {
-    await auth.sendPasswordResetEmail(email);
-    toast('📬 Email de recuperación enviado a ' + email);
-  } catch(e) { toast('❌ ' + (e.code === 'auth/user-not-found' ? 'No existe cuenta con ese email' : e.message)); }
-});
-
-/* ── Botones de verificación de email ── */
-document.getElementById('verify-check-btn').addEventListener('click', async () => {
-  if (!auth.currentUser) { mostrarLogin(); return; }
-  await auth.currentUser.reload();
-  if (auth.currentUser.emailVerified) {
-    toast('✅ Email verificado, entrando…');
-    auth.currentUser.getIdToken(true);
-  } else {
-    toast('📬 Aún no hemos recibido la verificación, revisa tu email');
-  }
-});
-
+/* ── Pantalla de espera: reenviar / cambiar correo ── */
 document.getElementById('verify-resend-btn').addEventListener('click', async () => {
-  if (!auth.currentUser) return;
+  const email = localStorage.getItem('ss_email_pending');
+  if (!email) { mostrarLogin(); return; }
   try {
-    await auth.currentUser.sendEmailVerification();
-    toast('📬 Email reenviado');
+    const actionCodeSettings = { url: location.origin + location.pathname, handleCodeInApp: true };
+    await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+    toast('📬 ' + (lang==='es' ? 'Enlace reenviado a ' : 'Link resent to ') + email);
   } catch(e) { toast('⚠️ ' + e.message); }
 });
 
 document.getElementById('verify-logout-btn').addEventListener('click', () => {
-  if (auth) auth.signOut();
+  localStorage.removeItem('ss_email_pending');
+  localStorage.removeItem('ss_nombre_pending');
+  mostrarLogin();
 });
 
 /* ── Detección de navegador embebido (WebView) ── */
@@ -3081,11 +3056,11 @@ function abrirSettings() {
   if (firebaseReady && auth.currentUser) {
     db.collection('users').doc(auth.currentUser.uid).get().then(doc => {
       if (doc.exists) {
-        const code = doc.data().shortCode;
-        const emailUser = doc.data().email || auth.currentUser.email || '';
-        document.getElementById('user-shortcode').textContent = code || '——';
-        document.getElementById('settings-email').textContent = emailUser || auth.currentUser.email || auth.currentUser.displayName || '';
-        document.getElementById('settings-name').textContent = doc.data().displayName || usuario;
+        const d = doc.data();
+        document.getElementById('user-shortcode').textContent = d.shortCode || '——';
+        document.getElementById('settings-email').textContent = auth.currentUser.email || '';
+        document.getElementById('settings-name').textContent = d.displayName || usuario;
+        document.getElementById('settings-username-display').textContent = d.username ? '@' + d.username : '';
       }
     });
   }
@@ -3143,23 +3118,81 @@ avMob.addEventListener('click', abrirSettings);
 settingsClose.addEventListener('click', cerrarSettings);
 settingsOverlay.addEventListener('click', e => { if (e.target === settingsOverlay) cerrarSettings(); });
 
-settingsRename.addEventListener('click', async () => {
-  const nuevoNombre = prompt('Nuevo nombre (máx 15 caracteres):', usuario || '');
-  if (!nuevoNombre || !nuevoNombre.trim()) return;
-  const n = nuevoNombre.trim().slice(0, 15);
-  if (firebaseReady && auth && auth.currentUser) {
-    try { await auth.currentUser.updateProfile({ displayName: n }); } catch(e) {}
-  } else {
-    localStorage.setItem('ss_user', n);
+/* ── Cambiar nombre inline ── */
+document.getElementById('settings-rename').addEventListener('click', () => {
+  document.getElementById('rename-inp').value = document.getElementById('settings-name').textContent || '';
+  document.getElementById('rename-view-row').style.display = 'none';
+  document.getElementById('rename-edit-row').style.display = 'flex';
+  document.getElementById('rename-inp').focus();
+});
+document.getElementById('rename-cancel-btn').addEventListener('click', () => {
+  document.getElementById('rename-view-row').style.display = 'flex';
+  document.getElementById('rename-edit-row').style.display = 'none';
+});
+document.getElementById('rename-save-btn').addEventListener('click', async () => {
+  const n = document.getElementById('rename-inp').value.trim().slice(0, 20);
+  if (!n) return;
+  if (firebaseReady && auth?.currentUser) {
+    try {
+      await auth.currentUser.updateProfile({ displayName: n });
+      await db.collection('users').doc(auth.currentUser.uid).update({ displayName: n });
+    } catch(e) { toast('❌ ' + e.message); return; }
   }
   usuario = n;
-  const av = genAvatar(n);
+  const av = auth?.currentUser?.photoURL || genAvatar(n);
   unameEl.textContent = n; avatarEl.src = av;
   unameMob.textContent = n; avMob.src = av;
   document.getElementById('settings-name').textContent = n;
   document.getElementById('settings-avatar').src = av;
-  toast(`✅ Nombre cambiado a "${n}"`);
+  document.getElementById('rename-view-row').style.display = 'flex';
+  document.getElementById('rename-edit-row').style.display = 'none';
+  toast(`✅ Nombre: "${n}"`);
 });
+document.getElementById('rename-inp').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('rename-save-btn').click(); if (e.key==='Escape') document.getElementById('rename-cancel-btn').click(); });
+
+/* ── Cambiar @usuario inline ── */
+document.getElementById('settings-change-username').addEventListener('click', () => {
+  const cur = document.getElementById('settings-username-display').textContent.replace('@','');
+  document.getElementById('uname-inp').value = cur;
+  document.getElementById('uname-edit-error').style.display = 'none';
+  document.getElementById('uname-view-row').style.display = 'none';
+  document.getElementById('uname-edit-row').style.display = 'flex';
+  document.getElementById('uname-inp').focus();
+});
+document.getElementById('uname-cancel-btn').addEventListener('click', () => {
+  document.getElementById('uname-view-row').style.display = 'flex';
+  document.getElementById('uname-edit-row').style.display = 'none';
+});
+document.getElementById('uname-save-btn').addEventListener('click', async () => {
+  const raw = document.getElementById('uname-inp').value.trim().toLowerCase().replace(/^@/,'');
+  const errEl = document.getElementById('uname-edit-error');
+  if (!/^[a-z0-9_]{3,20}$/.test(raw)) {
+    errEl.textContent = lang==='es' ? 'Solo letras, números y _ · mínimo 3 caracteres' : 'Letters, numbers and _ only · min 3 chars';
+    errEl.style.display = 'block'; return;
+  }
+  errEl.style.display = 'none';
+  document.getElementById('uname-save-btn').disabled = true;
+  try {
+    const uid = auth.currentUser.uid;
+    const snap = await db.collection('users').where('username','==',raw).get();
+    if (!snap.empty && snap.docs[0].id !== uid) {
+      errEl.textContent = lang==='es' ? 'Ese @usuario ya está tomado' : 'That @username is taken'; errEl.style.display='block';
+      document.getElementById('uname-save-btn').disabled = false; return;
+    }
+    /* Guardar historial de usernames */
+    const userDoc = await db.collection('users').doc(uid).get();
+    const prevHistory = userDoc.data()?.usernameHistory || [];
+    if (!prevHistory.includes(raw)) prevHistory.push(raw);
+    await db.collection('users').doc(uid).update({ username: raw, usernameHistory: prevHistory });
+    usuario = raw;
+    document.getElementById('settings-username-display').textContent = '@' + raw;
+    document.getElementById('uname-view-row').style.display = 'flex';
+    document.getElementById('uname-edit-row').style.display = 'none';
+    toast(`✅ @usuario: ${raw}`);
+  } catch(e) { errEl.textContent = e.message; errEl.style.display='block'; }
+  document.getElementById('uname-save-btn').disabled = false;
+});
+document.getElementById('uname-inp').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('uname-save-btn').click(); if (e.key==='Escape') document.getElementById('uname-cancel-btn').click(); });
 
 settingsInvite.addEventListener('click', () => {
   const code = document.getElementById('user-shortcode').textContent;
@@ -3278,14 +3311,6 @@ cargarBandeja();
   if (!soportaVideo) vidBtn.style.display = 'none';
 })();
 
-/* Toggle email/contraseña colapsable */
-document.getElementById('toggle-email-btn')?.addEventListener('click', () => {
-  const section = document.getElementById('email-section');
-  const btn = document.getElementById('toggle-email-btn');
-  const visible = section.style.display !== 'none';
-  section.style.display = visible ? 'none' : 'flex';
-  btn.textContent = visible ? 'Usar email y contraseña ↓' : 'Ocultar ↑';
-});
 
 /* Splash screen: mostrar 1.8s luego fade out */
 (function() {
