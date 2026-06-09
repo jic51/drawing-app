@@ -2430,10 +2430,15 @@ enviarBtn.addEventListener('click', async () => {
 
 async function enviarSketchFirestore(toUid) {
   const uid = auth.currentUser.uid;
+  /* fromName: usar @usuario, si no está disponible usar displayName, si no el email */
+  const senderName = usuario
+    || auth.currentUser.displayName
+    || auth.currentUser.email?.split('@')[0]
+    || 'Usuario';
   try {
     await db.collection('sketches').add({
       from: uid,
-      fromName: usuario,
+      fromName: senderName,
       to: toUid,
       strokes: trazos,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -2441,7 +2446,7 @@ async function enviarSketchFirestore(toUid) {
       viewed: false
     });
   } catch(e) {
-    console.error('Error enviando sketch:', e);
+    logRemoteError('enviarSketch', e);
     toast('⚠️ Error al enviar: ' + e.message);
   }
 }
@@ -3195,15 +3200,24 @@ function abrirSettings() {
   document.getElementById('settings-name').textContent = usuario || '—';
   document.getElementById('settings-email').textContent = auth?.currentUser?.email || auth?.currentUser?.displayName || '';
 
-  /* Cargar shortCode y email desde Firestore */
+  /* Cargar shortCode y email desde Firestore.
+     Si el usuario no tiene shortCode (cuenta antigua), generar uno ahora. */
   if (firebaseReady && auth.currentUser) {
-    db.collection('users').doc(auth.currentUser.uid).get().then(doc => {
+    db.collection('users').doc(auth.currentUser.uid).get().then(async doc => {
       if (doc.exists) {
         const d = doc.data();
-        document.getElementById('user-shortcode').textContent = d.shortCode || '——';
+        let code = d.shortCode;
+        /* Cuenta antigua sin shortCode → generar y guardar */
+        if (!code) {
+          code = generarShortCode();
+          await db.collection('users').doc(auth.currentUser.uid).update({ shortCode: code }).catch(() => {});
+        }
+        document.getElementById('user-shortcode').textContent = code;
         document.getElementById('settings-email').textContent = auth.currentUser.email || '';
         document.getElementById('settings-name').textContent = d.displayName || usuario;
         document.getElementById('settings-username-display').textContent = d.username ? '@' + d.username : '';
+        /* Recargar QR con el código real */
+        if (window._reloadShareQR) window._reloadShareQR();
       }
     });
   }
@@ -3249,8 +3263,8 @@ function abrirSettings() {
     settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">Inicia sesión para ver tus amigos</span>';
   }
 
-  /* Reset share tabs — reload QR with current shortcode */
-  if (window._reloadShareQR) window._reloadShareQR();
+  /* Reset share tabs — QR se recarga dentro del bloque Firestore de arriba
+     una vez que el shortCode real esté disponible (incluyendo cuentas antiguas) */
 
   settingsOverlay.classList.add('activo');
 }
@@ -3389,10 +3403,16 @@ settingsInvite.addEventListener('click', () => {
   activate(0);
 })();
 
-/* Avatar pencil → open file picker for real photo upload */
+/* Avatar pencil → open file picker for real photo upload
+   Solo funciona si Firebase Storage está habilitado (plan Blaze).
+   Si no, muestra un mensaje amigable en lugar de un error técnico. */
 const photoFileInput = document.getElementById('photo-file-input');
 document.getElementById('settings-edit-photo').addEventListener('click', () => {
   if (!firebaseReady || !auth.currentUser) { toast('❌ Debes iniciar sesión'); return; }
+  if (!window.storage) {
+    toast(lang === 'en' ? '🚧 Photo upload coming soon' : '🚧 Subida de fotos próximamente');
+    return;
+  }
   photoFileInput.click();
 });
 photoFileInput.addEventListener('change', async () => {
