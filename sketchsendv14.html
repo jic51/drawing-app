@@ -1271,6 +1271,21 @@ const I18N = {
 let lang = localStorage.getItem('ss_lang') || 'es';
 function t(key) { return I18N[lang][key] || I18N['es'][key] || key; }
 
+/* HTML escape — usar siempre que datos de Firestore / usuario entren en innerHTML */
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/* Safe URL: solo permite https:// y data: para avatares generados */
+function safeUrl(url) {
+  if (!url) return '';
+  const s = String(url);
+  if (s.startsWith('https://') || s.startsWith('data:image/')) return s;
+  return ''; /* rechaza javascript:, blob: externos, etc. */
+}
+
 function applyLang() {
   const q = id => document.getElementById(id);
   const set = (id, key) => { const el = q(id); if (el) el.textContent = t(key); };
@@ -1386,9 +1401,9 @@ function applyLang() {
 
 function generarShortCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let code = '';
-  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
-  return code;
+  const arr = new Uint8Array(8);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => chars[b % chars.length]).join('');
 }
 
 /* ── REFERENCIAS DOM ── */
@@ -1564,9 +1579,13 @@ function mostrarVerificacion(email) {
   const vs = document.getElementById('verify-screen');
   if (vs) vs.style.display = 'flex';
   const txt = document.getElementById('verify-email-text');
-  if (txt) txt.innerHTML = lang === 'en'
-    ? `We sent a link to <strong>${email}</strong> — tap it to sign in.`
-    : `Enviamos un enlace a <strong>${email}</strong> — tócalo para entrar.`;
+  if (txt) {
+    txt.textContent = '';
+    const pre = document.createTextNode(lang === 'en' ? 'We sent a link to ' : 'Enviamos un enlace a ');
+    const strong = document.createElement('strong'); strong.textContent = email;
+    const post = document.createTextNode(lang === 'en' ? ' — tap it to sign in.' : ' — tócalo para entrar.');
+    txt.appendChild(pre); txt.appendChild(strong); txt.appendChild(post);
+  }
 }
 
 function mostrarPantallaUsername(nombre, fotoUrl) {
@@ -1648,9 +1667,16 @@ function finalizarLogin(username, displayName, photoURL) {
   /* Manejar ?add=CODE en URL */
   const urlParams = new URLSearchParams(window.location.search);
   const addCode = urlParams.get('add');
-  if (addCode) {
+  if (addCode && /^[A-Z0-9]{4,10}$/.test(addCode)) {
     history.replaceState({}, '', location.pathname);
-    setTimeout(() => agregarAmigo(addCode), 1000);
+    /* Confirmar antes de agregar — evita que links de terceros agreguen amigos sin permiso */
+    setTimeout(() => {
+      if (confirm(lang === 'en'
+        ? `Add a friend using invite code "${addCode}"?`
+        : `¿Agregar amigo con el código "${addCode}"?`)) {
+        agregarAmigo(addCode);
+      }
+    }, 800);
   }
 }
 
@@ -1672,8 +1698,8 @@ function doLogout() {
    cuando el usuario toca el enlace desde su correo.
 ══════════════════════════════════════════════════════ */
 if (firebaseReady && auth && auth.isSignInWithEmailLink(window.location.href)) {
-  let pendingEmail = localStorage.getItem('ss_email_pending');
-  let pendingNombre = localStorage.getItem('ss_nombre_pending') || '';
+  let pendingEmail = sessionStorage.getItem('ss_email_pending');
+  let pendingNombre = sessionStorage.getItem('ss_nombre_pending') || '';
   if (!pendingEmail) {
     /* El usuario abrió el link en un dispositivo diferente */
     pendingEmail = window.prompt('Confirma tu correo para entrar:') || '';
@@ -1681,14 +1707,14 @@ if (firebaseReady && auth && auth.isSignInWithEmailLink(window.location.href)) {
   if (pendingEmail) {
     auth.signInWithEmailLink(pendingEmail, window.location.href)
       .then(result => {
-        localStorage.removeItem('ss_email_pending');
+        sessionStorage.removeItem('ss_email_pending');
         /* Guardar nombre pendiente para usarlo en onAuthStateChanged */
         if (pendingNombre) {
           /* updateProfile si el user es nuevo y no tiene displayName */
           if (!result.user.displayName && pendingNombre) {
             result.user.updateProfile({ displayName: pendingNombre }).catch(() => {});
           }
-          localStorage.removeItem('ss_nombre_pending');
+          sessionStorage.removeItem('ss_nombre_pending');
         }
         history.replaceState({}, '', location.pathname);
       })
@@ -1718,8 +1744,8 @@ if (firebaseReady && auth) {
     try {
       const doc = await db.collection('users').doc(user.uid).get();
       if (!doc.exists) {
-        const nombre = user.displayName || localStorage.getItem('ss_nombre_pending') || user.email.split('@')[0];
-        localStorage.removeItem('ss_nombre_pending');
+        const nombre = user.displayName || sessionStorage.getItem('ss_nombre_pending') || user.email.split('@')[0];
+        sessionStorage.removeItem('ss_nombre_pending');
         mostrarPantallaUsername(nombre, user.photoURL);
       } else {
         const d = doc.data();
@@ -1765,8 +1791,8 @@ document.getElementById('magic-btn').addEventListener('click', async () => {
       handleCodeInApp: true
     };
     await auth.sendSignInLinkToEmail(email, actionCodeSettings);
-    localStorage.setItem('ss_email_pending', email);
-    localStorage.setItem('ss_nombre_pending', nombre);
+    sessionStorage.setItem('ss_email_pending', email);
+    sessionStorage.setItem('ss_nombre_pending', nombre);
     mostrarVerificacion(email);
   } catch(e) {
     const msgs = {
@@ -1785,7 +1811,7 @@ document.getElementById('magic-btn').addEventListener('click', async () => {
 
 /* ── Pantalla de espera: reenviar / cambiar correo ── */
 document.getElementById('verify-resend-btn').addEventListener('click', async () => {
-  const email = localStorage.getItem('ss_email_pending');
+  const email = sessionStorage.getItem('ss_email_pending');
   if (!email) { mostrarLogin(); return; }
   try {
     const actionCodeSettings = { url: location.origin + location.pathname, handleCodeInApp: true };
@@ -1795,8 +1821,8 @@ document.getElementById('verify-resend-btn').addEventListener('click', async () 
 });
 
 document.getElementById('verify-logout-btn').addEventListener('click', () => {
-  localStorage.removeItem('ss_email_pending');
-  localStorage.removeItem('ss_nombre_pending');
+  sessionStorage.removeItem('ss_email_pending');
+  sessionStorage.removeItem('ss_nombre_pending');
   mostrarLogin();
 });
 
@@ -2331,7 +2357,14 @@ async function buildCarousel() {
 
   amigos.forEach(c => {
     const el = document.createElement('div'); el.className='citem'; el.dataset.id=c.id;
-    el.innerHTML=`<div class="cwrap"><img class="cimg" src="${c.photoURL || genAvatar(c.nombre)}" alt="${c.nombre}"><div class="ccheck">✓</div></div><span class="cname">@${c.username||c.nombre}</span>`;
+    const imgEl = document.createElement('img'); imgEl.className='cimg';
+    imgEl.src = safeUrl(c.photoURL) || genAvatar(c.nombre); imgEl.alt = c.nombre;
+    const wrap = document.createElement('div'); wrap.className='cwrap';
+    const chk = document.createElement('div'); chk.className='ccheck'; chk.textContent='✓';
+    wrap.appendChild(imgEl); wrap.appendChild(chk);
+    const nameEl = document.createElement('span'); nameEl.className='cname';
+    nameEl.textContent = '@' + (c.username || c.nombre);
+    el.appendChild(wrap); el.appendChild(nameEl);
     el.addEventListener('click', () => {
       if (el.classList.contains('disabled')) return;
       seleccionados.has(c.id) ? seleccionados.delete(c.id) : seleccionados.add(c.id);
@@ -2538,12 +2571,12 @@ function renderInbox() {
 
     card.innerHTML = `
       ${!msg.visto ? '<div class="inbox-card-new"></div>' : ''}
-      <img class="inbox-card-av" src="${genAvatar(msg.sender)}" alt="${msg.sender}">
+      <img class="inbox-card-av" src="${esc(safeUrl(genAvatar(msg.sender)))}" alt="${esc(msg.sender)}">
       <div class="inbox-card-info">
-        <div class="inbox-card-name">${msg.sender}</div>
-        <div class="inbox-card-sub">Te envió un dibujo · ${agoText}</div>
+        <div class="inbox-card-name">${esc(msg.sender)}</div>
+        <div class="inbox-card-sub">Te envió un dibujo · ${esc(agoText)}</div>
       </div>
-      <div class="inbox-card-timer">⏱ ${timerText}</div>`;
+      <div class="inbox-card-timer">⏱ ${esc(timerText)}</div>`;
 
     card.addEventListener('click', () => {
       msg.visto = true;
@@ -2612,7 +2645,7 @@ const stripLabel = document.getElementById('strip-label');
 
 function entrarModoRespuesta(senderName, senderId) {
   replyingTo = { nombre: senderName, uid: senderId };
-  stripLabel.innerHTML = `Respondiendo a <strong style="color:var(--accent2)">${senderName}</strong>`;
+  stripLabel.innerHTML = `Respondiendo a <strong style="color:var(--accent2)">${esc(senderName)}</strong>`;
   stripBack.style.display = 'flex';
   document.querySelectorAll('.citem').forEach(el => {
     if (el.dataset.id === senderId) {
@@ -2629,7 +2662,11 @@ function entrarModoRespuesta(senderName, senderId) {
 
 function salirModoRespuesta() {
   replyingTo = null;
-  stripLabel.innerHTML = 'Enviar a <span id="sel-count" style="color:var(--accent2)"></span>';
+  stripLabel.textContent = '';
+  stripLabel.appendChild(Object.assign(document.createTextNode(t('send_to') + ' '), []));
+  const sc2 = document.createElement('span');
+  sc2.id = 'sel-count'; sc2.style.color = 'var(--accent2)';
+  stripLabel.appendChild(sc2);
   stripBack.style.display = 'none';
   document.querySelectorAll('.citem').forEach(el => el.classList.remove('disabled','sel'));
   seleccionados.clear();
@@ -3184,7 +3221,14 @@ function abrirSettings() {
         const chip = document.createElement('div');
         chip.className = 'settings-friend-chip';
         chip.title = 'Toca para eliminar';
-        chip.innerHTML = `<span class="settings-friend-av-wrap rainbow-hover-ring"><img class="settings-friend-av" src="${c.photoURL || genAvatar(c.nombre)}" alt="${c.nombre}"></span>${c.nombre}<span style="margin-left:4px;opacity:0.4;font-size:0.7rem;">✕</span>`;
+        const avWrap = document.createElement('span'); avWrap.className='settings-friend-av-wrap rainbow-hover-ring';
+        const avImg = document.createElement('img'); avImg.className='settings-friend-av';
+        avImg.src = safeUrl(c.photoURL) || genAvatar(c.nombre); avImg.alt = c.nombre;
+        avWrap.appendChild(avImg);
+        const nameNode = document.createTextNode(c.nombre);
+        const rmSpan = document.createElement('span'); rmSpan.textContent='✕';
+        rmSpan.style.cssText='margin-left:4px;opacity:0.4;font-size:0.7rem;';
+        chip.appendChild(avWrap); chip.appendChild(nameNode); chip.appendChild(rmSpan);
         chip.addEventListener('click', async () => {
           if (!confirm(`¿Eliminar a ${c.nombre} de tus amigos?`)) return;
           try {
