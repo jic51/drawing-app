@@ -14,6 +14,20 @@
   <!-- Apple touch icon SVG inline -->
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%230f0f13'/><text y='340' x='60' font-size='360'>✏️</text></svg>">
   <title>SketchSend</title>
+
+  <!-- Open Graph — WhatsApp / iMessage / Telegram link preview -->
+  <meta property="og:type"        content="website">
+  <meta property="og:site_name"   content="SketchSend">
+  <meta property="og:title"       content="Alguien te envió un dibujo ✏️">
+  <meta property="og:description" content="Toca para ver el dibujo animado. Responde con tu propio dibujo.">
+  <meta property="og:image"       content="https://jic51.github.io/drawing-app/og-preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card"       content="summary_large_image">
+  <meta name="twitter:title"      content="Alguien te envió un dibujo ✏️">
+  <meta name="twitter:description" content="Mira el dibujo animado en SketchSend">
+  <meta name="twitter:image"      content="https://jic51.github.io/drawing-app/og-preview.png">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <!-- Firebase SDK (compat mode — un solo bundle, sin build step) -->
@@ -431,6 +445,12 @@
       width:10px; height:10px; border-radius:50%; background:var(--accent2);
       flex-shrink:0; animation:pulso 2s ease-in-out infinite;
     }
+    .inbox-share-btn {
+      background:var(--surface2); border:1px solid var(--border); border-radius:50%;
+      width:30px; height:30px; font-size:0.85rem; cursor:pointer; color:var(--text);
+      display:flex; align-items:center; justify-content:center; transition:background 0.15s;
+    }
+    .inbox-share-btn:hover { background:var(--accent); border-color:var(--accent); }
 
     /* ══════════════════════════════════════════════════════
        OVERLAY DE REPLAY — completamente limpio
@@ -773,11 +793,61 @@
     @keyframes subir { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
     @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
 
+    /* ── VIEWER PÚBLICO (?view=ID) ── */
+    #viewer-screen {
+      display:none; position:fixed; inset:0; z-index:9000;
+      background:var(--bg); flex-direction:column; align-items:center; justify-content:center;
+    }
+    #viewer-screen.activo { display:flex; animation:aparecer 0.35s ease; }
+    #viewer-header {
+      position:absolute; top:0; left:0; right:0;
+      padding:14px 18px; display:flex; align-items:center; justify-content:space-between;
+      background:linear-gradient(180deg,rgba(15,15,19,0.95) 0%,transparent 100%);
+    }
+    #viewer-sender {
+      font-size:0.95rem; font-weight:600; color:var(--text);
+    }
+    #viewer-sender span { color:var(--accent2); }
+    #viewer-canvas {
+      border-radius:14px; box-shadow:0 0 60px var(--glow);
+      max-width:min(96vw,520px); max-height:min(75vh,520px);
+    }
+    #viewer-cta {
+      margin-top:20px; display:flex; flex-direction:column; align-items:center; gap:10px;
+    }
+    #viewer-reply-btn {
+      padding:13px 34px; border-radius:50px; border:none; cursor:pointer;
+      background:var(--accent); color:#fff; font-size:1rem; font-weight:600;
+      box-shadow:0 0 20px var(--glow); transition:transform 0.15s, box-shadow 0.15s;
+    }
+    #viewer-reply-btn:hover { transform:scale(1.04); box-shadow:0 0 30px var(--glow); }
+    #viewer-hint { font-size:0.78rem; color:var(--muted); text-align:center; max-width:260px; }
+    #viewer-loading { color:var(--muted); font-size:0.95rem; animation:pulse 1.5s infinite; }
+    #viewer-expired { color:var(--danger); font-size:0.95rem; text-align:center; }
+
   </style>
 </head>
 <body>
 
 <!-- ══ SPLASH SCREEN ══ -->
+<!-- ── VIEWER PÚBLICO — se muestra cuando llegan con ?view=SKETCHID ── -->
+<div id="viewer-screen">
+  <div id="viewer-header">
+    <div class="titulo" style="font-size:1.3rem;">SketchSend</div>
+    <div id="viewer-sender">Dibujo de <span id="viewer-from">...</span></div>
+  </div>
+  <div id="viewer-loading">Cargando dibujo... ✏️</div>
+  <canvas id="viewer-canvas" style="display:none;"></canvas>
+  <div id="viewer-expired" style="display:none;">
+    ⏳ Este dibujo ya expiró o no existe.<br>
+    <a href="sketchsendv14.html" style="color:var(--accent2);margin-top:8px;display:inline-block;">Ir a SketchSend →</a>
+  </div>
+  <div id="viewer-cta" style="display:none;">
+    <button id="viewer-reply-btn">✏️ Responder con un dibujo</button>
+    <div id="viewer-hint">Necesitas una cuenta gratuita para responder. ¡Es rápido!</div>
+  </div>
+</div>
+
 <div id="splash-screen" style="position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity 0.6s ease;">
   <div class="titulo" style="font-size:clamp(1.4rem, 6vw, 2.4rem);">SketchSend ✏️</div>
   <p style="color:var(--muted);font-size:0.95rem;animation:aparecer 1s ease 0.3s both;">Donde cada mensaje es un dibujo</p>
@@ -2581,7 +2651,21 @@ function renderInbox() {
         <div class="inbox-card-name">${esc(msg.sender)}</div>
         <div class="inbox-card-sub">Te envió un dibujo · ${esc(agoText)}</div>
       </div>
-      <div class="inbox-card-timer">⏱ ${esc(timerText)}</div>`;
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+        <div class="inbox-card-timer">⏱ ${esc(timerText)}</div>
+        <button class="inbox-share-btn" data-id="${esc(msg.id)}" title="Compartir link">🔗</button>
+      </div>`;
+
+    /* Botón compartir — no abre el replay */
+    card.querySelector('.inbox-share-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      const shareUrl = location.origin + location.pathname + '?view=' + msg.id;
+      if (navigator.share) {
+        navigator.share({ title:'SketchSend', text:`${esc(msg.sender)} te envió un dibujo ✏️`, url: shareUrl }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(shareUrl).then(() => toast('🔗 Link copiado')).catch(() => toast(shareUrl));
+      }
+    });
 
     card.addEventListener('click', () => {
       msg.visto = true;
@@ -3535,6 +3619,132 @@ if ('serviceWorker' in navigator) {
     if (!refreshing) { refreshing = true; window.location.reload(); }
   });
 }
+
+/* ══════════════════════════════════════════════════════
+   VIEWER PÚBLICO — ?view=SKETCHID
+   Carga el sketch de Firestore y reproduce el dibujo
+   sin requerir login. Al tocar "Responder" lleva al login.
+══════════════════════════════════════════════════════ */
+(function() {
+  const params = new URLSearchParams(location.search);
+  const viewId = params.get('view');
+  if (!viewId || !/^[a-zA-Z0-9]{10,30}$/.test(viewId)) return;
+
+  /* Hay un ?view=ID — activar modo viewer antes de cualquier otra cosa */
+  const screen = document.getElementById('viewer-screen');
+  const loadingEl = document.getElementById('viewer-loading');
+  const canvasEl  = document.getElementById('viewer-canvas');
+  const ctaEl     = document.getElementById('viewer-cta');
+  const expiredEl = document.getElementById('viewer-expired');
+  const fromEl    = document.getElementById('viewer-from');
+
+  screen.classList.add('activo');
+
+  /* Esconder splash inmediatamente (el viewer es la experiencia) */
+  const splash = document.getElementById('splash-screen');
+  if (splash) splash.remove();
+
+  /* Esperar a que Firebase esté listo */
+  function waitFirebase(cb) {
+    if (firebaseReady && db) { cb(); return; }
+    const t = setInterval(() => { if (firebaseReady && db) { clearInterval(t); cb(); } }, 100);
+  }
+
+  waitFirebase(() => {
+    db.collection('sketches').doc(viewId).get().then(doc => {
+      if (!doc.exists) { showExpired(); return; }
+      const d = doc.data();
+      const now = Date.now();
+      const expires = d.expiresAt?.toMillis ? d.expiresAt.toMillis() : (d.expiresAt || 0);
+      if (expires < now) { showExpired(); return; }
+
+      fromEl.textContent = d.fromName || 'Alguien';
+      loadingEl.style.display = 'none';
+      canvasEl.style.display  = 'block';
+      ctaEl.style.display     = 'flex';
+
+      /* Ajustar canvas al viewport */
+      const size = Math.min(window.innerWidth * 0.92, window.innerHeight * 0.65, 520);
+      canvasEl.width  = Math.round(size * devicePixelRatio);
+      canvasEl.height = Math.round(size * devicePixelRatio);
+      canvasEl.style.width  = size + 'px';
+      canvasEl.style.height = size + 'px';
+
+      const ctx = canvasEl.getContext('2d');
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.scale(devicePixelRatio, devicePixelRatio);
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+      /* Replay en loop — reutiliza reproducirLoop */
+      let active = true;
+      const timers = [];
+
+      function loop(strokes) {
+        if (!active) return;
+        const cssW = size, cssH = size;
+        ctx.clearRect(0,0,cssW,cssH);
+        /* Fondo */
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#12121a';
+        ctx.fillRect(0,0,cssW,cssH);
+
+        const segs = strokes.filter(s => s.tipo === 'seg' && s.t !== undefined);
+        if (!segs.length) return;
+
+        const meta = strokes.find(s => s.tipo === 'inicio' && s.origW);
+        const origW = meta ? meta.origW : cssW;
+        const origH = meta ? meta.origH : cssH;
+        const sc = Math.min(cssW/origW, cssH/origH);
+        const ox = (cssW - origW*sc)/2;
+        const oy = (cssH - origH*sc)/2;
+
+        /* Comprimir gaps (inline) */
+        const MAX_GAP = 2000;
+        let tAcc = 0, tPrev = segs[0].t;
+        const compressed = segs.map(s => {
+          tAcc += Math.min(s.t - tPrev, MAX_GAP); tPrev = s.t;
+          return {...s, tRel: tAcc};
+        });
+        const dur = compressed[compressed.length-1].tRel;
+
+        compressed.forEach(seg => {
+          const t = setTimeout(() => {
+            if (!active) return;
+            ctx.beginPath();
+            ctx.moveTo(ox + seg.de.x*sc, oy + seg.de.y*sc);
+            ctx.strokeStyle = seg.color;
+            ctx.lineWidth   = seg.gw*sc;
+            ctx.lineTo(ox + seg.a.x*sc, oy + seg.a.y*sc);
+            ctx.stroke();
+          }, seg.tRel);
+          timers.push(t);
+        });
+
+        const lt = setTimeout(() => loop(strokes), dur + 1500);
+        timers.push(lt);
+      }
+
+      loop(d.strokes || []);
+
+      /* Botón responder → lleva al login con ?reply=VIEWID para retomar */
+      document.getElementById('viewer-reply-btn').addEventListener('click', () => {
+        active = false;
+        timers.forEach(clearTimeout);
+        history.replaceState({}, '', location.pathname + '?reply=' + viewId);
+        screen.classList.remove('activo');
+        mostrarLogin();
+      });
+
+    }).catch(err => {
+      loadingEl.textContent = '⚠️ Error cargando el dibujo.';
+      logRemoteError('viewer:load', err);
+    });
+  });
+
+  function showExpired() {
+    loadingEl.style.display = 'none';
+    expiredEl.style.display = 'block';
+  }
+})();
 
 /* Splash screen: mostrar 1.8s luego fade out */
 (function() {
