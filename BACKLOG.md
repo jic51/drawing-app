@@ -3,6 +3,14 @@
 > Este archivo es la fuente de verdad del proyecto.
 > Se actualiza en cada sesión de trabajo con Claude.
 > Última actualización: 2026-10-28
+>
+> **Orden de trabajo actual:**
+> 1. PostHog analytics (esperando API key del usuario)
+> 2. Push notifications (FCM)
+> 3. Firestore TTL (limpieza automática de sketches expirados)
+> 4. window.prompt → modal SketchSend
+> 5. Onboarding interactivo
+> 6. Más agentes IA tester con diferentes personas
 
 ---
 
@@ -44,12 +52,12 @@
 
 | # | Tarea | Detalle | Prioridad |
 |---|-------|---------|-----------|
-| I1 | **Onboarding de 1 pantalla** | Usuario nuevo no entiende qué hacer. Necesita: "Dibuja → Elige a quién → Envía". 3 pasos visuales, solo aparece la primera vez. | 🟡 Alta |
+| I1 | **Onboarding interactivo (primera vez)** | Solo la primera vez: la app dibuja algo sola en el canvas (una casita con árbol y sol, un perrito corriendo, unos peces, etc.) — algo sencillo y tierno. Mientras se dibuja, aparecen tooltips/mensajes sobre el canvas, los pinceles y colores explicando cómo funciona. El usuario aprende viendo y luego haciendo. Mucho más efectivo que pantallas estáticas. | 🟡 Alta |
 | I2 | **Analytics (PostHog o Clarity)** | Sin métricas no sabemos dónde se cae el usuario. PostHog free tier, instalar desde día 1 del lanzamiento. Ver: funnels, session replay, rage clicks. | 🟡 Alta |
 | I3 | **Tests E2E automáticos (Playwright)** | Flujos críticos: registro, enviar sketch, recibir y ver replay. Evita regresiones. | 🟡 Media |
 | I4 | **Rate limiting / anti-spam** | Un usuario puede spamear la DB con sketches. Limitar: max 20 sketches/hora por usuario. Implementar en Firestore Rules con timestamps. | 🟡 Media |
 | I5 | **App Check (reCAPTCHA v3)** | Protege Firebase de bots y abuso. Opcional pero recomendado antes del lanzamiento público. | 🟡 Media |
-| I6 | ~~Prueba con agente IA como tester~~ | ✅ Hecho — ver resultados abajo | — |
+| I6 | **Agente IA tester — más personas y escenarios** | Primera ronda hecha (Valentina, 23, CDMX). Falta simular: (1) Hombre de 45 años poco técnico, (2) Adolescente de 15 con iPhone, (3) Usuario que llega desde Instagram, (4) Persona que recibe el link pero no conoce al remitente, (5) Usuario que vuelve después de 1 semana. Correr después de cada cambio importante de UX. | 🟡 Media |
 | I7 | **Contexto en el viewer público para nuevos usuarios** | Agregar una línea antes del CTA: "En SketchSend los mensajes son dibujos. Gratis. Desaparecen en 24h." Valentina (persona) no entiende qué es la app al llegar por primera vez. | 🟡 Alta |
 | I8 | **Google primero en login, email como opción secundaria** | 80% de usuarios móviles elige Google si está arriba. El magic link tiene 4-5 pasos (escribir correo → ir al email → encontrar link → tocarlo → volver). Google son 2 toques. | 🟡 Alta |
 
@@ -59,7 +67,7 @@
 
 | # | Tarea | Detalle | Prioridad |
 |---|-------|---------|-----------|
-| F1 | **Monetización: usuarios premium conservan dibujos** | Los dibujos no se borran si el usuario paga. Campo `premium: true` en user doc → sketches no reciben `expiresAt`. Modelo freemium: gratis = efímero, pago = permanente. | 🟡 Media |
+| F1 | **Monetización: planificar y probar SketchSend Premium** | Modelo freemium que agregue valor sin molestar. Ideas: (1) Dibujos permanentes (no se borran), (2) Colores premium + selector libre, (3) Pinceles especiales (acuarela, neón, caligrafía, pixel), (4) Temas de canvas, (5) Stickers/stamps. Buscar el balance: features que el usuario QUIERA pagar, no paywalls molestos. Necesita investigación de precios y A/B testing con PostHog. | 🟡 Media |
 | F2 | Foto de perfil | Necesita Firebase Storage (plan Blaze ~$1-5/mes para 100 usuarios) | 🟢 Baja |
 | F3 | Colores premium + selector libre | Tienda en-app, modelo freemium | 🟢 Baja |
 | F4 | Pinceles especiales (acuarela, neón, caligrafía, pixel) | Tienda en-app | 🟢 Baja |
