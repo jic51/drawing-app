@@ -34,7 +34,9 @@
 | # | Tarea | Detalle | Prioridad |
 |---|-------|---------|-----------|
 | C1 | **Push notifications (FCM)** | Sin esto nadie sabe que recibió un dibujo. La app queda muda. | 🔴 Siguiente |
-| C2 | **Canvas del viewer no escala al dispositivo** | Un dibujo hecho en desktop (1200px) se ve pequeño en móvil (360px). El viewer usa tamaño fijo. Necesita `contain` responsive igual que el replay de bandeja. | 🔴 Alta |
+| C2 | **Canvas del viewer — probar escalado en más dispositivos** | Un dibujo hecho en desktop puede verse diferente en móvil. Se hizo un fix de aspect ratio pero falta verificar en dispositivos reales. | 🟡 Media |
+| C3 | **Limpieza automática de sketches expirados en Firestore** | Los sketches tienen `expiresAt` pero Firestore no los borra — se filtran solo en el cliente. Los documentos expirados se acumulan para siempre en la DB. Solución: activar **Firestore TTL** (Time-to-Live) en Firebase Console → campo `expiresAt` como TTL field. Firebase los borra automáticamente. | 🔴 Alta |
+| C4 | **`window.prompt()` al confirmar correo en dispositivo nuevo** | Cuando el link de email se abre en otro dispositivo, aparece un `window.prompt()` nativo del navegador pidiendo el correo. Se ve feo y poco profesional. Reemplazar con un modal/overlay en el estilo visual de SketchSend. | 🔴 Alta |
 
 ---
 
@@ -47,7 +49,9 @@
 | I3 | **Tests E2E automáticos (Playwright)** | Flujos críticos: registro, enviar sketch, recibir y ver replay. Evita regresiones. | 🟡 Media |
 | I4 | **Rate limiting / anti-spam** | Un usuario puede spamear la DB con sketches. Limitar: max 20 sketches/hora por usuario. Implementar en Firestore Rules con timestamps. | 🟡 Media |
 | I5 | **App Check (reCAPTCHA v3)** | Protege Firebase de bots y abuso. Opcional pero recomendado antes del lanzamiento público. | 🟡 Media |
-| I6 | **Prueba con agente IA como tester** | Dar a Claude un "persona" (ej: usuario de 45 años, poco técnico) y hacerlo recorrer la app reportando confusión. Detecta textos confusos y pasos de más. | 🟡 Media |
+| I6 | ~~Prueba con agente IA como tester~~ | ✅ Hecho — ver resultados abajo | — |
+| I7 | **Contexto en el viewer público para nuevos usuarios** | Agregar una línea antes del CTA: "En SketchSend los mensajes son dibujos. Gratis. Desaparecen en 24h." Valentina (persona) no entiende qué es la app al llegar por primera vez. | 🟡 Alta |
+| I8 | **Google primero en login, email como opción secundaria** | 80% de usuarios móviles elige Google si está arriba. El magic link tiene 4-5 pasos (escribir correo → ir al email → encontrar link → tocarlo → volver). Google son 2 toques. | 🟡 Alta |
 
 ---
 
@@ -55,13 +59,14 @@
 
 | # | Tarea | Detalle | Prioridad |
 |---|-------|---------|-----------|
-| F1 | Foto de perfil | Necesita Firebase Storage (plan Blaze ~$1-5/mes para 100 usuarios) | 🟢 Baja |
-| F2 | Colores premium + selector libre | Tienda en-app, modelo freemium | 🟢 Baja |
-| F3 | Pinceles especiales (acuarela, neón, caligrafía, pixel) | Tienda en-app | 🟢 Baja |
-| F4 | Dibujo colaborativo en tiempo real | Firestore onSnapshot bidireccional, 2 personas dibujando a la vez | 🟢 Planificado |
-| F5 | Feed público / "states" | Dibujos efímeros visibles a todos los contactos (como Stories) | 🟢 Planificado |
-| F6 | Lanzamiento ProductHunt | Después de push notifications y onboarding | 🟢 Planificado |
-| F7 | BetaList / r/alphaandbetausers | Para conseguir early adopters y testers externos | 🟢 Planificado |
+| F1 | **Monetización: usuarios premium conservan dibujos** | Los dibujos no se borran si el usuario paga. Campo `premium: true` en user doc → sketches no reciben `expiresAt`. Modelo freemium: gratis = efímero, pago = permanente. | 🟡 Media |
+| F2 | Foto de perfil | Necesita Firebase Storage (plan Blaze ~$1-5/mes para 100 usuarios) | 🟢 Baja |
+| F3 | Colores premium + selector libre | Tienda en-app, modelo freemium | 🟢 Baja |
+| F4 | Pinceles especiales (acuarela, neón, caligrafía, pixel) | Tienda en-app | 🟢 Baja |
+| F5 | Dibujo colaborativo en tiempo real | Firestore onSnapshot bidireccional, 2 personas dibujando a la vez | 🟢 Planificado |
+| F6 | Feed público / "states" | Dibujos efímeros visibles a todos los contactos (como Stories) | 🟢 Planificado |
+| F7 | Lanzamiento ProductHunt | Después de push notifications y onboarding | 🟢 Planificado |
+| F8 | BetaList / r/alphaandbetausers | Para conseguir early adopters y testers externos | 🟢 Planificado |
 
 ---
 
