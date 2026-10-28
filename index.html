@@ -47,6 +47,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
   <style>
 
     /* ══════════════════════════════════════════════════════
@@ -1632,6 +1633,50 @@ const firebaseReady = (() => {
   }
 })();
 
+/* ── FCM Push Notifications ── */
+let messaging = null;
+try {
+  if (firebaseReady && 'Notification' in window && 'serviceWorker' in navigator) {
+    messaging = firebase.messaging();
+  }
+} catch(e) { console.warn('FCM init skipped:', e.message); }
+
+async function solicitarNotificaciones() {
+  if (!messaging || !auth?.currentUser) return;
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      if (window.posthog) posthog.capture('notifications_denied');
+      return;
+    }
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) return;
+    const token = await messaging.getToken({
+      vapidKey: 'PLACEHOLDER_VAPID_KEY',
+      serviceWorkerRegistration: reg
+    });
+    if (token) {
+      await db.collection('users').doc(auth.currentUser.uid).update({
+        fcmToken: token,
+        fcmUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      if (window.posthog) posthog.capture('notifications_enabled');
+    }
+  } catch(e) {
+    console.warn('FCM token error:', e.message);
+    logRemoteError('fcmToken', e);
+  }
+}
+
+if (messaging) {
+  messaging.onMessage(payload => {
+    const { title, body, icon } = payload.notification || {};
+    if (title && Notification.permission === 'granted') {
+      new Notification(title, { body, icon: icon || './og-preview.png' });
+    }
+  });
+}
+
 /* ══════════════════════════════════════════════════════
    AUTENTICACIÓN — Email/contraseña + Google + verificación
 ══════════════════════════════════════════════════════ */
@@ -1746,6 +1791,12 @@ function finalizarLogin(username, displayName, photoURL) {
   setupCanvas(); buildCarousel(); cargarBandeja(); iniciarPromptsCanvas();
   requestAnimationFrame(() => requestAnimationFrame(volarAlHeader));
   if (window.posthog) posthog.identify(username, { displayName, hasPhoto: !!photoURL });
+
+  if (messaging && Notification.permission === 'granted') {
+    solicitarNotificaciones();
+  } else if (messaging && Notification.permission === 'default') {
+    setTimeout(() => solicitarNotificaciones(), 3000);
+  }
 
   /* Manejar ?add=CODE en URL */
   const urlParams = new URLSearchParams(window.location.search);

@@ -46,6 +46,9 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // PostHog, FCM endpoints: skip cache
+  if (url.includes('posthog.com') || url.includes('fcmregistrations')) return;
+
   // Static assets (fonts, Firebase SDK): cache-first
   e.respondWith(
     caches.match(e.request).then(cached => {
@@ -57,6 +60,38 @@ self.addEventListener('fetch', e => {
         }
         return response;
       }).catch(() => cached);
+    })
+  );
+});
+
+/* ── FCM Push Notifications ── */
+self.addEventListener('push', e => {
+  if (!e.data) return;
+  let data;
+  try { data = e.data.json(); } catch(_) { return; }
+  const notification = data.notification || {};
+  const title = notification.title || 'SketchSend';
+  const options = {
+    body: notification.body || 'Tienes un nuevo dibujo ✏️',
+    icon: notification.icon || './og-preview.png',
+    badge: './og-preview.png',
+    tag: 'sketchsend-new',
+    renotify: true,
+    data: data.data || {}
+  };
+  e.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
+      for (const client of windowClients) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      return clients.openWindow('./');
     })
   );
 });

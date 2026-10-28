@@ -41,7 +41,7 @@
 
 | # | Tarea | Detalle | Prioridad |
 |---|-------|---------|-----------|
-| C1 | **Push notifications (FCM)** | Sin esto nadie sabe que recibió un dibujo. La app queda muda. | 🔴 Siguiente |
+| C1 | **Push notifications (FCM)** | Código cliente listo (SDK, token, SW push handler). Cloud Function lista en `functions/`. **Falta del usuario:** (1) Plan Blaze en Firebase, (2) Generar VAPID key en Console → Project Settings → Cloud Messaging → Web Push certificates, (3) Reemplazar `PLACEHOLDER_VAPID_KEY` en sketchsendv14.html + index.html, (4) `firebase deploy --only functions`. | 🔴 En progreso |
 | C2 | **Canvas del viewer — probar escalado en más dispositivos** | Un dibujo hecho en desktop puede verse diferente en móvil. Se hizo un fix de aspect ratio pero falta verificar en dispositivos reales. | 🟡 Media |
 | C3 | **Limpieza automática de sketches expirados en Firestore** | Los sketches tienen `expiresAt` pero Firestore no los borra — se filtran solo en el cliente. Los documentos expirados se acumulan para siempre en la DB. Solución: activar **Firestore TTL** (Time-to-Live) en Firebase Console → campo `expiresAt` como TTL field. Firebase los borra automáticamente. | 🔴 Alta |
 | C4 | **`window.prompt()` al confirmar correo en dispositivo nuevo** | Cuando el link de email se abre en otro dispositivo, aparece un `window.prompt()` nativo del navegador pidiendo el correo. Se ve feo y poco profesional. Reemplazar con un modal/overlay en el estilo visual de SketchSend. | 🔴 Alta |
