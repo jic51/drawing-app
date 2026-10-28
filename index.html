@@ -3665,12 +3665,24 @@ if ('serviceWorker' in navigator) {
       canvasEl.style.display  = 'block';
       ctaEl.style.display     = 'flex';
 
-      /* Ajustar canvas al viewport */
-      const size = Math.min(window.innerWidth * 0.92, window.innerHeight * 0.65, 520);
-      canvasEl.width  = Math.round(size * devicePixelRatio);
-      canvasEl.height = Math.round(size * devicePixelRatio);
-      canvasEl.style.width  = size + 'px';
-      canvasEl.style.height = size + 'px';
+      /* Ajustar canvas al viewport — usa proporciones del dibujo original si existen */
+      const meta0 = (d.strokes || []).find(s => s.tipo === 'inicio' && s.origW);
+      const origAspect = meta0 ? (meta0.origW / meta0.origH) : 1;
+      const maxW = Math.min(window.innerWidth * 0.94, 520);
+      const maxH = Math.min(window.innerHeight * 0.62, 520);
+      let cssW, cssH;
+      if (origAspect >= 1) {
+        cssW = Math.min(maxW, maxH * origAspect);
+        cssH = cssW / origAspect;
+      } else {
+        cssH = Math.min(maxH, maxW / origAspect);
+        cssW = cssH * origAspect;
+      }
+      const size = cssW; // compatibilidad con código de abajo
+      canvasEl.width  = Math.round(cssW * devicePixelRatio);
+      canvasEl.height = Math.round(cssH * devicePixelRatio);
+      canvasEl.style.width  = cssW + 'px';
+      canvasEl.style.height = cssH + 'px';
 
       const ctx = canvasEl.getContext('2d');
       ctx.setTransform(1,0,0,1,0,0);
@@ -3683,7 +3695,7 @@ if ('serviceWorker' in navigator) {
 
       function loop(strokes) {
         if (!active) return;
-        const cssW = size, cssH = size;
+        const cssW = parseFloat(canvasEl.style.width), cssH = parseFloat(canvasEl.style.height);
         ctx.clearRect(0,0,cssW,cssH);
         /* Fondo */
         ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#12121a';
