@@ -1652,7 +1652,7 @@ async function solicitarNotificaciones() {
     const reg = await navigator.serviceWorker.getRegistration();
     if (!reg) return;
     const token = await messaging.getToken({
-      vapidKey: 'PLACEHOLDER_VAPID_KEY',
+      vapidKey: 'BN2t-sQXDsXoEtQlv2RnXbl2SMmw6xb7DIBuQZ0HiHI5pb9hKPgJP9eoYXu0tX0NydkrwykSUn7Xd3GAAlU45M4',
       serviceWorkerRegistration: reg
     });
     if (token) {
