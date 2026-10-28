@@ -60,6 +60,7 @@
 | I6 | **Agente IA tester — más personas y escenarios** | Primera ronda hecha (Valentina, 23, CDMX). Falta simular: (1) Hombre de 45 años poco técnico, (2) Adolescente de 15 con iPhone, (3) Usuario que llega desde Instagram, (4) Persona que recibe el link pero no conoce al remitente, (5) Usuario que vuelve después de 1 semana. Correr después de cada cambio importante de UX. | 🟡 Media |
 | I7 | **Contexto en el viewer público para nuevos usuarios** | Agregar una línea antes del CTA: "En SketchSend los mensajes son dibujos. Gratis. Desaparecen en 24h." Valentina (persona) no entiende qué es la app al llegar por primera vez. | 🟡 Alta |
 | I8 | **Google primero en login, email como opción secundaria** | 80% de usuarios móviles elige Google si está arriba. El magic link tiene 4-5 pasos (escribir correo → ir al email → encontrar link → tocarlo → volver). Google son 2 toques. | 🟡 Alta |
+| I9 | **Correo de invitación sin asunto ni contenido útil** | Cuando alguien invita a un amigo, el correo llega "(sin asunto)" y solo dice "¡Dibujemos juntos en SketchSend! ✏️🌈" sin link ni explicación. Necesita: asunto claro, link a la app, breve explicación de qué es SketchSend. Reportado por 2 usuarios. | 🟡 Alta |
 
 ---
 
