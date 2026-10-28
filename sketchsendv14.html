@@ -28,6 +28,18 @@
   <meta name="twitter:description" content="Mira el dibujo animado en SketchSend">
   <meta name="twitter:image"      content="https://jic51.github.io/drawing-app/og-preview.png">
 
+  <!-- PostHog Analytics — session replay, funnels, eventos -->
+  <script>
+    !function(t,e){var o,n,p,r;e.__SV||(window.posthog=e,e._i=[],e.init=function(i,s,a){function g(t,e){var o=e.split(".");2==o.length&&(t=t[o[0]],e=o[1]),t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}}(p=t.createElement("script")).type="text/javascript",p.crossOrigin="anonymous",p.async=!0,p.src=s.api_host.replace(".i.posthog.com","-assets.i.posthog.com")+"/static/array.js",(r=t.getElementsByTagName("script")[0]).parentNode.insertBefore(p,r);var u=e;for(void 0!==a?u=e[a]=[]:a="posthog",u.people=u.people||[],u.toString=function(t){var e="posthog";return"posthog"!==a&&(e+="."+a),t||(e+=" (stub)"),e},u.people.toString=function(){return u.toString(1)+".people (stub)"},o="init capture register register_once register_for_session unregister opt_out_capturing has_opted_out_capturing opt_in_capturing reset isFeatureEnabled onFeatureFlags getFeatureFlag getFeatureFlagPayload reloadFeatureFlags group updateEarlyAccessFeatureEnrollment getEarlyAccessFeatures on onSessionId getSurveys getActiveMatchingSurveys renderSurvey canRenderSurvey identify setPersonProperties".split(" "),n=0;n<o.length;n++)g(u,o[n]);e._i.push([i,s,a])},e.__SV=1)}(document,window.posthog||[]);
+    posthog.init('phc_rpmfiseUeah8fsv9VoWXsbc6VQcvDKEWARQUijs76JAi',{
+      api_host:'https://us.i.posthog.com',
+      person_profiles: 'identified_only',
+      capture_pageview: true,
+      capture_pageleave: true,
+      autocapture: true
+    });
+  </script>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <!-- Firebase SDK (compat mode — un solo bundle, sin build step) -->
@@ -1733,6 +1745,7 @@ function finalizarLogin(username, displayName, photoURL) {
   appEl.style.display = 'flex';
   setupCanvas(); buildCarousel(); cargarBandeja(); iniciarPromptsCanvas();
   requestAnimationFrame(() => requestAnimationFrame(volarAlHeader));
+  if (window.posthog) posthog.identify(username, { displayName, hasPhoto: !!photoURL });
 
   /* Manejar ?add=CODE en URL */
   const urlParams = new URLSearchParams(window.location.search);
@@ -1861,6 +1874,7 @@ document.getElementById('magic-btn').addEventListener('click', async () => {
       handleCodeInApp: true
     };
     await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+    if (window.posthog) posthog.capture('login_started', { method: 'email_magic_link' });
     /* localStorage para que persista cuando el link abra en nueva pestaña/ventana.
        Solo guarda email (no contraseña), Firebase valida el token del link. */
     localStorage.setItem('ss_email_pending', email);
@@ -1944,6 +1958,7 @@ document.getElementById('google-btn').addEventListener('click', async () => {
   }
 
   const provider = new firebase.auth.GoogleAuthProvider();
+  if (window.posthog) posthog.capture('login_started', { method: 'google' });
 
   /* iOS Safari: popup suele estar bloqueado → usar redirect */
   if (esIosSafari) {
@@ -2399,6 +2414,7 @@ async function agregarAmigo(input) {
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     toast('✅ @' + username + ' agregado como amigo');
+    if (window.posthog) posthog.capture('friend_added', { method: isCode ? 'shortcode' : 'username' });
     buildCarousel();
   } catch(e) {
     toast('❌ Error: ' + e.message);
@@ -2517,9 +2533,11 @@ async function enviarSketchFirestore(toUid) {
       expiresAt: new Date(Date.now() + 24*3600*1000),
       viewed: false
     });
+    if (window.posthog) posthog.capture('sketch_sent', { strokeCount: trazos.length });
   } catch(e) {
     logRemoteError('enviarSketch', e);
     toast('⚠️ Error al enviar: ' + e.message);
+    if (window.posthog) posthog.capture('sketch_send_failed', { error: e.code || e.message });
   }
 }
 
@@ -3641,6 +3659,7 @@ if ('serviceWorker' in navigator) {
   const fromEl    = document.getElementById('viewer-from');
 
   screen.classList.add('activo');
+  if (window.posthog) posthog.capture('viewer_opened', { sketchId: viewId });
 
   /* Esconder splash inmediatamente (el viewer es la experiencia) */
   const splash = document.getElementById('splash-screen');
@@ -3741,6 +3760,7 @@ if ('serviceWorker' in navigator) {
 
       /* Botón responder → lleva al login con ?reply=VIEWID para retomar */
       document.getElementById('viewer-reply-btn').addEventListener('click', () => {
+        if (window.posthog) posthog.capture('viewer_reply_clicked', { sketchId: viewId });
         active = false;
         timers.forEach(clearTimeout);
         history.replaceState({}, '', location.pathname + '?reply=' + viewId);
