@@ -1768,8 +1768,8 @@ function doLogout() {
    cuando el usuario toca el enlace desde su correo.
 ══════════════════════════════════════════════════════ */
 if (firebaseReady && auth && auth.isSignInWithEmailLink(window.location.href)) {
-  let pendingEmail = sessionStorage.getItem('ss_email_pending');
-  let pendingNombre = sessionStorage.getItem('ss_nombre_pending') || '';
+  let pendingEmail = localStorage.getItem('ss_email_pending');
+  let pendingNombre = localStorage.getItem('ss_nombre_pending') || '';
   if (!pendingEmail) {
     /* El usuario abrió el link en un dispositivo diferente */
     pendingEmail = window.prompt('Confirma tu correo para entrar:') || '';
@@ -1777,14 +1777,14 @@ if (firebaseReady && auth && auth.isSignInWithEmailLink(window.location.href)) {
   if (pendingEmail) {
     auth.signInWithEmailLink(pendingEmail, window.location.href)
       .then(result => {
-        sessionStorage.removeItem('ss_email_pending');
+        localStorage.removeItem('ss_email_pending');
         /* Guardar nombre pendiente para usarlo en onAuthStateChanged */
         if (pendingNombre) {
           /* updateProfile si el user es nuevo y no tiene displayName */
           if (!result.user.displayName && pendingNombre) {
             result.user.updateProfile({ displayName: pendingNombre }).catch(() => {});
           }
-          sessionStorage.removeItem('ss_nombre_pending');
+          localStorage.removeItem('ss_nombre_pending');
         }
         history.replaceState({}, '', location.pathname);
       })
@@ -1814,8 +1814,8 @@ if (firebaseReady && auth) {
     try {
       const doc = await db.collection('users').doc(user.uid).get();
       if (!doc.exists) {
-        const nombre = user.displayName || sessionStorage.getItem('ss_nombre_pending') || user.email.split('@')[0];
-        sessionStorage.removeItem('ss_nombre_pending');
+        const nombre = user.displayName || localStorage.getItem('ss_nombre_pending') || user.email.split('@')[0];
+        localStorage.removeItem('ss_nombre_pending');
         mostrarPantallaUsername(nombre, user.photoURL);
       } else {
         const d = doc.data();
@@ -1861,8 +1861,10 @@ document.getElementById('magic-btn').addEventListener('click', async () => {
       handleCodeInApp: true
     };
     await auth.sendSignInLinkToEmail(email, actionCodeSettings);
-    sessionStorage.setItem('ss_email_pending', email);
-    sessionStorage.setItem('ss_nombre_pending', nombre);
+    /* localStorage para que persista cuando el link abra en nueva pestaña/ventana.
+       Solo guarda email (no contraseña), Firebase valida el token del link. */
+    localStorage.setItem('ss_email_pending', email);
+    localStorage.setItem('ss_nombre_pending', nombre);
     mostrarVerificacion(email);
   } catch(e) {
     const msgs = {
@@ -1881,7 +1883,7 @@ document.getElementById('magic-btn').addEventListener('click', async () => {
 
 /* ── Pantalla de espera: reenviar / cambiar correo ── */
 document.getElementById('verify-resend-btn').addEventListener('click', async () => {
-  const email = sessionStorage.getItem('ss_email_pending');
+  const email = localStorage.getItem('ss_email_pending');
   if (!email) { mostrarLogin(); return; }
   try {
     const actionCodeSettings = { url: location.origin + location.pathname, handleCodeInApp: true };
@@ -1891,8 +1893,8 @@ document.getElementById('verify-resend-btn').addEventListener('click', async () 
 });
 
 document.getElementById('verify-logout-btn').addEventListener('click', () => {
-  sessionStorage.removeItem('ss_email_pending');
-  sessionStorage.removeItem('ss_nombre_pending');
+  localStorage.removeItem('ss_email_pending');
+  localStorage.removeItem('ss_nombre_pending');
   mostrarLogin();
 });
 
