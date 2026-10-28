@@ -3,9 +3,38 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#7c3aed">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SketchSend">
+  <!-- Apple touch icon SVG inline -->
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%230f0f13'/><text y='340' x='60' font-size='360'>✏️</text></svg>">
   <title>SketchSend</title>
+
+  <!-- Open Graph — WhatsApp / iMessage / Telegram link preview -->
+  <meta property="og:type"        content="website">
+  <meta property="og:site_name"   content="SketchSend">
+  <meta property="og:title"       content="Alguien te envió un dibujo ✏️">
+  <meta property="og:description" content="Toca para ver el dibujo animado. Responde con tu propio dibujo.">
+  <meta property="og:image"       content="https://jic51.github.io/drawing-app/og-preview.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card"       content="summary_large_image">
+  <meta name="twitter:title"      content="Alguien te envió un dibujo ✏️">
+  <meta name="twitter:description" content="Mira el dibujo animado en SketchSend">
+  <meta name="twitter:image"      content="https://jic51.github.io/drawing-app/og-preview.png">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <!-- Firebase SDK (compat mode — un solo bundle, sin build step) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script>
   <style>
 
     /* ══════════════════════════════════════════════════════
@@ -109,14 +138,37 @@
       transition:border-color 0.2s,box-shadow 0.2s;
     }
     .inp:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--glow); }
+    /* ══════════════════════════════════════════════════════
+       SISTEMA DE BOTONES ESTANDARIZADO
+       ──────────────────────────────────────────────────
+       Base: border-radius:8px, transition:all 0.2s, font-family:var(--sans)
+       
+       Primario (.btn-p): gradient accent → acciones principales
+       Secundario (.btn-s): surface2 + borde → acciones normales
+       Peligro (.btn-d): borde rojo → acciones destructivas
+       Ghost (.btn-g): sin fondo → acciones terciarias
+       
+       Tamaños:
+       - Login: padding 12px 20px, width 100%, font 0.95rem
+       - Header/Settings: padding 6px 13px, font 0.82rem
+       - Canvas flotante: padding 6px 13px, font 0.78rem, glass effect
+       - Send: padding 6px 16px, font 0.8rem
+       
+       Disabled: opacity 0.35, cursor not-allowed (en TODOS)
+    ══════════════════════════════════════════════════════ */
+
+    /* Base para login (botones grandes, full-width) */
     .btn {
-      padding:12px 20px; border:none; border-radius:10px; font-family:var(--sans);
+      padding:12px 20px; border:2px solid transparent; border-radius:8px; font-family:var(--sans);
       font-size:0.95rem; font-weight:600; cursor:pointer; transition:all 0.2s; width:100%;
     }
+    .btn:disabled { opacity:0.35; cursor:not-allowed; transform:none !important; }
     .btn-p { background:linear-gradient(135deg,var(--accent),#6366f1); color:#fff; box-shadow:0 4px 20px var(--glow); }
-    .btn-p:hover { transform:translateY(-1px); box-shadow:0 8px 30px var(--glow); }
-    .btn-s { background:var(--surface2); border:1px solid var(--border); color:var(--text); }
-    .btn-s:hover { border-color:var(--accent); color:var(--accent2); }
+    .btn-p:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 8px 30px var(--glow); }
+    .btn-s { background:var(--surface2); border:2px solid var(--border); color:var(--text); }
+    .btn-s:hover:not(:disabled) { border-color:var(--accent); color:var(--accent2); }
+    .btn-d { background:var(--surface2); border:2px solid rgba(239,68,68,0.3); color:var(--danger); }
+    .btn-d:hover:not(:disabled) { border-color:var(--danger); background:rgba(239,68,68,0.1); }
     .btn-g { background:none; border:none; color:var(--muted); font-size:0.875rem; cursor:pointer; width:auto; padding:6px; }
     .btn-g:hover { color:var(--text); }
 
@@ -145,13 +197,16 @@
     }
     .hdr-sep { width:1px; height:22px; background:var(--border); margin:0 2px; }
     .hdr-space { flex:1; }
+    /* Header buttons — mismo sistema, tamaño pequeño */
     .hbtn {
       display:flex; align-items:center; gap:5px; padding:6px 13px; border-radius:8px;
-      border:1px solid var(--border); background:var(--surface2); color:var(--text);
-      font-family:var(--sans); font-size:0.82rem; font-weight:500; cursor:pointer; transition:all 0.15s;
+      border:2px solid var(--border); background:var(--surface2); color:var(--text);
+      font-family:var(--sans); font-size:0.82rem; font-weight:500; cursor:pointer; transition:all 0.2s;
     }
     .hbtn:hover { border-color:var(--accent); color:var(--accent2); }
-    .hbtn.danger:hover { border-color:var(--danger); color:var(--danger); }
+    .hbtn:disabled { opacity:0.35; cursor:not-allowed; }
+    .hbtn.danger { border-color:rgba(239,68,68,0.3); color:var(--danger); }
+    .hbtn.danger:hover { border-color:var(--danger); background:rgba(239,68,68,0.1); }
     .uinfo { display:flex; align-items:center; gap:8px; }
     .avatar { width:30px; height:30px; border-radius:50%; border:2px solid var(--accent); object-fit:cover; }
     .uname { font-weight:600; font-size:0.85rem; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -165,9 +220,9 @@
       background:var(--surface); border-right:1px solid var(--border); gap:4px; width:52px; flex-shrink:0;
     }
     .tbtn {
-      width:36px; height:36px; border-radius:9px; border:1px solid transparent;
+      width:36px; height:36px; border-radius:8px; border:2px solid transparent;
       background:transparent; color:var(--muted); font-size:1.05rem; cursor:pointer;
-      display:flex; align-items:center; justify-content:center; transition:all 0.15s;
+      display:flex; align-items:center; justify-content:center; transition:all 0.2s;
     }
     .tbtn:hover { background:var(--surface2); color:var(--text); }
     .tbtn.activo { background:var(--glow); border-color:var(--accent); color:var(--accent2); }
@@ -197,11 +252,11 @@
     }
     .fbtns.visible { opacity:1; pointer-events:auto; }
     .fbtn {
-      display:flex; align-items:center; gap:5px; padding:6px 13px; border-radius:20px;
-      border:1px solid rgba(255,255,255,0.12); background:rgba(26,26,36,0.8);
+      display:flex; align-items:center; gap:5px; padding:6px 13px; border-radius:8px;
+      border:2px solid rgba(255,255,255,0.12); background:rgba(26,26,36,0.8);
       backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
       color:var(--text); font-family:var(--sans); font-size:0.78rem; font-weight:500;
-      cursor:pointer; transition:all 0.15s;
+      cursor:pointer; transition:all 0.2s;
     }
     .fbtn:hover { background:rgba(124,58,237,0.3); border-color:var(--accent); color:var(--accent2); }
     .fbtn:disabled { opacity:0.3; cursor:not-allowed; }
@@ -220,20 +275,20 @@
     .strip-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:9px; gap:8px; }
     .clabel { font-size:0.67rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; }
     .sbtn {
-      padding:6px 16px; border-radius:20px; border:none;
+      padding:6px 16px; border-radius:8px; border:2px solid transparent;
       background:linear-gradient(135deg,var(--accent),#6366f1); color:#fff;
       font-family:var(--sans); font-size:0.8rem; font-weight:600; cursor:pointer;
       box-shadow:0 3px 10px var(--glow); transition:all 0.2s;
     }
-    .sbtn:hover { transform:translateY(-1px); box-shadow:0 6px 18px var(--glow); }
+    .sbtn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 18px var(--glow); }
     .sbtn:disabled { opacity:0.35; cursor:not-allowed; transform:none; box-shadow:none; }
 
     /* Botón de retroceso en modo respuesta */
     .strip-back {
-      width:32px; height:32px; border-radius:50%; border:1px solid var(--border);
+      width:32px; height:32px; border-radius:8px; border:2px solid var(--border);
       background:var(--surface2); color:var(--text); font-size:1.1rem;
       cursor:pointer; display:flex; align-items:center; justify-content:center;
-      transition:all 0.15s; flex-shrink:0;
+      transition:all 0.2s; flex-shrink:0;
     }
     .strip-back:hover { border-color:var(--accent); color:var(--accent2); }
 
@@ -249,13 +304,28 @@
     }
     .color-dot {
       width:24px; height:24px; border-radius:50%; border:2.5px solid transparent;
-      cursor:pointer; transition:all 0.15s; flex-shrink:0;
+      cursor:pointer; transition:all 0.2s; flex-shrink:0;
     }
     .color-dot:hover { transform:scale(1.15); }
     .color-dot.activo { border-color:var(--text); box-shadow:0 0 0 2px var(--glow); }
     .color-dot.rainbow-dot {
       background:conic-gradient(#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000);
     }
+    /* Black dot needs a visible outline in dark theme */
+    .color-dot[data-color="#1a1a2e"] { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35); }
+    .color-dot[data-color="#1a1a2e"].activo { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.6), 0 0 0 2px var(--glow); }
+
+    /* Brush size popup */
+    #brush-popup {
+      position:fixed; z-index:300; background:rgba(15,15,19,0.82); backdrop-filter:blur(14px);
+      border:1px solid var(--border); border-radius:16px; padding:16px 20px;
+      display:flex; flex-direction:column; gap:10px; min-width:180px;
+      box-shadow:0 8px 32px rgba(0,0,0,0.45); transition:opacity 0.15s;
+    }
+    #brush-popup.hidden { display:none; }
+    #brush-popup-label { font-size:0.75rem; color:var(--muted); text-align:center; }
+    #brush-size-slider { width:100%; accent-color:var(--accent2); cursor:pointer; }
+    #brush-size-val { font-size:0.85rem; font-weight:600; text-align:center; color:var(--text); }
     /* En mobile toolbar la paleta va horizontal */
     .mob-toolbar .color-picker { flex-direction:row; padding:0; gap:5px; }
     .carousel {
@@ -274,7 +344,7 @@
     .citem.sel .ccheck { display:flex; }
     .cname { font-size:0.63rem; color:var(--muted); max-width:44px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; }
     .sharebtn { display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; flex-shrink:0; }
-    .sharecircle { width:44px; height:44px; border-radius:50%; border:2px dashed var(--border); display:flex; align-items:center; justify-content:center; font-size:1rem; color:var(--muted); transition:all 0.15s; }
+    .sharecircle { width:44px; height:44px; border-radius:50%; border:2px dashed var(--border); display:flex; align-items:center; justify-content:center; font-size:1rem; color:var(--muted); transition:all 0.2s; }
     .sharebtn:hover .sharecircle { border-color:var(--accent); color:var(--accent2); }
 
     /* MODAL DE GUARDADO */
@@ -296,7 +366,7 @@
       position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(8px);
       background:var(--surface2); border:1px solid var(--border); border-radius:30px;
       padding:8px 18px; font-size:0.84rem; color:var(--text); opacity:0;
-      transition:opacity 0.25s,transform 0.25s; pointer-events:none; z-index:200; white-space:nowrap;
+      transition:opacity 0.25s,transform 0.25s; pointer-events:none; z-index:400; white-space:nowrap;
     }
     #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
@@ -321,7 +391,7 @@
        recibidos como tarjetas apiladas.
     ══════════════════════════════════════════════════════ */
     #inbox-overlay {
-      position:fixed; inset:0; background:var(--bg); z-index:250;
+      position:fixed; inset:0; background:var(--bg); z-index:260;
       display:none; flex-direction:column; animation:aparecer 0.3s ease;
     }
     #inbox-overlay.activo { display:flex; }
@@ -332,10 +402,12 @@
     }
     .inbox-title { font-family:var(--display); font-size:1rem; font-weight:800; }
     .inbox-close {
-      margin-left:auto; padding:8px 16px; border-radius:8px;
-      border:1px solid var(--border); background:var(--surface2);
+      margin-left:auto; padding:6px 14px; border-radius:8px;
+      border:2px solid var(--border); background:var(--surface2);
       color:var(--text); font-family:var(--sans); font-size:0.82rem; cursor:pointer;
+      transition:all 0.2s;
     }
+    .inbox-close:hover { border-color:var(--accent); color:var(--accent2); }
 
     .inbox-body {
       flex:1; overflow-y:auto; padding:16px; display:flex;
@@ -352,7 +424,7 @@
     .inbox-card {
       display:flex; align-items:center; gap:12px; padding:14px 16px;
       background:var(--surface); border:1px solid var(--border); border-radius:12px;
-      cursor:pointer; transition:all 0.15s;
+      cursor:pointer; transition:all 0.2s;
     }
     .inbox-card:hover { border-color:var(--accent); transform:translateY(-1px);
       box-shadow:0 6px 20px rgba(0,0,0,0.2); }
@@ -373,6 +445,12 @@
       width:10px; height:10px; border-radius:50%; background:var(--accent2);
       flex-shrink:0; animation:pulso 2s ease-in-out infinite;
     }
+    .inbox-share-btn {
+      background:var(--surface2); border:1px solid var(--border); border-radius:50%;
+      width:30px; height:30px; font-size:0.85rem; cursor:pointer; color:var(--text);
+      display:flex; align-items:center; justify-content:center; transition:background 0.15s;
+    }
+    .inbox-share-btn:hover { background:var(--accent); border-color:var(--accent); }
 
     /* ══════════════════════════════════════════════════════
        OVERLAY DE REPLAY — completamente limpio
@@ -474,55 +552,113 @@
     }
 
     /* ══════════════════════════════════════════════════════
-       RAINBOW HOVER — identidad visual interactiva
+       RAINBOW HOVER — borde cónico con padding-box/border-box
        ──────────────────────────────────────────────────
-       Clase reutilizable: al hacer hover, el texto del
-       elemento muestra el gradiente rainbow moviéndose
-       a 2.5s (el estándar de la app).
-       Usar SOLO en elementos no-críticos:
-       ✅ Tienda, invitar, avatares de amigos
-       ❌ Enviar, guardar, limpiar
+       Técnica: en hover, el botón usa DOS backgrounds:
+       1. Color sólido en padding-box → cubre el interior
+       2. conic-gradient en border-box → visible en el borde
+       Con border: 2px solid transparent, el borde deja pasar
+       el gradiente y el interior muestra el color sólido.
+       
+       ::before solo se usa para el glow (blur detrás).
+       No hay problemas de z-index ni overflow.
     ══════════════════════════════════════════════════════ */
+    @property --angle {
+      syntax: "<angle>";
+      initial-value: 0deg;
+      inherits: false;
+    }
+
+    @keyframes spinAngle {
+      from { --angle: 0deg; }
+      to   { --angle: 360deg; }
+    }
+
+    /* Botones normales (fondo surface2) */
     .rainbow-hover {
+      position: relative;
       transition: all 0.3s ease;
+      animation: spinAngle 2.5s linear infinite;
     }
     .rainbow-hover:hover {
-      background: linear-gradient(90deg,#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000) !important;
-      background-size: 200% auto !important;
-      -webkit-background-clip: text !important;
-      -webkit-text-fill-color: transparent !important;
-      background-clip: text !important;
-      animation: mover 2.5s linear infinite !important;
-      border-color: transparent !important;
+      border: 2px solid transparent !important;
+      background:
+        linear-gradient(var(--surface2), var(--surface2)) padding-box,
+        conic-gradient(from var(--angle), #ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000) border-box !important;
     }
+    .rainbow-hover::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 12px;
+      background: conic-gradient(from var(--angle), #ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000);
+      filter: blur(0.8rem);
+      opacity: 0;
+      z-index: -1;
+      transition: opacity 0.3s ease;
+      animation: spinAngle 2.5s linear infinite;
+      pointer-events: none;
+    }
+    .rainbow-hover:hover::before { opacity: 0.35; }
 
-    /* Variante: el botón entero (no el texto) se pinta rainbow */
+    /* Botones premium (fondo gradient accent) */
+    .rainbow-hover-bg {
+      position: relative;
+      transition: all 0.3s ease;
+      animation: spinAngle 2.5s linear infinite;
+    }
     .rainbow-hover-bg:hover {
-      background: linear-gradient(90deg,#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000) !important;
-      background-size: 200% auto !important;
-      -webkit-text-fill-color: #fff !important;
-      animation: mover 2.5s linear infinite !important;
-      border-color: transparent !important;
-      box-shadow: 0 4px 16px rgba(124,58,237,0.4) !important;
+      border: 2px solid transparent !important;
+      background:
+        linear-gradient(135deg, var(--accent), #6366f1) padding-box,
+        conic-gradient(from var(--angle), #ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000) border-box !important;
     }
+    .rainbow-hover-bg::before {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border-radius: 12px;
+      background: conic-gradient(from var(--angle), #ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000);
+      filter: blur(0.8rem);
+      opacity: 0;
+      z-index: -1;
+      transition: opacity 0.3s ease;
+      animation: spinAngle 2.5s linear infinite;
+      pointer-events: none;
+    }
+    .rainbow-hover-bg:hover::before { opacity: 0.35; }
 
-    /* Avatar que se rodea de rainbow al hover */
+    /* Avatares circulares — anillo fino */
     .rainbow-hover-ring {
-      transition: box-shadow 0.3s ease, border-color 0.3s ease;
+      position: relative;
+      display: inline-flex;
+      border-radius: 50%;
     }
-    .rainbow-hover-ring:hover {
-      border-color: transparent;
-      box-shadow:
-        0 0 0 2px #ff0000,
-        0 0 0 3px #ff7f00,
-        0 0 0 4px #ffff00,
-        0 0 8px rgba(124,58,237,0.5);
-      animation: rotarBorde 2.5s linear infinite;
+    .rainbow-hover-ring > img {
+      animation: spinAngle 2.5s linear infinite;
+      transition: all 0.3s ease;
     }
-    @keyframes rotarBorde {
-      0%   { filter:hue-rotate(0deg); }
-      100% { filter:hue-rotate(360deg); }
+    .rainbow-hover-ring:hover > img {
+      border: 1.5px solid transparent;
+      background:
+        linear-gradient(var(--surface2), var(--surface2)) padding-box,
+        conic-gradient(from var(--angle), #ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000) border-box;
+      border-radius: 50%;
     }
+    .rainbow-hover-ring::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 50%;
+      background: conic-gradient(from var(--angle), #ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000);
+      filter: blur(0.4rem);
+      opacity: 0;
+      z-index: -1;
+      transition: opacity 0.3s ease;
+      animation: spinAngle 2.5s linear infinite;
+      pointer-events: none;
+    }
+    .rainbow-hover-ring:hover::before { opacity: 0.3; }
 
     /* ══════════════════════════════════════════════════════
        PANEL DE SETTINGS
@@ -537,6 +673,22 @@
       background:var(--surface); border:1px solid var(--border); border-radius:var(--r);
       width:100%; max-width:360px; max-height:85vh; overflow-y:auto;
       box-shadow:0 24px 80px rgba(0,0,0,0.5); animation:subir 0.25s ease;
+      scrollbar-width:none;
+    }
+    .settings-panel::-webkit-scrollbar { display:none; }
+    @media(min-width:700px){
+      .settings-panel { max-width:520px; }
+      .settings-section { padding:22px 32px; }
+      .settings-header { padding:24px 32px 20px; }
+      .settings-header h3 { font-size:1.2rem; }
+      .settings-label { font-size:0.75rem; margin-bottom:14px; }
+      .settings-row { padding:13px 0; }
+      .settings-row-label { font-size:0.95rem; }
+      .settings-row-sub { font-size:0.78rem; }
+      .settings-row-action { font-size:0.85rem; padding:8px 18px; }
+      .settings-avatar { width:72px; height:72px; }
+      .settings-name { font-size:1.1rem; }
+      .settings-email { font-size:0.85rem; }
     }
     .settings-header {
       display:flex; align-items:center; gap:12px; padding:20px 20px 16px;
@@ -545,10 +697,12 @@
     }
     .settings-header h3 { font-family:var(--display); font-size:1.05rem; flex:1; }
     .settings-close {
-      width:32px; height:32px; border-radius:50%; border:1px solid var(--border);
+      width:32px; height:32px; border-radius:8px; border:2px solid var(--border);
       background:var(--surface2); color:var(--muted); font-size:1.1rem;
       cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:all 0.2s;
     }
+    .settings-close:hover { border-color:var(--accent); color:var(--accent2); }
 
     .settings-section { padding:16px 20px; border-bottom:1px solid var(--border); }
     .settings-section:last-child { border-bottom:none; }
@@ -558,10 +712,39 @@
     }
 
     .settings-avatar-row { display:flex; align-items:center; gap:14px; }
+    .settings-avatar-wrap { position:relative; flex-shrink:0; }
     .settings-avatar {
       width:56px; height:56px; border-radius:50%; border:3px solid var(--accent);
-      object-fit:cover;
+      object-fit:cover; display:block;
     }
+    .settings-avatar-edit {
+      position:absolute; bottom:0; right:0; width:20px; height:20px;
+      border-radius:50%; background:var(--accent); border:2px solid var(--surface);
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; font-size:0.65rem; color:#fff; transition:transform 0.15s;
+      user-select:none;
+    }
+    .settings-avatar-edit:hover { transform:scale(1.15); }
+    /* Share toggle buttons */
+    .share-toggle { display:flex; gap:6px; margin-top:10px; }
+    .share-toggle-btn {
+      flex:1; padding:8px 0; border-radius:10px; border:2px solid var(--border);
+      background:var(--surface2); color:var(--text); font-family:var(--sans);
+      font-size:0.82rem; cursor:pointer; transition:all 0.2s;
+    }
+    .share-toggle-btn.active {
+      border-color:var(--accent); background:var(--accent);
+      color:#fff;
+    }
+    .share-content { margin-top:12px; }
+    .share-code-box {
+      font-family:monospace; font-size:1.4rem; font-weight:700;
+      letter-spacing:4px; color:var(--accent2); background:var(--surface2);
+      padding:8px 16px; border-radius:8px; border:1px solid var(--border);
+      text-align:center; width:100%; box-sizing:border-box;
+    }
+    .share-code-row { display:flex; gap:8px; align-items:center; margin-top:8px; }
+    #share-qr-canvas { display:block; border-radius:10px; width:180px; height:180px; margin:8px auto 0; }
     .settings-name { font-weight:600; font-size:1rem; }
     .settings-email { font-size:0.8rem; color:var(--muted); }
 
@@ -572,44 +755,150 @@
     .settings-row-label { font-size:0.88rem; }
     .settings-row-sub { font-size:0.72rem; color:var(--muted); margin-top:2px; }
     .settings-row-action {
-      padding:6px 14px; border-radius:8px; border:1px solid var(--border);
+      padding:6px 14px; border-radius:8px; border:2px solid var(--border);
       background:var(--surface2); color:var(--text); font-family:var(--sans);
-      font-size:0.78rem; cursor:pointer; white-space:nowrap;
+      font-size:0.78rem; cursor:pointer; white-space:nowrap; transition:all 0.2s;
     }
     .settings-row-action:hover { border-color:var(--accent); color:var(--accent2); }
+    .settings-row-action:disabled { opacity:0.35; cursor:not-allowed; }
     .settings-row-action.premium {
       background:linear-gradient(135deg,var(--accent),#6366f1);
-      color:#fff; border:none; box-shadow:0 2px 8px var(--glow);
+      color:#fff; border:2px solid transparent; box-shadow:0 2px 8px var(--glow);
     }
+    .settings-row-action.premium:hover { box-shadow:0 4px 14px var(--glow); transform:translateY(-1px); }
+    .settings-row-action.danger {
+      border-color:rgba(239,68,68,0.3); color:var(--danger); background:var(--surface2);
+    }
+    .settings-row-action.danger:hover { border-color:var(--danger); background:rgba(239,68,68,0.1); }
 
     .settings-friends { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
     .settings-friend-chip {
       display:flex; align-items:center; gap:6px; padding:5px 12px 5px 5px;
-      border-radius:20px; background:var(--surface2); border:1px solid var(--border);
-      font-size:0.78rem; cursor:pointer; transition:all 0.15s;
+      border-radius:20px; background:var(--surface2); border:2px solid var(--border);
+      font-size:0.78rem; cursor:pointer; transition:all 0.2s;
     }
     .settings-friend-chip:hover { border-color:var(--accent); }
-    .settings-friend-av { width:22px; height:22px; border-radius:50%; border:2px solid transparent; }
+    .settings-friend-av {
+      width:22px; height:22px; border-radius:50%; display:block;
+    }
+    .settings-friend-av-wrap {
+      position:relative; display:inline-flex; border-radius:50%;
+      width:26px; height:26px; align-items:center; justify-content:center; flex-shrink:0;
+    }
+    .settings-friend-av-wrap .settings-friend-av {
+      position:relative; z-index:1;
+    }
 
     @keyframes aparecer { from{opacity:0} to{opacity:1} }
     @keyframes subir { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
+
+    /* ── VIEWER PÚBLICO (?view=ID) ── */
+    #viewer-screen {
+      display:none; position:fixed; inset:0; z-index:9000;
+      background:var(--bg); flex-direction:column; align-items:center; justify-content:center;
+    }
+    #viewer-screen.activo { display:flex; animation:aparecer 0.35s ease; }
+    #viewer-header {
+      position:absolute; top:0; left:0; right:0;
+      padding:14px 18px; display:flex; align-items:center; justify-content:space-between;
+      background:linear-gradient(180deg,rgba(15,15,19,0.95) 0%,transparent 100%);
+    }
+    #viewer-sender {
+      font-size:0.95rem; font-weight:600; color:var(--text);
+    }
+    #viewer-sender span { color:var(--accent2); }
+    #viewer-canvas {
+      border-radius:14px; box-shadow:0 0 60px var(--glow);
+      max-width:min(96vw,520px); max-height:min(75vh,520px);
+    }
+    #viewer-cta {
+      margin-top:20px; display:flex; flex-direction:column; align-items:center; gap:10px;
+    }
+    #viewer-reply-btn {
+      padding:13px 34px; border-radius:50px; border:none; cursor:pointer;
+      background:var(--accent); color:#fff; font-size:1rem; font-weight:600;
+      box-shadow:0 0 20px var(--glow); transition:transform 0.15s, box-shadow 0.15s;
+    }
+    #viewer-reply-btn:hover { transform:scale(1.04); box-shadow:0 0 30px var(--glow); }
+    #viewer-hint { font-size:0.78rem; color:var(--muted); text-align:center; max-width:260px; }
+    #viewer-loading { color:var(--muted); font-size:0.95rem; animation:pulse 1.5s infinite; }
+    #viewer-expired { color:var(--danger); font-size:0.95rem; text-align:center; }
 
   </style>
 </head>
 <body>
 
+<!-- ══ SPLASH SCREEN ══ -->
+<!-- ── VIEWER PÚBLICO — se muestra cuando llegan con ?view=SKETCHID ── -->
+<div id="viewer-screen">
+  <div id="viewer-header">
+    <div class="titulo" style="font-size:1.3rem;">SketchSend</div>
+    <div id="viewer-sender">Dibujo de <span id="viewer-from">...</span></div>
+  </div>
+  <div id="viewer-loading">Cargando dibujo... ✏️</div>
+  <canvas id="viewer-canvas" style="display:none;"></canvas>
+  <div id="viewer-expired" style="display:none;">
+    ⏳ Este dibujo ya expiró o no existe.<br>
+    <a href="sketchsendv14.html" style="color:var(--accent2);margin-top:8px;display:inline-block;">Ir a SketchSend →</a>
+  </div>
+  <div id="viewer-cta" style="display:none;">
+    <button id="viewer-reply-btn">✏️ Responder con un dibujo</button>
+    <div id="viewer-hint">Necesitas una cuenta gratuita para responder. ¡Es rápido!</div>
+  </div>
+</div>
+
+<div id="splash-screen" style="position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity 0.6s ease;">
+  <div class="titulo" style="font-size:clamp(1.4rem, 6vw, 2.4rem);">SketchSend ✏️</div>
+  <p style="color:var(--muted);font-size:0.95rem;animation:aparecer 1s ease 0.3s both;">Donde cada mensaje es un dibujo</p>
+  <div style="width:40px;height:3px;background:var(--accent);border-radius:2px;margin-top:8px;animation:pulse 1.5s infinite;"></div>
+</div>
+
 <!-- ══ PANTALLA DE LOGIN ══ -->
 <div id="auth-screen">
-  <div class="titulo" id="titulo-fantasma" style="visibility:hidden;">SketchSend ✏️</div>
+  <div class="titulo" id="titulo-fantasma">SketchSend ✏️</div>
+  <p class="tagline" id="lbl-tagline">Donde cada mensaje es un dibujo</p>
+  <div class="card" style="gap:14px;">
+    <h2 style="text-align:center;" id="lbl-welcome">Bienvenido</h2>
+    <p style="color:var(--muted);font-size:0.85rem;text-align:center;" id="lbl-welcome-sub">Escribe tu nombre y correo para empezar</p>
+
+    <input type="text"  id="magic-nombre" class="inp" placeholder="Tu nombre (ej: Joselo)" maxlength="20" autocomplete="name">
+    <input type="email" id="magic-email"  class="inp" placeholder="tu@correo.com" autocomplete="email">
+    <div id="magic-error" style="font-size:0.8rem;color:var(--danger);display:none;min-height:16px;"></div>
+    <button class="btn btn-p" id="magic-btn" id="lbl-enter-btn">Entrar →</button>
+
+    <div class="sep" id="lbl-or">o</div>
+    <button class="btn btn-s" id="google-btn">🔵 Continuar con Google</button>
+
+    <p style="font-size:0.72rem;color:var(--muted);text-align:center;" id="lbl-security">🔒 Tus dibujos son privados y se eliminan en 24h</p>
+  </div>
+</div>
+
+<!-- ══ PANTALLA: REVISA TU CORREO (magic link) ══ -->
+<div id="verify-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
   <p class="tagline">Donde cada mensaje es un dibujo</p>
-  <div class="card">
-    <h2>Empezar a dibujar</h2>
-    <p>Elige un nombre para continuar.</p>
-    <input type="text" id="nombre-inp" class="inp" placeholder="Tu nombre">
-    <button id="entrar-btn" class="btn btn-p">Entrar →</button>
-    <div class="sep">o continúa con</div>
-    <button class="btn btn-s" onclick="toast('🚧 Firebase Auth — Paso 2')">🔵 Continuar con Google</button>
-    <button class="btn btn-s" onclick="toast('🚧 Firebase Auth — Paso 2')">🍎 Continuar con Apple</button>
+  <div class="card" style="text-align:center;gap:16px;">
+    <div style="font-size:2.5rem;">📬</div>
+    <h2 id="lbl-verify-title">Revisa tu correo</h2>
+    <p id="verify-email-text" style="color:var(--muted);font-size:0.88rem;">Te enviamos un enlace. Tócalo para entrar.</p>
+    <button id="verify-resend-btn" class="btn btn-s">Reenviar enlace</button>
+    <button id="verify-logout-btn" style="background:none;border:none;color:var(--muted);font-size:0.8rem;cursor:pointer;margin-top:4px;">Usar otro correo</button>
+  </div>
+</div>
+
+<!-- ══ PANTALLA DE @USERNAME (primera vez) ══ -->
+<div id="username-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
+  <p class="tagline">Donde cada mensaje es un dibujo</p>
+  <div class="card" style="gap:12px;">
+    <h2 id="lbl-choose-username">Elige tu @usuario</h2>
+    <div id="username-screen-displayname" style="font-size:0.82rem;color:var(--muted);"></div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:0.82rem;color:var(--muted);line-height:1.5;" id="lbl-username-explain">
+      <strong style="color:var(--text);">📛 Nombre</strong> → lo que ven tus amigos al recibir tus dibujos.<br>
+      <strong style="color:var(--accent2);">🔍 @usuario</strong> → lo que escriben para encontrarte y agregarte.
+    </div>
+    <input type="text" id="username-inp" class="inp" placeholder="@tuusuario" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false">
+    <div id="username-error" style="font-size:0.8rem;color:var(--danger);display:none;"></div>
+    <button id="username-confirm-btn" class="btn btn-p">Confirmar →</button>
   </div>
 </div>
 
@@ -653,17 +942,16 @@
     <!-- Toolbar lateral (solo desktop) -->
     <aside class="toolbar" id="desktop-toolbar">
       <button class="tbtn activo" data-tool="rainbow">🌈</button>
-      <div class="tlabel">Rainbow</div>
+      <div class="tlabel" id="lbl-tool-rainbow">Rainbow</div>
       <div class="tsep"></div>
       <button class="tbtn" data-tool="pincel">🖌️</button>
-      <div class="tlabel">Pincel</div>
+      <div class="tlabel" id="lbl-tool-pincel">Pincel</div>
       <div class="tsep"></div>
       <button class="tbtn" data-tool="borrador">⬜</button>
-      <div class="tlabel">Borrar</div>
+      <div class="tlabel" id="lbl-tool-borrar">Borrar</div>
       <div class="tsep"></div>
       <div class="tlabel">COLOR</div>
       <div class="color-picker" id="color-picker-desk">
-        <div class="color-dot rainbow-dot activo" data-color="rainbow" title="Rainbow"></div>
         <div class="color-dot" data-color="#ffffff" style="background:#fff;border-color:#ccc;" title="Blanco"></div>
         <div class="color-dot" data-color="#1a1a2e" style="background:#1a1a2e;" title="Negro"></div>
       </div>
@@ -672,6 +960,19 @@
     <div class="czone">
       <div class="carea" id="carea">
         <canvas id="canvas"></canvas>
+        <div id="drawing-prompts" style="
+          position:absolute; bottom:60px; left:50%; transform:translateX(-50%);
+          display:flex; flex-direction:column; align-items:center; gap:8px;
+          pointer-events:none; transition:opacity 0.5s ease; z-index:10;
+        ">
+          <div id="prompt-text" style="
+            background:rgba(15,15,19,0.85); backdrop-filter:blur(8px);
+            border:1px solid var(--border); border-radius:20px;
+            padding:8px 18px; font-size:0.82rem; color:var(--muted);
+            white-space:nowrap;
+          "></div>
+          <div style="font-size:0.68rem;color:var(--muted);opacity:0.6;">✏️ empieza a dibujar</div>
+        </div>
         <div id="preview"></div>
         <div class="fbtns" id="fbtns">
           <button class="fbtn" id="undo-btn">↩ Deshacer</button>
@@ -683,18 +984,17 @@
       <div class="mob-toolbar" id="mob-toolbar">
         <button class="mob-tool activo" data-tool="rainbow">
           <div class="mob-tool-icon">🌈</div>
-          <div class="mob-tool-label">Rainbow</div>
+          <div class="mob-tool-label" id="lbl-mob-rainbow">Rainbow</div>
         </button>
         <button class="mob-tool" data-tool="pincel">
           <div class="mob-tool-icon">🖌️</div>
-          <div class="mob-tool-label">Pincel</div>
+          <div class="mob-tool-label" id="lbl-mob-pincel">Pincel</div>
         </button>
         <button class="mob-tool" data-tool="borrador">
           <div class="mob-tool-icon">⬜</div>
-          <div class="mob-tool-label">Borrar</div>
+          <div class="mob-tool-label" id="lbl-mob-borrar">Borrar</div>
         </button>
         <div class="color-picker" id="color-picker-mob">
-          <div class="color-dot rainbow-dot activo" data-color="rainbow" title="Rainbow" style="width:20px;height:20px;"></div>
           <div class="color-dot" data-color="#ffffff" style="background:#fff;border-color:#ccc;width:20px;height:20px;" title="Blanco"></div>
           <div class="color-dot" data-color="#1a1a2e" style="background:#1a1a2e;width:20px;height:20px;" title="Negro"></div>
         </div>
@@ -710,6 +1010,13 @@
       </div>
     </div>
   </div>
+</div>
+
+<!-- BRUSH SIZE POPUP -->
+<div id="brush-popup" class="hidden">
+  <div id="brush-popup-label">Brush size / Tamaño</div>
+  <input type="range" id="brush-size-slider" min="2.5" max="5" step="0.1" value="4">
+  <div id="brush-size-val">4.0 px</div>
 </div>
 
 <!-- MODAL DE GUARDADO -->
@@ -749,85 +1056,134 @@
     </div>
 
     <div class="settings-section">
-      <div class="settings-label">Perfil</div>
+      <div class="settings-label" id="lbl-profile">Perfil</div>
       <div class="settings-avatar-row">
-        <img id="settings-avatar" class="settings-avatar" src="" alt="">
-        <div>
+        <div class="settings-avatar-wrap">
+          <img id="settings-avatar" class="settings-avatar" src="" alt="">
+          <div class="settings-avatar-edit" id="settings-edit-photo" title="Cambiar foto">✏️</div>
+          <input type="file" id="photo-file-input" accept="image/*" style="display:none;">
+        </div>
+        <div style="flex:1;min-width:0;">
           <div class="settings-name" id="settings-name">—</div>
-          <div class="settings-email" id="settings-email">🚧 Email con Firebase Auth</div>
+          <div class="settings-email" id="settings-email" style="font-size:0.75rem;color:var(--muted);margin-top:2px;"></div>
+          <div id="settings-username-display" style="font-size:0.78rem;color:var(--accent2);margin-top:3px;"></div>
         </div>
       </div>
-      <div class="settings-row">
+      <!-- Cambiar nombre inline -->
+      <div class="settings-row" id="rename-view-row">
         <div>
-          <div class="settings-row-label">Cambiar nombre</div>
-          <div class="settings-row-sub">Máximo 15 caracteres</div>
+          <div class="settings-row-label" id="lbl-change-name">Nombre</div>
+          <div class="settings-row-sub" id="lbl-change-name-sub">Lo que ven tus amigos al recibir dibujos</div>
         </div>
-        <button class="settings-row-action" id="settings-rename">Editar</button>
+        <button class="settings-row-action" id="settings-rename" id="lbl-edit-btn">Editar</button>
       </div>
-      <div class="settings-row">
-        <div>
-          <div class="settings-row-label">Cambiar foto</div>
-          <div class="settings-row-sub">🚧 Disponible con Firebase</div>
+      <div id="rename-edit-row" style="display:none;flex-direction:column;gap:8px;padding:8px 0;">
+        <input type="text" id="rename-inp" class="inp" placeholder="Tu nombre" maxlength="20" style="font-size:0.9rem;">
+        <div style="display:flex;gap:8px;">
+          <button class="settings-row-action" style="flex:1;background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;border-color:transparent;" id="rename-save-btn">Guardar</button>
+          <button class="settings-row-action" id="rename-cancel-btn">Cancelar</button>
         </div>
-        <button class="settings-row-action" disabled style="opacity:0.4">Subir</button>
+      </div>
+      <!-- Cambiar @usuario inline -->
+      <div class="settings-row" id="uname-view-row">
+        <div>
+          <div class="settings-row-label" id="lbl-change-username">@Usuario</div>
+          <div class="settings-row-sub" id="lbl-change-username-sub">Con este nombre te buscan para enviarte dibujos</div>
+        </div>
+        <button class="settings-row-action" id="settings-change-username">Editar</button>
+      </div>
+      <div id="uname-edit-row" style="display:none;flex-direction:column;gap:8px;padding:8px 0;">
+        <input type="text" id="uname-inp" class="inp" placeholder="@tuusuario" maxlength="20" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" style="font-size:0.9rem;">
+        <div id="uname-edit-error" style="font-size:0.78rem;color:var(--danger);display:none;"></div>
+        <div style="display:flex;gap:8px;">
+          <button class="settings-row-action" style="flex:1;background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;border-color:transparent;" id="uname-save-btn">Guardar</button>
+          <button class="settings-row-action" id="uname-cancel-btn">Cancelar</button>
+        </div>
       </div>
     </div>
 
     <div class="settings-section">
-      <div class="settings-label">Amigos</div>
+      <div class="settings-label" id="lbl-friends-section">Amigos</div>
       <div class="settings-friends" id="settings-friends">
         <!-- generado por JS -->
       </div>
-      <div class="settings-row">
-        <div>
-          <div class="settings-row-label">Invitar amigos</div>
-          <div class="settings-row-sub">Comparte un link para que descarguen la app</div>
+      <div style="margin-top:14px;">
+        <div class="settings-row-label" id="lbl-invite">Invitar amigos</div>
+        <div class="settings-row-sub" id="lbl-invite-sub">Comparte tu código o QR para que te agreguen</div>
+        <div class="share-toggle" id="share-toggle">
+          <button class="share-toggle-btn active" id="share-tab-qr">📱 QR Code</button>
+          <button class="share-toggle-btn" id="share-tab-link">🔗 Link</button>
         </div>
-        <button class="settings-row-action rainbow-hover-bg" id="settings-invite">Invitar 🔗</button>
+        <div class="share-content" id="share-content-qr" style="text-align:center;">
+          <canvas id="share-qr-canvas" width="200" height="200" style="border-radius:10px;max-width:200px;"></canvas>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;" id="lbl-qr-hint">Escanea para agregar automáticamente</div>
+        </div>
+        <div class="share-content" id="share-content-link" style="display:none;">
+          <div class="share-code-row">
+            <button class="settings-row-action rainbow-hover-bg" style="flex:1" id="settings-invite">Compartir link 🔗</button>
+          </div>
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;" id="lbl-link-hint">El link agrega automáticamente a quien lo abra</div>
+        </div>
+        <!-- shortcode oculto (usado internamente) -->
+        <div id="user-shortcode" style="display:none;">——</div>
       </div>
     </div>
 
     <div class="settings-section">
-      <div class="settings-label">Tienda</div>
+      <div class="settings-label" id="lbl-store-section">Tienda</div>
       <div class="settings-row">
         <div>
-          <div class="settings-row-label">🎨 Colores premium</div>
-          <div class="settings-row-sub">Paleta completa con selector libre</div>
+          <div class="settings-row-label">🎨 <span id="store-colors-lbl">Colores premium</span></div>
+          <div class="settings-row-sub" id="store-colors-sub">Paleta completa con selector libre</div>
         </div>
-        <button class="settings-row-action premium rainbow-hover-bg">$1.99</button>
+        <button class="settings-row-action premium rainbow-hover-bg store-soon" id="store-btn-colors">Pronto</button>
       </div>
       <div class="settings-row">
         <div>
-          <div class="settings-row-label">🖌️ Pinceles especiales</div>
-          <div class="settings-row-sub">Acuarela, neón, caligrafía, pixel</div>
+          <div class="settings-row-label">🖌️ <span id="store-brushes-lbl">Pinceles especiales</span></div>
+          <div class="settings-row-sub" id="store-brushes-sub">Acuarela, neón, caligrafía, pixel</div>
         </div>
-        <button class="settings-row-action premium rainbow-hover-bg">$2.99</button>
+        <button class="settings-row-action premium rainbow-hover-bg store-soon" id="store-btn-brushes">Pronto</button>
       </div>
       <div class="settings-row">
         <div>
-          <div class="settings-row-label">🌈 Temas de temporada</div>
-          <div class="settings-row-sub">Halloween, Navidad, San Valentín</div>
+          <div class="settings-row-label">🌈 <span id="store-themes-lbl">Temas de temporada</span></div>
+          <div class="settings-row-sub" id="store-themes-sub">Halloween, Navidad, San Valentín</div>
         </div>
-        <button class="settings-row-action premium rainbow-hover-bg">$0.99</button>
+        <button class="settings-row-action premium rainbow-hover-bg store-soon" id="store-btn-themes">Pronto</button>
       </div>
       <div class="settings-row">
         <div>
-          <div class="settings-row-label">⭐ SketchSend Pro</div>
-          <div class="settings-row-sub">Dibujos permanentes, 4K, sin firma</div>
+          <div class="settings-row-label">⭐ <span id="store-pro-lbl">SketchSend Pro</span></div>
+          <div class="settings-row-sub" id="store-pro-sub">Dibujos permanentes, 4K, sin firma</div>
         </div>
-        <button class="settings-row-action premium rainbow-hover-bg">$4.99/mes</button>
+        <button class="settings-row-action premium rainbow-hover-bg store-soon" id="store-btn-pro">Pronto</button>
       </div>
     </div>
 
     <div class="settings-section">
-      <div class="settings-label">App</div>
-      <div class="settings-row">
-        <div class="settings-row-label">Versión</div>
-        <div style="font-size:0.82rem;color:var(--muted);">0.5.0 beta</div>
+      <div class="settings-label" id="lbl-app-section">App</div>
+      <div class="settings-row" id="install-row" style="display:none;">
+        <div>
+          <div class="settings-row-label">Instalar app</div>
+          <div class="settings-row-sub">Agregar SketchSend a tu pantalla de inicio</div>
+        </div>
+        <button class="settings-row-action rainbow-hover-bg" id="install-btn">Instalar 📲</button>
       </div>
       <div class="settings-row">
-        <div class="settings-row-label">Cerrar sesión</div>
-        <button class="settings-row-action" id="settings-logout" style="border-color:var(--danger);color:var(--danger);">Salir</button>
+        <div class="settings-row-label" id="lbl-language">Idioma</div>
+        <div style="display:flex;gap:6px;">
+          <button id="lang-es-btn" class="btn-g" style="font-size:0.8rem;">🇪🇸 ES</button>
+          <button id="lang-en-btn" class="btn-g" style="font-size:0.8rem;opacity:0.5;">🇺🇸 EN</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label" id="lbl-version">Versión</div>
+        <div style="font-size:0.82rem;color:var(--muted);">1.0.0-beta</div>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label" id="lbl-cerrar-sesion">Cerrar sesión</div>
+        <button class="settings-row-action danger" id="settings-logout">Salir</button>
       </div>
     </div>
   </div>
@@ -853,11 +1209,276 @@
    - FIX: inicialización directa (no DOMContentLoaded)
 ══════════════════════════════════════════════════════════════ */
 
+/* ══════════════════════════════════════════════════════
+   SISTEMA I18N — inglés / español
+══════════════════════════════════════════════════════ */
+const I18N = {
+  es: {
+    welcome: 'Bienvenido', welcome_sub: 'Escribe tu nombre y correo para empezar',
+    name_placeholder: 'Tu nombre (ej: Joselo)', username_placeholder: '@tuusuario (ej: joselo23)',
+    email_placeholder: 'tu@correo.com',
+    enter_btn: 'Entrar →',
+    verify_title: 'Revisa tu correo',
+    resend_link: 'Reenviar enlace', use_other_email: 'Usar otro correo',
+    google_btn: '🔵 Continuar con Google', apple_btn: '🍎 Continuar con Apple',
+    wb_title: 'Abre esto en tu navegador',
+    wb_body: 'Estás dentro de otra app. El login con Google no funciona aquí.',
+    wb_hint: 'Toca los 3 puntos (⋯) y elige "Abrir en Safari" o "Abrir en Chrome".',
+    use_email: 'Usar email y contraseña ↓', hide_email: 'Ocultar ↑',
+    security_msg: '🔒 Tus dibujos son privados y se eliminan en 24h',
+    verify_title: 'Verifica tu email',
+    already_verified: 'Ya verifiqué ✓', resend_email: 'Reenviar email',
+    use_other_account: 'Usar otra cuenta',
+    choose_username: 'Elige tu @usuario',
+    choose_username_sub: 'Con este nombre tus amigos te podrán buscar en SketchSend.',
+    confirm: 'Confirmar →', verifying: 'Verificando…',
+    save: '💾 Guardar', clear: '🗑️ Limpiar', inbox: 'Bandeja', exit: 'Salir',
+    send: 'Enviar ✉️', send_to: 'Enviar a',
+    save_modal_title: '💾 Guardar dibujo', save_modal_sub: '¿En qué formato?',
+    save_png: '⬇️ Imagen (.PNG)', save_video: '🎬 Video replay (.WEBM)',
+    save_sks: '📦 Proyecto (.SKS)', cancel: 'Cancelar',
+    inbox_title: '✉️ Dibujos recibidos', inbox_close: 'Cerrar',
+    inbox_empty: 'No tienes dibujos nuevos', inbox_sent_you: 'Te envió un dibujo',
+    settings_title: '⚙️ Configuración',
+    profile: 'Perfil', friends: 'Amigos', store: 'Tienda', app_section: 'App',
+    change_name: 'Nombre', change_name_sub: 'Lo que ven tus amigos al recibir dibujos',
+    change_username: '@Usuario', change_username_sub: 'Con este nombre te buscan para enviarte dibujos',
+    change_photo: 'Cambiar foto', change_photo_sub: '🚧 Próximamente',
+    edit: 'Editar', upload: 'Subir',
+    your_code: 'Tu código de invitación',
+    your_code_sub: 'Compártelo para que te agreguen como amigo',
+    copy_code: 'Copiar código',
+    invite_friends: 'Invitar amigos', invite_friends_sub: 'Comparte tu QR o link para que te agreguen',
+    invite_btn: 'Compartir link 🔗',
+    qr_hint: 'Escanea para agregar automáticamente', link_hint: 'El link agrega automáticamente a quien lo abra',
+    store_colors: 'Colores premium', store_colors_sub: 'Paleta completa con selector libre',
+    store_brushes: '🖌️ Pinceles especiales', store_brushes_sub: 'Acuarela, neón, caligrafía, pixel',
+    store_themes: '🌈 Temas de temporada', store_themes_sub: 'Halloween, Navidad, San Valentín',
+    store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Dibujos permanentes, 4K, sin firma',
+    install_app: 'Instalar app', install_app_sub: 'Agregar SketchSend a tu pantalla de inicio',
+    install_btn: 'Instalar 📲', language: 'Idioma', version: 'Versión', logout: 'Cerrar sesión',
+    tool_rainbow: 'Arcoíris', tool_brush: 'Pincel', tool_erase: 'Borrar',
+    store_section: 'Tienda',
+    no_friends: 'Agrega amigos para enviarles dibujos →',
+    add_friend: 'Agregar', share_label: 'Compartir',
+    add_friend_prompt: 'Buscar amigo por @usuario o código (ej: XK9P2M):',
+    draw_first: '✏️ ¡Dibuja algo primero!', select_contact: '👆 Selecciona a quién enviar',
+    sent_to: '✉️ Enviado a', friend_added: '✅ Amigo agregado',
+    friend_not_found: '❌ Usuario no encontrado', friend_self: '❌ No puedes agregarte a ti mismo',
+    friend_exists: 'Ya tienes amistad con ese usuario', copied: '✓ Copiado',
+    loading: 'Cargando…', creating: 'Creando cuenta…', entering: 'Entrando…',
+    no_friends_yet: 'Aún no tienes amigos en SketchSend',
+    login_to_see: 'Inicia sesión para ver tus amigos',
+    err_fill_all: 'Completa todos los campos',
+    err_email_pass: 'Completa email y contraseña',
+    err_username_fmt: 'Solo letras minúsculas, números y _ · mínimo 3 chars',
+    err_username_taken: 'Ese @usuario ya está tomado, elige otro',
+    err_saving: 'Error al guardar: ',
+  },
+  en: {
+    welcome: 'Welcome', welcome_sub: 'Enter your name and email to get started',
+    name_placeholder: 'Your name (e.g. Joselo)', username_placeholder: '@username (e.g. joselo23)',
+    email_placeholder: 'you@email.com',
+    enter_btn: 'Continue →',
+    verify_title: 'Check your email',
+    resend_link: 'Resend link', use_other_email: 'Use a different email',
+    google_btn: '🔵 Continue with Google', apple_btn: '🍎 Continue with Apple',
+    wb_title: 'Open this in your browser',
+    wb_body: "You're inside another app. Google login doesn't work here.",
+    wb_hint: 'Tap the 3 dots (⋯) and choose "Open in Safari" or "Open in Chrome".',
+    use_email: 'Use email and password ↓', hide_email: 'Hide ↑',
+    security_msg: '🔒 Your drawings are private and deleted in 24h',
+    verify_title: 'Verify your email',
+    already_verified: 'I verified ✓', resend_email: 'Resend email',
+    use_other_account: 'Use another account',
+    choose_username: 'Choose your @username',
+    choose_username_sub: 'Friends will use this to find you on SketchSend.',
+    confirm: 'Confirm →', verifying: 'Verifying…',
+    save: '💾 Save', clear: '🗑️ Clear', inbox: 'Inbox', exit: 'Sign out',
+    send: 'Send ✉️', send_to: 'Send to',
+    save_modal_title: '💾 Save drawing', save_modal_sub: 'Choose format:',
+    save_png: '⬇️ Image (.PNG)', save_video: '🎬 Video replay (.WEBM)',
+    save_sks: '📦 Project (.SKS)', cancel: 'Cancel',
+    inbox_title: '✉️ Received drawings', inbox_close: 'Close',
+    inbox_empty: 'No new drawings', inbox_sent_you: 'sent you a drawing',
+    settings_title: '⚙️ Settings',
+    profile: 'Profile', friends: 'Friends', store: 'Store', app_section: 'App',
+    change_name: 'Name', change_name_sub: 'What your friends see when they receive drawings',
+    change_username: '@Username', change_username_sub: 'How friends search for and add you',
+    change_photo: 'Change photo', change_photo_sub: '🚧 Coming soon',
+    edit: 'Edit', upload: 'Upload',
+    your_code: 'Your invite code', your_code_sub: 'Share it so friends can add you',
+    copy_code: 'Copy code',
+    invite_friends: 'Invite friends', invite_friends_sub: 'Share your QR or link to get added',
+    invite_btn: 'Share link 🔗',
+    qr_hint: 'Scan to add automatically', link_hint: 'Whoever opens the link gets added automatically',
+    store_colors: 'Premium colors', store_colors_sub: 'Full palette with free selector',
+    store_brushes: '🖌️ Special brushes', store_brushes_sub: 'Watercolor, neon, calligraphy, pixel',
+    store_themes: '🌈 Seasonal themes', store_themes_sub: "Halloween, Christmas, Valentine's",
+    store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Permanent drawings, 4K, no watermark',
+    install_app: 'Install app', install_app_sub: 'Add SketchSend to your home screen',
+    install_btn: 'Install 📲', language: 'Language', version: 'Version', logout: 'Sign out',
+    tool_rainbow: 'Rainbow', tool_brush: 'Brush', tool_erase: 'Erase',
+    store_section: 'Store',
+    no_friends: 'Add friends to send them drawings →',
+    add_friend: 'Add', share_label: 'Share',
+    add_friend_prompt: 'Search friend by @username or code (e.g. XK9P2M):',
+    draw_first: '✏️ Draw something first!', select_contact: '👆 Select who to send to',
+    sent_to: '✉️ Sent to', friend_added: '✅ Friend added',
+    friend_not_found: '❌ User not found', friend_self: "❌ You can't add yourself",
+    friend_exists: 'Already friends with that user', copied: '✓ Copied',
+    loading: 'Loading…', creating: 'Creating account…', entering: 'Logging in…',
+    no_friends_yet: 'You have no friends on SketchSend yet',
+    login_to_see: 'Log in to see your friends',
+    err_fill_all: 'Fill in all fields',
+    err_email_pass: 'Enter your email and password',
+    err_username_fmt: 'Only lowercase letters, numbers and _ · minimum 3 chars',
+    err_username_taken: 'That @username is taken, choose another',
+    err_saving: 'Error saving: ',
+  }
+};
+
+let lang = localStorage.getItem('ss_lang') || 'es';
+function t(key) { return I18N[lang][key] || I18N['es'][key] || key; }
+
+/* HTML escape — usar siempre que datos de Firestore / usuario entren en innerHTML */
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+/* Safe URL: solo permite https:// y data: para avatares generados */
+function safeUrl(url) {
+  if (!url) return '';
+  const s = String(url);
+  if (s.startsWith('https://') || s.startsWith('data:image/')) return s;
+  return ''; /* rechaza javascript:, blob: externos, etc. */
+}
+
+function applyLang() {
+  const q = id => document.getElementById(id);
+  const set = (id, key) => { const el = q(id); if (el) el.textContent = t(key); };
+  const ph  = (id, key) => { const el = q(id); if (el) el.placeholder = t(key); };
+
+  // ── WebView banner ──
+  set('wb-title', 'wb_title'); set('wb-body', 'wb_body'); set('wb-hint', 'wb_hint');
+
+  // ── Login ──
+  set('lbl-welcome', 'welcome');
+  set('lbl-welcome-sub', 'welcome_sub');
+  set('magic-btn', 'enter_btn');
+  set('google-btn', 'google_btn');
+  set('lbl-verify-title', 'verify_title');
+  set('verify-resend-btn', 'resend_link');
+  set('verify-logout-btn', 'use_other_email');
+  set('username-confirm-btn', 'confirm');
+  set('lbl-choose-username', 'choose_username');
+  /* Translate username-explain block */
+  const uExp = q('lbl-username-explain');
+  if (uExp) uExp.innerHTML = lang === 'en'
+    ? '<strong style="color:var(--text);">📛 Name</strong> → what friends see when they receive your drawings.<br><strong style="color:var(--accent2);">🔍 @username</strong> → what they type to find and add you.'
+    : '<strong style="color:var(--text);">📛 Nombre</strong> → lo que ven tus amigos al recibir tus dibujos.<br><strong style="color:var(--accent2);">🔍 @usuario</strong> → lo que escriben para encontrarte y agregarte.';
+  ph('magic-nombre', 'name_placeholder');
+  ph('magic-email', 'email_placeholder');
+  ph('username-inp', 'username_placeholder');
+
+  // ── Header / app ──
+  set('enviar-btn', 'send');
+  set('salir-btn', 'exit');
+  set('salir-btn-mob', 'exit');
+  ['guardar-btn','guardar-btn-mob'].forEach(id => {
+    const el = q(id); if (!el) return;
+    const sp = el.querySelector('.hbtn-text');
+    if (sp) sp.textContent = lang==='en' ? 'Save' : 'Guardar';
+  });
+  ['limpiar-btn','limpiar-btn-mob'].forEach(id => {
+    const el = q(id); if (!el) return;
+    const sp = el.querySelector('.hbtn-text');
+    if (sp) sp.textContent = lang==='en' ? 'Clear' : 'Limpiar';
+  });
+  ['inbox-btn','inbox-btn-mob'].forEach(id => {
+    const el = q(id); if (!el) return;
+    const sp = el.querySelector('.hbtn-text');
+    if (sp) sp.textContent = t('inbox');
+  });
+  const stripLabel = q('strip-label');
+  if (stripLabel) {
+    const cnt = q('sel-count');
+    stripLabel.innerHTML = t('send_to') + ' <span id="sel-count" style="color:var(--accent2)">' + (cnt ? cnt.textContent : '') + '</span>';
+  }
+
+  // ── Modal guardar ──
+  const modalH = document.querySelector('#modal h3');
+  if (modalH) modalH.textContent = t('save_modal_title');
+  const modalP = document.querySelector('#modal p');
+  if (modalP) modalP.textContent = t('save_modal_sub');
+  set('png-btn', 'save_png');
+  set('vid-btn', 'save_video');
+  set('sks-btn', 'save_sks');
+  set('cerrar-btn', 'cancel');
+
+  // ── Bandeja ──
+  const inboxTitle = document.querySelector('.inbox-title');
+  if (inboxTitle) inboxTitle.textContent = t('inbox_title');
+  set('inbox-close', 'inbox_close');
+
+  // ── Settings ──
+  const settingsH = document.querySelector('.settings-header h3');
+  if (settingsH) settingsH.textContent = t('settings_title');
+  set('settings-rename', 'edit');
+  set('settings-change-username', 'edit');
+  set('lbl-change-username', 'change_username');
+  set('lbl-change-username-sub', 'change_username_sub');
+  set('settings-invite', 'invite_btn');
+  set('settings-logout', 'logout');
+  set('copy-code-btn', 'copy_code');
+  set('install-btn', 'install_btn');
+  // Labels en settings con IDs del HTML
+  set('lbl-profile', 'profile');
+  set('lbl-friends-section', 'friends');
+  set('lbl-app-section', 'app_section');
+  set('lbl-change-name', 'change_name');
+  set('lbl-change-name-sub', 'change_name_sub');
+  set('lbl-invite', 'invite_friends');
+  set('lbl-invite-sub', 'invite_friends_sub');
+  set('lbl-language', 'language');
+  set('lbl-version', 'version');
+  // Tienda — labels con IDs, botones con "Pronto"/"Coming soon"
+  set('store-colors-lbl', 'store_colors'); set('store-colors-sub', 'store_colors_sub');
+  set('store-brushes-lbl', 'store_brushes'); set('store-brushes-sub', 'store_brushes_sub');
+  set('store-themes-lbl', 'store_themes'); set('store-themes-sub', 'store_themes_sub');
+  set('store-pro-lbl', 'store_pro'); set('store-pro-sub', 'store_pro_sub');
+  const soonText = lang === 'es' ? 'Pronto' : 'Coming soon';
+  document.querySelectorAll('.store-soon').forEach(btn => { btn.textContent = soonText; });
+  // Share hints
+  set('lbl-qr-hint', 'qr_hint'); set('lbl-link-hint', 'link_hint');
+
+  // Toolbar tool labels
+  set('lbl-tool-rainbow', 'tool_rainbow'); set('lbl-mob-rainbow', 'tool_rainbow');
+  set('lbl-tool-pincel', 'tool_brush');   set('lbl-mob-pincel', 'tool_brush');
+  set('lbl-tool-borrar', 'tool_erase');   set('lbl-mob-borrar', 'tool_erase');
+
+  // Store section label
+  set('lbl-store-section', 'store_section');
+
+  // ── Language buttons ──
+  const langEs = q('lang-es-btn'); if (langEs) langEs.style.opacity = lang==='es' ? '1' : '0.5';
+  const langEn = q('lang-en-btn'); if (langEn) langEn.style.opacity = lang==='en' ? '1' : '0.5';
+
+  document.documentElement.lang = lang;
+}
+
+function generarShortCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const arr = new Uint8Array(8);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => chars[b % chars.length]).join('');
+}
+
 /* ── REFERENCIAS DOM ── */
 const authScreen = document.getElementById('auth-screen');
 const appEl      = document.getElementById('app');
-const nombreInp  = document.getElementById('nombre-inp');
-const entrarBtn  = document.getElementById('entrar-btn');
 const salirBtn   = document.getElementById('salir-btn');
 const avatarEl   = document.getElementById('av');
 const unameEl    = document.getElementById('uname');
@@ -913,6 +1534,20 @@ let colorSeleccionado = 'rainbow'; /* Color activo: 'rainbow' o un hex */
 const DPR          = window.devicePixelRatio || 1;
 const allColorDots = document.querySelectorAll('.color-dot');
 
+/* ── ESCALA "CONTAIN" PARA CROSS-DEVICE ──
+   Calcula el factor de escala y offset para ajustar un dibujo
+   hecho en origW×origH al espacio targetW×targetH, manteniendo
+   proporciones y centrando (como object-fit:contain). */
+function getScaleTransform(origW, origH, targetW, targetH) {
+  if (!origW || !origH || (origW === targetW && origH === targetH)) {
+    return { scale:1, ox:0, oy:0 };
+  }
+  const scale = Math.min(targetW / origW, targetH / origH);
+  const ox = (targetW - origW * scale) / 2;
+  const oy = (targetH - origH * scale) / 2;
+  return { scale, ox, oy };
+}
+
 /* Bandeja de mensajes recibidos (simulados — Firebase los reemplazará en Paso 2) */
 let bandejaEntrada = [];
 
@@ -947,46 +1582,408 @@ function applySeason() {
 }
 
 /* ══════════════════════════════════════════════════════
-   AUTENTICACIÓN (localStorage por ahora, Firebase en Paso 2)
+   FIREBASE CONFIG — reemplaza con tu firebaseConfig real
+   Obtén el tuyo en: console.firebase.google.com
+   Project Settings → Your apps → Web app → firebaseConfig
 ══════════════════════════════════════════════════════ */
-function checkLogin() {
-  usuario = localStorage.getItem('ss_user');
-  if (usuario) {
-    const avatarSrc = genAvatar(usuario);
-    /* Desktop header */
-    unameEl.textContent = usuario;
-    avatarEl.src = avatarSrc;
-    /* Mobile header */
-    unameMob.textContent = usuario;
-    avMob.src = avatarSrc;
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBwsOO3je4iK63tid5KDDgYWeVHs0OanIc",
+  authDomain:        "sketchsend-d1976.firebaseapp.com",
+  projectId:         "sketchsend-d1976",
+  storageBucket:     "sketchsend-d1976.firebasestorage.app",
+  messagingSenderId: "445386471766",
+  appId:             "1:445386471766:web:6f8c0681a676d5a5b67ef7"
+};
 
-    authScreen.style.display = 'none';
-    appEl.style.display = 'flex';
-    setupCanvas();
-    buildCarousel();
-    requestAnimationFrame(() => requestAnimationFrame(volarAlHeader));
-  } else {
-    authScreen.style.display = 'flex';
-    appEl.style.display = 'none';
-    const ph = document.getElementById('hdr-logo-placeholder');
-    if (ph) { ph.style.visibility='hidden'; ph.style.animation=''; ph.style.backgroundPosition=''; }
-    volador.style.opacity = '1';
-    volador.style.transition = 'none';
-    setTimeout(posicionarVoladorEnLogin, 50);
+// Firestore Rules (Firebase Console → Firestore → Rules):
+// users: read si está autenticado, write solo el propio uid
+// friendships: read/write si tu uid está en el array users[]
+// sketches: write si from==uid, read si to==uid, delete si to==uid
+// Storage Rules (Firebase Console → Storage → Rules):
+// match /avatars/{uid} { allow read: if true; allow write: if request.auth.uid == uid; }
+
+/* ── Inicializar Firebase (solo si el config es real) ── */
+let auth = null;
+let db = null;
+const firebaseReady = (() => {
+  try {
+    if (FIREBASE_CONFIG.apiKey.startsWith('REEMPLAZA')) return false;
+    firebase.initializeApp(FIREBASE_CONFIG);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    window.storage = firebase.storage();
+    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    return true;
+  } catch(e) {
+    console.warn('Firebase no inicializado:', e.message);
+    return false;
+  }
+})();
+
+/* ══════════════════════════════════════════════════════
+   AUTENTICACIÓN — Email/contraseña + Google + verificación
+══════════════════════════════════════════════════════ */
+
+/* ── Helpers de pantalla ── */
+function ocultarTodasLasPantallas() {
+  authScreen.style.display = 'none';
+  appEl.style.display = 'none';
+  const us = document.getElementById('username-screen');
+  const vs = document.getElementById('verify-screen');
+  if (us) us.style.display = 'none';
+  if (vs) vs.style.display = 'none';
+}
+
+function mostrarLogin() {
+  ocultarTodasLasPantallas();
+  authScreen.style.display = 'flex';
+  const ph = document.getElementById('hdr-logo-placeholder');
+  if (ph) { ph.style.visibility='hidden'; ph.style.animation=''; ph.style.backgroundPosition=''; }
+  volador.style.opacity = '0';
+  setTimeout(posicionarVoladorEnLogin, 50);
+}
+
+function mostrarVerificacion(email) {
+  ocultarTodasLasPantallas();
+  volador.style.opacity = '0';
+  const vs = document.getElementById('verify-screen');
+  if (vs) vs.style.display = 'flex';
+  const txt = document.getElementById('verify-email-text');
+  if (txt) {
+    txt.textContent = '';
+    const pre = document.createTextNode(lang === 'en' ? 'We sent a link to ' : 'Enviamos un enlace a ');
+    const strong = document.createElement('strong'); strong.textContent = email;
+    const post = document.createTextNode(lang === 'en' ? ' — tap it to sign in.' : ' — tócalo para entrar.');
+    txt.appendChild(pre); txt.appendChild(strong); txt.appendChild(post);
   }
 }
 
-entrarBtn.addEventListener('click', () => {
-  const n = nombreInp.value.trim();
-  if (!n) { toast('⚠️ Escribe un nombre'); return; }
-  if (n.length > 15) { toast('⚠️ Máximo 15 caracteres'); return; }
-  localStorage.setItem('ss_user', n);
-  checkLogin();
+function mostrarPantallaUsername(nombre, fotoUrl) {
+  ocultarTodasLasPantallas();
+  volador.style.opacity = '0';
+  const usernameScreen = document.getElementById('username-screen');
+  usernameScreen.style.display = 'flex';
+  const dnEl = document.getElementById('username-screen-displayname');
+  if (dnEl) dnEl.textContent = 'Hola, ' + nombre + ' 👋 — tu nombre real ya está guardado';
+  const usernameInp = document.getElementById('username-inp');
+  const confirmBtn  = document.getElementById('username-confirm-btn');
+  const errorEl     = document.getElementById('username-error');
+  const pre = nombre.toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,20);
+  if (pre.length >= 3) usernameInp.value = pre;
+
+  /* Remover listener previo clonando el botón */
+  const newBtn = confirmBtn.cloneNode(true);
+  confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+
+  newBtn.addEventListener('click', async () => {
+    const raw = usernameInp.value.trim().toLowerCase().replace(/^@/, '');
+    if (!/^[a-z0-9_]{3,20}$/.test(raw)) {
+      errorEl.textContent = 'Solo letras minúsculas, números y _ · mínimo 3 chars'; errorEl.style.display='block'; return;
+    }
+    errorEl.style.display = 'none';
+    newBtn.disabled = true; newBtn.textContent = 'Verificando…';
+    try {
+      const snap = await db.collection('users').where('username','==',raw).get();
+      if (!snap.empty) {
+        errorEl.textContent = 'Ese @usuario ya está tomado, elige otro'; errorEl.style.display='block';
+        newBtn.disabled = false; newBtn.textContent = t('confirm'); return;
+      }
+      const uid = auth.currentUser.uid;
+      await db.collection('users').doc(uid).set({
+        username: raw, displayName: nombre, photoURL: fotoUrl || '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(), uid,
+        shortCode: generarShortCode(),
+        usernameHistory: [raw]
+      });
+      finalizarLogin(raw, nombre, fotoUrl);
+    } catch(e) {
+      errorEl.textContent = 'Error: ' + e.message; errorEl.style.display='block';
+      newBtn.disabled = false; newBtn.textContent = t('confirm');
+    }
+  });
+  usernameInp.addEventListener('keydown', e => { if (e.key === 'Enter') newBtn.click(); });
+}
+
+async function mostrarApp(nombre, fotoUrl) {
+  if (!firebaseReady || !auth.currentUser) {
+    finalizarLogin(nombre, nombre, fotoUrl); return;
+  }
+  const uid = auth.currentUser.uid;
+  try {
+    const userDoc = await db.collection('users').doc(uid).get();
+    if (!userDoc.exists) {
+      mostrarPantallaUsername(nombre, fotoUrl);
+    } else {
+      const data = userDoc.data();
+      finalizarLogin(data.username, data.displayName, fotoUrl || data.photoURL);
+    }
+  } catch(e) {
+    console.warn('Error Firestore:', e.message);
+    finalizarLogin(nombre, nombre, fotoUrl);
+  }
+}
+
+function finalizarLogin(username, displayName, photoURL) {
+  usuario = username || displayName;
+  const nombreMostrar = displayName || username;
+  const avatarSrc = photoURL || genAvatar(nombreMostrar);
+  unameEl.textContent = nombreMostrar; avatarEl.src = avatarSrc;
+  unameMob.textContent = nombreMostrar; avMob.src = avatarSrc;
+  ocultarTodasLasPantallas();
+  appEl.style.display = 'flex';
+  setupCanvas(); buildCarousel(); cargarBandeja(); iniciarPromptsCanvas();
+  requestAnimationFrame(() => requestAnimationFrame(volarAlHeader));
+
+  /* Manejar ?add=CODE en URL */
+  const urlParams = new URLSearchParams(window.location.search);
+  const addCode = urlParams.get('add');
+  if (addCode && /^[A-Z0-9]{4,10}$/.test(addCode)) {
+    history.replaceState({}, '', location.pathname);
+    /* Confirmar antes de agregar — evita que links de terceros agreguen amigos sin permiso */
+    setTimeout(() => {
+      if (confirm(lang === 'en'
+        ? `Add a friend using invite code "${addCode}"?`
+        : `¿Agregar amigo con el código "${addCode}"?`)) {
+        agregarAmigo(addCode);
+      }
+    }, 800);
+  }
+}
+
+function checkLogin() {
+  if (firebaseReady) return;
+  const n = localStorage.getItem('ss_user');
+  if (n) finalizarLogin(n, n, null); else mostrarLogin();
+}
+
+function doLogout() {
+  if (window._resetAppVisible) window._resetAppVisible(); /* allow onAuthStateChanged null to show login */
+  if (firebaseReady && auth) auth.signOut().catch(() => {});
+  else { localStorage.removeItem('ss_user'); mostrarLogin(); }
+}
+
+/* ══════════════════════════════════════════════════════
+   MAGIC LINK — completar inicio de sesión si la URL lo contiene
+   Esto corre ANTES de onAuthStateChanged para completar el auth
+   cuando el usuario toca el enlace desde su correo.
+══════════════════════════════════════════════════════ */
+if (firebaseReady && auth && auth.isSignInWithEmailLink(window.location.href)) {
+  let pendingEmail = localStorage.getItem('ss_email_pending');
+  let pendingNombre = localStorage.getItem('ss_nombre_pending') || '';
+  if (!pendingEmail) {
+    /* El usuario abrió el link en un dispositivo diferente */
+    pendingEmail = window.prompt('Confirma tu correo para entrar:') || '';
+  }
+  if (pendingEmail) {
+    auth.signInWithEmailLink(pendingEmail, window.location.href)
+      .then(result => {
+        localStorage.removeItem('ss_email_pending');
+        /* Guardar nombre pendiente para usarlo en onAuthStateChanged */
+        if (pendingNombre) {
+          /* updateProfile si el user es nuevo y no tiene displayName */
+          if (!result.user.displayName && pendingNombre) {
+            result.user.updateProfile({ displayName: pendingNombre }).catch(() => {});
+          }
+          localStorage.removeItem('ss_nombre_pending');
+        }
+        history.replaceState({}, '', location.pathname);
+      })
+      .catch(e => {
+        console.error('Magic link error:', e);
+        toast('❌ El enlace expiró o ya fue usado. Pide uno nuevo.');
+        mostrarLogin();
+      });
+  }
+}
+
+/* ── Observer principal ── */
+if (firebaseReady && auth) {
+  /* appVisible: se pone true en cuanto el usuario entra a la app.
+     Evita que un null transitorio de ITP (iOS Safari) saque al usuario
+     de la app involuntariamente. Solo mostrarLogin() en null si aún
+     no habíamos entrado. doLogout() lo resetea para un logout real. */
+  let appVisible = false;
+
+  auth.onAuthStateChanged(async user => {
+    if (!user) {
+      if (!appVisible) mostrarLogin();
+      /* Si ya estamos en la app, ignorar el null (puede ser ITP/token refresh) */
+      return;
+    }
+    appVisible = true;
+    try {
+      const doc = await db.collection('users').doc(user.uid).get();
+      if (!doc.exists) {
+        const nombre = user.displayName || localStorage.getItem('ss_nombre_pending') || user.email.split('@')[0];
+        localStorage.removeItem('ss_nombre_pending');
+        mostrarPantallaUsername(nombre, user.photoURL);
+      } else {
+        const d = doc.data();
+        finalizarLogin(d.username, d.displayName, user.photoURL || d.photoURL);
+      }
+    } catch(e) {
+      logRemoteError('onAuthStateChanged', e);
+      const nombre = user.displayName || user.email?.split('@')[0] || 'Usuario';
+      finalizarLogin(nombre, nombre, user.photoURL);
+    }
+  });
+
+  /* ── Manejar resultado de signInWithRedirect (fallback iOS) ── */
+  auth.getRedirectResult().then(result => {
+    if (result && result.user) {
+      /* El redirect completó — onAuthStateChanged se encargará del resto */
+    }
+  }).catch(e => {
+    if (e.code !== 'auth/no-auth-event') logRemoteError('getRedirectResult', e);
+  });
+
+  /* Patch doLogout para resetear el guard */
+  const _origDoLogout = window.doLogout;
+  window._resetAppVisible = () => { appVisible = false; };
+}
+
+/* ── Magic link: enviar enlace ── */
+document.getElementById('magic-btn').addEventListener('click', async () => {
+  if (!firebaseReady || !auth) { toast('🚧 Firebase no configurado'); return; }
+  const nombre = document.getElementById('magic-nombre').value.trim();
+  const email  = document.getElementById('magic-email').value.trim();
+  const errEl  = document.getElementById('magic-error');
+  errEl.style.display = 'none';
+  if (!nombre) { errEl.textContent = lang==='es' ? 'Escribe tu nombre' : 'Enter your name'; errEl.style.display='block'; return; }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errEl.textContent = lang==='es' ? 'Escribe un correo válido' : 'Enter a valid email'; errEl.style.display='block'; return;
+  }
+  const btn = document.getElementById('magic-btn');
+  btn.disabled = true; btn.textContent = lang==='es' ? 'Enviando…' : 'Sending…';
+  try {
+    const actionCodeSettings = {
+      url: location.origin + location.pathname,
+      handleCodeInApp: true
+    };
+    await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+    /* localStorage para que persista cuando el link abra en nueva pestaña/ventana.
+       Solo guarda email (no contraseña), Firebase valida el token del link. */
+    localStorage.setItem('ss_email_pending', email);
+    localStorage.setItem('ss_nombre_pending', nombre);
+    mostrarVerificacion(email);
+  } catch(e) {
+    const msgs = {
+      'auth/invalid-email': lang==='es' ? 'Correo no válido' : 'Invalid email',
+      'auth/too-many-requests': lang==='es' ? 'Demasiados intentos, espera un momento' : 'Too many attempts, wait a moment'
+    };
+    errEl.textContent = msgs[e.code] || e.message; errEl.style.display='block';
+    btn.disabled = false; btn.textContent = lang==='es' ? 'Entrar →' : 'Continue →';
+  }
 });
-nombreInp.addEventListener('keydown', e => { if (e.key === 'Enter') entrarBtn.click(); });
-nombreInp.setAttribute('maxlength', '15');
-salirBtn.addEventListener('click', () => { localStorage.removeItem('ss_user'); checkLogin(); });
-salirBtnMob.addEventListener('click', () => { localStorage.removeItem('ss_user'); checkLogin(); });
+
+/* Enviar enlace con Enter */
+['magic-nombre','magic-email'].forEach(id => {
+  document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('magic-btn').click(); });
+});
+
+/* ── Pantalla de espera: reenviar / cambiar correo ── */
+document.getElementById('verify-resend-btn').addEventListener('click', async () => {
+  const email = localStorage.getItem('ss_email_pending');
+  if (!email) { mostrarLogin(); return; }
+  try {
+    const actionCodeSettings = { url: location.origin + location.pathname, handleCodeInApp: true };
+    await auth.sendSignInLinkToEmail(email, actionCodeSettings);
+    toast('📬 ' + (lang==='es' ? 'Enlace reenviado a ' : 'Link resent to ') + email);
+  } catch(e) { toast('⚠️ ' + e.message); }
+});
+
+document.getElementById('verify-logout-btn').addEventListener('click', () => {
+  localStorage.removeItem('ss_email_pending');
+  localStorage.removeItem('ss_nombre_pending');
+  mostrarLogin();
+});
+
+/* ── Detección de navegador embebido (WebView) ── */
+const ua = navigator.userAgent || '';
+const esWebView = (
+  /FBAN|FBAV|Instagram|FB_IAB|FB4A|FBIOS/.test(ua) ||   /* Facebook / Instagram */
+  /\bMessa\b/.test(ua) ||                                 /* Messenger */
+  /Twitter|TikTok|Snapchat|Pinterest|Line\//.test(ua) || /* otras apps */
+  (/Android/.test(ua) && /wv\b/.test(ua)) ||             /* Android WebView genérico */
+  (/iPhone|iPad/.test(ua) && !/Safari\//.test(ua) && !/CriOS\//.test(ua) && !/FxiOS\//.test(ua)) /* iOS in-app sin Safari */
+);
+
+/* Mostrar banner de aviso si estamos en WebView */
+if (esWebView) {
+  const banner = document.createElement('div');
+  banner.id = 'webview-banner';
+  banner.innerHTML = `
+    <div style="
+      position:fixed;top:0;left:0;right:0;z-index:9999;
+      background:#1a0a00;border-bottom:2px solid #f97316;
+      padding:14px 18px;display:flex;align-items:flex-start;gap:12px;
+      font-family:'DM Sans',sans-serif;font-size:0.85rem;color:#fed7aa;
+      animation:aparecer 0.3s ease;
+    ">
+      <span style="font-size:1.4rem;flex-shrink:0;">⚠️</span>
+      <div>
+        <strong style="color:#fb923c;display:block;margin-bottom:4px;" id="wb-title">Abre esto en tu navegador</strong>
+        <span id="wb-body">Estás dentro de otra app. El login con Google <strong>no funciona aquí</strong>.</span>
+        <br><br>
+        <span style="color:#fdba74;" id="wb-hint">Toca los 3 puntos (⋯) y elige <strong>"Abrir en Safari"</strong> o <strong>"Abrir en Chrome"</strong>.</span>
+      </div>
+    </div>`;
+  document.body.appendChild(banner);
+}
+
+/* ── Google Sign-In ── */
+/* Detectar iOS Safari: usa redirect porque los popups suelen estar bloqueados por defecto */
+const esIosSafari = /iPhone|iPad|iPod/.test(ua) && /WebKit/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
+
+document.getElementById('google-btn').addEventListener('click', async () => {
+  if (!firebaseReady || !auth) { toast('🚧 Firebase no configurado'); return; }
+
+  if (esWebView) {
+    toast('⚠️ Abre la app en Chrome o Safari para entrar con Google');
+    return;
+  }
+
+  const provider = new firebase.auth.GoogleAuthProvider();
+
+  /* iOS Safari: popup suele estar bloqueado → usar redirect */
+  if (esIosSafari) {
+    try {
+      await auth.signInWithRedirect(provider);
+    } catch(e) {
+      logRemoteError('signInWithRedirect', e);
+      toast('⚠️ Error con Google: ' + e.message);
+    }
+    return;
+  }
+
+  /* Resto de navegadores: popup */
+  try {
+    await auth.signInWithPopup(provider);
+  } catch(e) {
+    if (e.code === 'auth/popup-closed-by-user') return;
+    if (e.code === 'auth/popup-blocked') {
+      /* Popup bloqueado — intentar redirect como fallback */
+      try { await auth.signInWithRedirect(provider); } catch(e2) {
+        logRemoteError('signInWithRedirect-fallback', e2);
+        toast('⚠️ ' + (lang==='es' ? 'Habilita los popups para este sitio e intenta de nuevo' : 'Allow pop-ups for this site and try again'));
+      }
+    } else {
+      logRemoteError('signInWithPopup', e);
+      toast('⚠️ Error con Google: ' + e.message);
+    }
+  }
+});
+
+/* Enter en campos de formulario */
+['login-email','login-pass'].forEach(id => {
+  document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('login-btn').click(); });
+});
+['reg-nombre','reg-username','reg-email','reg-pass'].forEach(id => {
+  document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('reg-btn').click(); });
+});
+
+salirBtn.addEventListener('click', doLogout);
+salirBtnMob.addEventListener('click', doLogout);
 
 /* ══════════════════════════════════════════════════════
    CANVAS CON HiDPI — sin pixelación al exportar
@@ -1028,37 +2025,73 @@ window.addEventListener('resize', () => {
 });
 
 /* ══════════════════════════════════════════════════════
-   DIBUJO CON PRESIÓN + TIMESTAMPS + STROKEID
+   DIBUJO CON PRESIÓN + VELOCIDAD + TIMESTAMPS + STROKEID
+   ────────────────────────────────────────────────────
+   Si el dispositivo reporta presión real (stylus, Apple Pencil),
+   usamos presión. Si no (dedo, mouse), simulamos variación de
+   grosor basándonos en la velocidad del trazo:
+   - Rápido → más delgado (como un trazo rápido de pluma)
+   - Lento → más grueso (como presionar fuerte al dibujar)
 ══════════════════════════════════════════════════════ */
+let lastDrawTime = 0;
+let lastDrawX = 0, lastDrawY = 0;
+let tienePresionReal = false; /* se detecta al primer trazo */
+
 function coords(e) {
   const r = cv.getBoundingClientRect();
   let x, y, p;
   if (e.touches && e.touches.length > 0) {
     x = e.touches[0].clientX - r.left; y = e.touches[0].clientY - r.top;
-    p = e.touches[0].force || 0.5;
+    p = e.touches[0].force || 0;
   } else {
     x = e.clientX - r.left; y = e.clientY - r.top;
-    p = (e.pressure !== undefined && e.pressure > 0) ? e.pressure : 0.5;
+    p = (e.pressure !== undefined && e.pressure > 0) ? e.pressure : 0;
   }
+  /* Detectar si el dispositivo tiene presión real */
+  if (p > 0 && p !== 0.5) tienePresionReal = true;
   return { x, y, p };
 }
 
-function grosor(p) {
-  const pn = p < 0.05 ? 0.3 : p;
-  return Math.max(1, Math.min(tamBase * pn * 2.8, tamBase * 3));
+function grosor(p, x, y) {
+  if (tienePresionReal && p > 0.01) {
+    const pn = p < 0.05 ? 0.3 : p;
+    return Math.max(1, Math.min(tamBase * pn * 2.8, tamBase * 3));
+  }
+  /* Sin presión real — usar velocidad del trazo */
+  const now = performance.now();
+  const dt = now - lastDrawTime;
+  if (dt < 1 || lastDrawTime === 0) {
+    lastDrawTime = now; lastDrawX = x; lastDrawY = y;
+    return tamBase;
+  }
+  const dx = x - lastDrawX, dy = y - lastDrawY;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  const velocity = dist / dt; /* pixels/ms */
+  lastDrawTime = now; lastDrawX = x; lastDrawY = y;
+
+  /* Android touch: velocities are typically 0.05–3.0 px/ms
+     Slow (~0.05) → thick (tamBase * 2.5)
+     Fast (~2.0+) → thin (tamBase * 0.5)
+     Use a lower normalization ceiling so variation is more visible */
+  const vNorm = Math.min(1, velocity / 1.2);
+  const thick = tamBase * 2.5;
+  const thin  = tamBase * 0.5;
+  return Math.max(0.5, thick - vNorm * (thick - thin));
 }
 
 function iniciarDibujo(e) {
   e.preventDefault(); dibujando = true; pilaRedo = [];
   currentStrokeId++;
+  lastDrawTime = 0; /* reset velocity tracking */
   const { x, y } = coords(e); ultimo = { x, y };
-  trazos.push({ tipo:'inicio', x, y, h:herramienta, sid:currentStrokeId, t:Date.now() });
+  trazos.push({ tipo:'inicio', x, y, h:herramienta, sid:currentStrokeId, t:Date.now(),
+                origW: Math.round(cv.width/DPR), origH: Math.round(cv.height/DPR) });
   actualizarBotones();
 }
 
 function dibujar(e) {
   if (!dibujando) return; e.preventDefault();
-  const { x, y, p } = coords(e); const gw = grosor(p);
+  const { x, y, p } = coords(e); const gw = grosor(p, x, y);
   let color;
   if (herramienta==='borrador') { color=canvasBg(); }
   else if (colorSeleccionado==='rainbow') { hue=(hue+1.2)%360; color=`hsl(${hue},100%,55%)`; }
@@ -1095,7 +2128,7 @@ cv.addEventListener('touchend',   pararDibujo);
 /* Preview del pincel cuando no se está dibujando */
 carea.addEventListener('mousemove', e => {
   if (dibujando) return;
-  const r = carea.getBoundingClientRect(); const pw = grosor(0.5);
+  const r = carea.getBoundingClientRect(); const pw = tamBase * 0.6;
   preview.style.cssText=`display:block;left:${e.clientX-r.left}px;top:${e.clientY-r.top}px;width:${pw}px;height:${pw}px;`;
 });
 carea.addEventListener('mouseleave', () => { preview.style.display='none'; });
@@ -1106,34 +2139,59 @@ function actualizarBotones() {
   undoBtn.disabled = !hay; redoBtn.disabled = pilaRedo.length===0;
 }
 
+/* ── BRUSH SIZE POPUP ── */
+(function() {
+  const popup = document.getElementById('brush-popup');
+  const slider = document.getElementById('brush-size-slider');
+  const valLbl = document.getElementById('brush-size-val');
+
+  function openPopup(anchorEl) {
+    const rect = anchorEl.getBoundingClientRect();
+    popup.classList.remove('hidden');
+    slider.value = tamBase;
+    valLbl.textContent = tamBase.toFixed(1) + ' px';
+    /* Position above/beside the button */
+    const pw = 180, ph = 80;
+    let left = rect.left + rect.width / 2 - pw / 2;
+    let top  = rect.top - ph - 10;
+    if (top < 10) top = rect.bottom + 10;
+    left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+    popup.style.left = left + 'px';
+    popup.style.top  = top + 'px';
+  }
+
+  slider.addEventListener('input', () => {
+    tamBase = parseFloat(slider.value);
+    valLbl.textContent = tamBase.toFixed(1) + ' px';
+  });
+
+  document.addEventListener('pointerdown', e => {
+    if (!popup.classList.contains('hidden') && !popup.contains(e.target)) {
+      const clickedBrush = e.target.closest('[data-tool="pincel"]');
+      if (!clickedBrush) popup.classList.add('hidden');
+    }
+  }, true);
+
+  window._openBrushPopup = openPopup;
+})();
+
 /* ── SELECCIÓN DE HERRAMIENTA (sincronizada desktop + mobile) ── */
 allToolBtns.forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.tool === 'pincel') {
+    /* Pincel only controls size — show popup, don't switch drawing mode */
+    window._openBrushPopup(b);
+    return;
+  }
   allToolBtns.forEach(x => { x.classList.remove('activo'); });
   document.querySelectorAll(`[data-tool="${b.dataset.tool}"]`).forEach(x => x.classList.add('activo'));
   herramienta = b.dataset.tool;
-  /* Si selecciona rainbow, activar color rainbow automáticamente */
-  if (b.dataset.tool === 'rainbow') {
-    colorSeleccionado = 'rainbow';
-    allColorDots.forEach(d => d.classList.toggle('activo', d.dataset.color === 'rainbow'));
-  }
 }));
 
 /* ── SELECTOR DE COLOR (sincronizado desktop + mobile) ── */
 allColorDots.forEach(dot => dot.addEventListener('click', () => {
   colorSeleccionado = dot.dataset.color;
   allColorDots.forEach(d => d.classList.toggle('activo', d.dataset.color === colorSeleccionado));
-  /* Si elige un color sólido y está en rainbow, cambiar a pincel */
-  if (colorSeleccionado !== 'rainbow' && herramienta === 'rainbow') {
-    herramienta = 'pincel';
-    allToolBtns.forEach(x => x.classList.remove('activo'));
-    document.querySelectorAll('[data-tool="pincel"]').forEach(x => x.classList.add('activo'));
-  }
-  /* Si elige rainbow, cambiar herramienta a rainbow */
-  if (colorSeleccionado === 'rainbow') {
-    herramienta = 'rainbow';
-    allToolBtns.forEach(x => x.classList.remove('activo'));
-    document.querySelectorAll('[data-tool="rainbow"]').forEach(x => x.classList.add('activo'));
-  }
+  /* Selecting a color does NOT change the active tool */
 }));
 
 /* ── UNDO / REDO con strokeId ── */
@@ -1165,12 +2223,102 @@ document.addEventListener('keydown', e => {
 function redibujar() {
   const w = cv.width/DPR, h = cv.height/DPR;
   ctx.clearRect(0, 0, w, h); fondoCanvas(ctx, w, h);
+  if (!trazos.length) return;
+  const meta = trazos.find(t => t.tipo === 'inicio' && t.origW);
+  const { scale, ox, oy } = getScaleTransform(
+    meta ? meta.origW : w, meta ? meta.origH : h, w, h
+  );
+  ctx.save();
+  ctx.translate(ox, oy);
+  ctx.scale(scale, scale);
   for (const t of trazos) {
     if (t.tipo==='seg') {
       ctx.beginPath(); ctx.moveTo(t.de.x, t.de.y);
       ctx.strokeStyle=t.color; ctx.lineWidth=t.gw; ctx.lineTo(t.a.x, t.a.y); ctx.stroke();
     }
   }
+  ctx.restore();
+}
+
+/* ══ PROMPTS DE DIBUJO ══ */
+const PROMPTS_ES = [
+  '¿Cómo te sientes ahora? 😊',
+  'Dibuja tu comida favorita 🍕',
+  'Dibuja el clima de hoy ☀️',
+  '¿Dónde estás ahora mismo? 📍',
+  'Dibuja algo que te haga reír 😄',
+  'Tu animal favorito 🐶',
+  'Dibuja un sueño que tuviste 💭',
+  '¿Qué quieres hacer este fin de semana?',
+  'Dibuja tu lugar favorito 🌎',
+  'Un mensaje sin palabras ✨',
+];
+const PROMPTS_EN = [
+  'How are you feeling? 😊',
+  'Draw your favorite food 🍕',
+  "Draw today's weather ☀️",
+  'Where are you right now? 📍',
+  'Draw something that makes you laugh 😄',
+  'Your favorite animal 🐶',
+  'Draw a dream you had 💭',
+  'What do you want to do this weekend?',
+  'Draw your favorite place 🌎',
+  'A message without words ✨',
+];
+
+let promptTimer = null;
+let promptVisible = false;
+let currentPromptIdx = Math.floor(Math.random() * PROMPTS_ES.length);
+
+function getPrompts() { return lang === 'en' ? PROMPTS_EN : PROMPTS_ES; }
+
+function mostrarPrompt() {
+  const el = document.getElementById('drawing-prompts');
+  const txt = document.getElementById('prompt-text');
+  if (!el || !txt) return;
+  const prompts = getPrompts();
+  currentPromptIdx = (currentPromptIdx + 1) % prompts.length;
+  txt.textContent = prompts[currentPromptIdx];
+  el.style.opacity = '1';
+  el.style.pointerEvents = 'none';
+  promptVisible = true;
+}
+
+function ocultarPrompt() {
+  const el = document.getElementById('drawing-prompts');
+  if (!el) return;
+  el.style.opacity = '0';
+  promptVisible = false;
+}
+
+function resetPromptTimer() {
+  clearTimeout(promptTimer);
+  promptTimer = setTimeout(() => {
+    if (!trazos.length) mostrarPrompt();
+  }, 60000);
+}
+
+let promptsInicializados = false;
+function iniciarPromptsCanvas() {
+  if (promptsInicializados) return;
+  promptsInicializados = true;
+
+  /* Mostrar prompt al abrir si el canvas está vacío */
+  setTimeout(() => {
+    if (!trazos.length) mostrarPrompt();
+  }, 2000);
+  resetPromptTimer();
+
+  /* Ocultar cuando empieza a dibujar */
+  cv.addEventListener('pointerdown', () => {
+    if (promptVisible) ocultarPrompt();
+    clearTimeout(promptTimer);
+  });
+
+  /* Reiniciar timer cuando levanta el dedo */
+  cv.addEventListener('pointerup', () => {
+    resetPromptTimer();
+  });
 }
 
 /* ── LIMPIAR ── */
@@ -1182,6 +2330,7 @@ function limpiarCanvas() {
   const w = cv.width/DPR, h = cv.height/DPR;
   ctx.clearRect(0, 0, w, h); fondoCanvas(ctx, w, h);
   actualizarBotones(); toast('🗑️ Canvas limpiado');
+  setTimeout(mostrarPrompt, 1000);
 }
 
 /* ══════════════════════════════════════════════════════
@@ -1194,13 +2343,102 @@ const CONTACTOS = [
   {id:'7',nombre:'Valentina',online:false},{id:'8',nombre:'Mateo',online:true},
 ];
 
-function buildCarousel() {
+/* ── SISTEMA DE AMIGOS ── */
+async function cargarAmigos() {
+  if (!firebaseReady || !auth.currentUser) return [];
+  const uid = auth.currentUser.uid;
+  try {
+    const snap = await db.collection('friendships')
+      .where('users', 'array-contains', uid)
+      .where('status', '==', 'accepted')
+      .get();
+    const amigos = [];
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      const otroUid = data.users.find(u => u !== uid);
+      if (!otroUid) continue;
+      try {
+        const userDoc = await db.collection('users').doc(otroUid).get();
+        if (userDoc.exists) {
+          const u = userDoc.data();
+          amigos.push({ id: otroUid, nombre: u.username || u.displayName, username: u.username, photoURL: u.photoURL });
+        }
+      } catch(e) { /* skip usuario no encontrado */ }
+    }
+    return amigos;
+  } catch(e) {
+    console.warn('Error cargando amigos:', e.message);
+    return [];
+  }
+}
+
+async function agregarAmigo(input) {
+  if (!firebaseReady || !auth.currentUser) { toast('❌ Necesitas iniciar sesión'); return; }
+  const uid = auth.currentUser.uid;
+  const isCode = /^[A-Z0-9]{6}$/.test(input.toUpperCase());
+  const query = isCode
+    ? db.collection('users').where('shortCode', '==', input.toUpperCase())
+    : db.collection('users').where('username', '==', input.toLowerCase());
+  const username = isCode ? input.toUpperCase() : input.toLowerCase();
+  try {
+    const snap = await query.get();
+    if (snap.empty) { toast(t('friend_not_found') + ' ' + (isCode ? input.toUpperCase() : '@' + username)); return; }
+    const otroUser = snap.docs[0].data();
+    if (otroUser.uid === uid) { toast('❌ No puedes agregarte a ti mismo'); return; }
+    /* Verificar si ya hay amistad */
+    const existing = await db.collection('friendships')
+      .where('users', 'array-contains', uid)
+      .get();
+    const yaExiste = existing.docs.some(doc => doc.data().users.includes(otroUser.uid));
+    if (yaExiste) { toast('Ya tienes una amistad con @' + username); return; }
+    /* Crear friendship pendiente */
+    await db.collection('friendships').add({
+      users: [uid, otroUser.uid],
+      status: 'accepted', /* auto-accept por ahora para simplicidad */
+      requestedBy: uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    toast('✅ @' + username + ' agregado como amigo');
+    buildCarousel();
+  } catch(e) {
+    toast('❌ Error: ' + e.message);
+  }
+}
+
+async function buildCarousel() {
+  /* Skeleton loading */
+  carouselEl.innerHTML = '<div style="display:flex;gap:8px;padding:4px 0;">' +
+    Array(3).fill('<div style="width:52px;height:72px;border-radius:12px;background:var(--surface2);animation:pulse 1.5s infinite;"></div>').join('') + '</div>';
+
+  let amigos = [];
+  if (firebaseReady && auth.currentUser) {
+    amigos = await cargarAmigos();
+  } else {
+    /* Fallback a datos simulados */
+    amigos = CONTACTOS.map(c => ({ id: c.id, nombre: c.nombre, username: c.nombre.toLowerCase(), photoURL: '' }));
+  }
+
   carouselEl.innerHTML = '';
-  CONTACTOS.forEach(c => {
+
+  if (amigos.length === 0 && firebaseReady) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'display:flex;align-items:center;gap:8px;color:var(--muted);font-size:0.8rem;padding:4px 0;';
+    empty.textContent = t('no_friends');
+    carouselEl.appendChild(empty);
+  }
+
+  amigos.forEach(c => {
     const el = document.createElement('div'); el.className='citem'; el.dataset.id=c.id;
-    el.innerHTML=`<div class="cwrap"><img class="cimg" src="${genAvatar(c.nombre)}" alt="${c.nombre}">${c.online?'<div class="odot"></div>':''}<div class="ccheck">✓</div></div><span class="cname">${c.nombre}</span>`;
+    const imgEl = document.createElement('img'); imgEl.className='cimg';
+    imgEl.src = safeUrl(c.photoURL) || genAvatar(c.nombre); imgEl.alt = c.nombre;
+    const wrap = document.createElement('div'); wrap.className='cwrap';
+    const chk = document.createElement('div'); chk.className='ccheck'; chk.textContent='✓';
+    wrap.appendChild(imgEl); wrap.appendChild(chk);
+    const nameEl = document.createElement('span'); nameEl.className='cname';
+    nameEl.textContent = '@' + (c.username || c.nombre);
+    el.appendChild(wrap); el.appendChild(nameEl);
     el.addEventListener('click', () => {
-      if (el.classList.contains('disabled')) return; /* no click en modo respuesta */
+      if (el.classList.contains('disabled')) return;
       seleccionados.has(c.id) ? seleccionados.delete(c.id) : seleccionados.add(c.id);
       el.classList.toggle('sel', seleccionados.has(c.id));
       selCount.textContent = seleccionados.size > 0 ? `(${seleccionados.size})` : '';
@@ -1208,11 +2446,23 @@ function buildCarousel() {
     });
     carouselEl.appendChild(el);
   });
+
+  /* Botón + para agregar amigo */
+  const addBtn = document.createElement('div');
+  addBtn.className = 'citem';
+  addBtn.innerHTML = `<div class="cwrap" style="background:var(--surface2);border:2px dashed var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="font-size:1.5rem">+</span></div><span class="cname">Agregar</span>`;
+  addBtn.addEventListener('click', () => {
+    const raw = prompt('Buscar amigo por @usuario o código (ej: XK9P2M):');
+    if (raw) agregarAmigo(raw.replace(/^@/,'').toLowerCase().trim());
+  });
+  carouselEl.appendChild(addBtn);
+
+  /* Botón compartir */
   const share = document.createElement('div'); share.className='sharebtn';
   share.innerHTML=`<div class="sharecircle">🔗</div><span class="cname" style="max-width:52px">Compartir</span>`;
   share.addEventListener('click', () => {
     if (navigator.share) navigator.share({title:'SketchSend',text:'¡Te envié un dibujo!',url:location.href}).catch(()=>{});
-    else toast('🔗 Link disponible en el Paso 3');
+    else toast('🔗 Comparte este link con tus amigos');
   });
   carouselEl.appendChild(share);
 }
@@ -1220,18 +2470,24 @@ function buildCarousel() {
 /* ══════════════════════════════════════════════════════
    ENVIAR → replay automático del propio dibujo
 ══════════════════════════════════════════════════════ */
-enviarBtn.addEventListener('click', () => {
+enviarBtn.addEventListener('click', async () => {
   if (!trazos.length) { toast('✏️ ¡Dibuja algo primero!'); return; }
 
   /* Modo respuesta: enviando directamente a quien nos escribió */
   if (replyingTo) {
-    toast(`✉️ Respuesta enviada a: ${replyingTo}`);
+    if (firebaseReady && auth.currentUser) {
+      await enviarSketchFirestore(replyingTo.uid);
+    } else {
+      toast(`✉️ Respuesta enviada a: ${replyingTo.nombre || replyingTo}`);
+    }
     salirModoRespuesta();
   } else {
     /* Modo normal: enviar a los seleccionados del carrusel */
     if (!seleccionados.size) { toast('👆 Selecciona a quién enviar'); return; }
-    const nombres = CONTACTOS.filter(c => seleccionados.has(c.id)).map(c => c.nombre).join(', ');
-    toast(`✉️ Enviado a: ${nombres}`);
+    if (firebaseReady && auth.currentUser) {
+      for (const uid of seleccionados) await enviarSketchFirestore(uid);
+    }
+    toast(`✉️ Enviado`);
   }
 
   /* Captura snapshot y muestra replay */
@@ -1243,6 +2499,29 @@ enviarBtn.addEventListener('click', () => {
   selCount.textContent = '';
   enviarBtn.disabled = true;
 });
+
+async function enviarSketchFirestore(toUid) {
+  const uid = auth.currentUser.uid;
+  /* fromName: usar @usuario, si no está disponible usar displayName, si no el email */
+  const senderName = usuario
+    || auth.currentUser.displayName
+    || auth.currentUser.email?.split('@')[0]
+    || 'Usuario';
+  try {
+    await db.collection('sketches').add({
+      from: uid,
+      fromName: senderName,
+      to: toUid,
+      strokes: trazos,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      expiresAt: new Date(Date.now() + 24*3600*1000),
+      viewed: false
+    });
+  } catch(e) {
+    logRemoteError('enviarSketch', e);
+    toast('⚠️ Error al enviar: ' + e.message);
+  }
+}
 
 /* ══════════════════════════════════════════════════════
    BANDEJA DE ENTRADA — "Pila de dibujos"
@@ -1265,7 +2544,7 @@ function generarDibujoSimulado(senderName) {
     const startX = 50 + Math.random()*200;
     const startY = 50 + Math.random()*200;
     t += 200 + Math.random()*500;
-    strokes.push({ tipo:'inicio', x:startX, y:startY, sid, t });
+    strokes.push({ tipo:'inicio', x:startX, y:startY, sid, t, origW:300, origH:300 });
     let cx = startX, cy = startY;
     const points = 10 + Math.floor(Math.random()*30);
     for (let p = 0; p < points; p++) {
@@ -1287,31 +2566,36 @@ function generarDibujoSimulado(senderName) {
 }
 
 function cargarBandeja() {
-  /* Simular 3 dibujos recibidos de diferentes contactos */
-  bandejaEntrada = [
-    {
-      id:'msg1', sender:'Ana', senderId:'1',
-      strokes: generarDibujoSimulado('Ana'),
-      receivedAt: Date.now() - 300000, /* hace 5 min */
-      expiresAt: Date.now() + 23*3600000, /* expira en 23h */
-      visto: false
-    },
-    {
-      id:'msg2', sender:'Carlos', senderId:'2',
-      strokes: generarDibujoSimulado('Carlos'),
-      receivedAt: Date.now() - 1800000, /* hace 30 min */
-      expiresAt: Date.now() + 20*3600000,
-      visto: false
-    },
-    {
-      id:'msg3', sender:'Diego', senderId:'6',
-      strokes: generarDibujoSimulado('Diego'),
-      receivedAt: Date.now() - 7200000, /* hace 2h */
-      expiresAt: Date.now() + 15*3600000,
-      visto: false
-    },
-  ];
-  actualizarBadge();
+  if (!firebaseReady || !auth.currentUser) {
+    bandejaEntrada = [];
+    actualizarBadge();
+    return;
+  }
+
+  const uid = auth.currentUser.uid;
+  const ahora = Date.now();
+  db.collection('sketches')
+    .where('to', '==', uid)
+    .onSnapshot(snap => {
+      bandejaEntrada = snap.docs
+        .map(doc => {
+          const d = doc.data();
+          return {
+            id: doc.id,
+            sender: d.fromName,
+            senderId: d.from,
+            strokes: d.strokes,
+            receivedAt: d.createdAt?.toMillis() || Date.now(),
+            expiresAt: d.expiresAt?.toMillis() || (Date.now() + 24*3600*1000),
+            viewed: d.viewed || false,
+            visto: false
+          };
+        })
+        .filter(m => !m.viewed && m.expiresAt > ahora);
+      actualizarBadge();
+    }, err => {
+      console.warn('Error escuchando bandeja:', err.message);
+    });
 }
 
 function actualizarBadge() {
@@ -1364,12 +2648,26 @@ function renderInbox() {
 
     card.innerHTML = `
       ${!msg.visto ? '<div class="inbox-card-new"></div>' : ''}
-      <img class="inbox-card-av" src="${genAvatar(msg.sender)}" alt="${msg.sender}">
+      <img class="inbox-card-av" src="${esc(safeUrl(genAvatar(msg.sender)))}" alt="${esc(msg.sender)}">
       <div class="inbox-card-info">
-        <div class="inbox-card-name">${msg.sender}</div>
-        <div class="inbox-card-sub">Te envió un dibujo · ${agoText}</div>
+        <div class="inbox-card-name">${esc(msg.sender)}</div>
+        <div class="inbox-card-sub">Te envió un dibujo · ${esc(agoText)}</div>
       </div>
-      <div class="inbox-card-timer">⏱ ${timerText}</div>`;
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+        <div class="inbox-card-timer">⏱ ${esc(timerText)}</div>
+        <button class="inbox-share-btn" data-id="${esc(msg.id)}" title="Compartir link">🔗</button>
+      </div>`;
+
+    /* Botón compartir — no abre el replay */
+    card.querySelector('.inbox-share-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      const shareUrl = location.origin + location.pathname + '?view=' + msg.id;
+      if (navigator.share) {
+        navigator.share({ title:'SketchSend', text:`${esc(msg.sender)} te envió un dibujo ✏️`, url: shareUrl }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(shareUrl).then(() => toast('🔗 Link copiado')).catch(() => toast(shareUrl));
+      }
+    });
 
     card.addEventListener('click', () => {
       msg.visto = true;
@@ -1420,6 +2718,10 @@ function iniciarReplayInbox(msg) {
     entrarModoRespuesta(msg.sender, msg.senderId);
     bandejaEntrada = bandejaEntrada.filter(m => m.id !== msg.id);
     actualizarBadge();
+    /* Eliminar de Firestore */
+    if (firebaseReady && db) {
+      db.collection('sketches').doc(msg.id).delete().catch(e => console.warn('Error borrando sketch:', e.message));
+    }
   }
 
   overlay.addEventListener('pointerdown', onTouch, { once:true });
@@ -1433,8 +2735,8 @@ const stripBack  = document.getElementById('strip-back');
 const stripLabel = document.getElementById('strip-label');
 
 function entrarModoRespuesta(senderName, senderId) {
-  replyingTo = senderName;
-  stripLabel.innerHTML = `Respondiendo a <strong style="color:var(--accent2)">${senderName}</strong>`;
+  replyingTo = { nombre: senderName, uid: senderId };
+  stripLabel.innerHTML = `Respondiendo a <strong style="color:var(--accent2)">${esc(senderName)}</strong>`;
   stripBack.style.display = 'flex';
   document.querySelectorAll('.citem').forEach(el => {
     if (el.dataset.id === senderId) {
@@ -1451,7 +2753,11 @@ function entrarModoRespuesta(senderName, senderId) {
 
 function salirModoRespuesta() {
   replyingTo = null;
-  stripLabel.innerHTML = 'Enviar a <span id="sel-count" style="color:var(--accent2)"></span>';
+  stripLabel.textContent = '';
+  stripLabel.appendChild(Object.assign(document.createTextNode(t('send_to') + ' '), []));
+  const sc2 = document.createElement('span');
+  sc2.id = 'sel-count'; sc2.style.color = 'var(--accent2)';
+  stripLabel.appendChild(sc2);
   stripBack.style.display = 'none';
   document.querySelectorAll('.citem').forEach(el => el.classList.remove('disabled','sel'));
   seleccionados.clear();
@@ -1504,24 +2810,23 @@ function descargarDataURL(dataURL, filename) {
   descargar(new Blob([u8arr], {type:mime}), filename);
 }
 
-/* Firma del creador en exports — arriba a la izquierda, con logo rainbow */
-function dibujarFirma(targetCtx, w, h, animated, frameNum) {
+/* Firma del creador en exports — réplica miniatura EXACTA del logo del login
+   ────────────────────────────────────────────────────────────────────────
+   Técnica: dibujamos el texto+emoji en un canvas temporal, luego aplicamos
+   el gradiente rainbow como máscara usando globalCompositeOperation.
+   Esto colorea TODO incluyendo el emoji ✏️, igual que CSS background-clip:text.
+*/
+function dibujarFirma(targetCtx, w, h, animated) {
   if (!usuario) return;
-  const fecha = new Date().toLocaleDateString('es', {day:'numeric',month:'short',year:'numeric'});
   targetCtx.save();
 
-  /* Posición: arriba a la izquierda */
   const fx = 10, fy = 10;
-  const firmW = 180, firmH = 38;
+  const firmW = 170, firmH = 42;
 
-  /* Si es animado, rellenar el área de la firma con el fondo antes de redibujar */
+  /* Limpiar área si estamos animando */
   if (animated) {
-    targetCtx.save();
     targetCtx.fillStyle = canvasBg();
-    targetCtx.beginPath();
-    targetCtx.roundRect(fx - 1, fy - 1, firmW + 2, firmH + 2, 8);
-    targetCtx.fill();
-    targetCtx.restore();
+    targetCtx.fillRect(fx - 1, fy - 1, firmW + 2, firmH + 2);
   }
 
   /* Fondo semi-transparente */
@@ -1530,40 +2835,85 @@ function dibujarFirma(targetCtx, w, h, animated, frameNum) {
   targetCtx.roundRect(fx, fy, firmW, firmH, 8);
   targetCtx.fill();
 
-  /* Logo "SketchSend" — replica exacta de la animación del login
-     Login CSS usa: background-size:200% auto; 
-     animate de background-position 0% → 200%
-     Colores: rojo,naranja,amarillo,verde,azul,violeta,ROJO (repetido al final)
-     Esto crea un loop perfecto porque el 0% y 200% son el mismo punto */
+  /* ══ LOGO RAINBOW con emoji coloreado + DPR nítido ══ */
   const logoText = 'SketchSend ✏️';
-  targetCtx.font = '700 11px Syne, DM Sans, sans-serif';
+  const logoFont = '900 13px Syne, sans-serif';
+  const logoX = 8, logoY = 12;
 
-  const textW = 100;
-  const gradFullW = textW * 2; /* 200% como en CSS */
-  /* El offset avanza de 0 a gradFullW y luego regresa a 0 = loop perfecto */
-  /* Velocidad: gradFullW / (2.5s × 60fps) = 200 / 150 ≈ 1.33 px/frame */
-  const shift = animated && frameNum !== undefined ? (frameNum * 1.33) % gradFullW : 0;
-  const gx0 = fx + 8 - shift;
-  const gx1 = gx0 + gradFullW;
-  const grad = targetCtx.createLinearGradient(gx0, fy + 8, gx1, fy + 8);
+  /* Bug 2 fix: canvas temporal con DPR para nitidez en Retina */
+  const tmpC = document.createElement('canvas');
+  const tmpDPR = DPR;
+  tmpC.width = firmW * tmpDPR;
+  tmpC.height = 22 * tmpDPR;
+  const tmpX = tmpC.getContext('2d');
+  tmpX.scale(tmpDPR, tmpDPR);
 
-  /* Mismos colores que el CSS del login, con rojo al final para loop */
-  grad.addColorStop(0,    '#ff0000');
-  grad.addColorStop(0.16, '#ff7f00');
-  grad.addColorStop(0.33, '#ffff00');
-  grad.addColorStop(0.5,  '#00ff00');
-  grad.addColorStop(0.66, '#0000ff');
-  grad.addColorStop(0.83, '#9400d3');
-  grad.addColorStop(1,    '#ff0000'); /* = igual al inicio → sin salto */
-  targetCtx.fillStyle = grad;
-  targetCtx.textAlign = 'left';
-  targetCtx.fillText(logoText, fx + 8, fy + 14);
+  /* Paso 1: texto negro sólido */
+  tmpX.font = logoFont;
+  tmpX.textAlign = 'left';
+  tmpX.textBaseline = 'middle';
+  tmpX.fillStyle = '#000';
+  tmpX.fillText(logoText, logoX, logoY);
 
-  /* Nombre del creador + fecha */
-  const textColor = modoOscuro.matches ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.45)';
-  targetCtx.fillStyle = textColor;
+  /* Paso 2: gradiente rainbow como máscara */
+  tmpX.globalCompositeOperation = 'source-in';
+
+  const measured = tmpX.measureText(logoText);
+  const textW = measured.width;
+  const cycleW = textW * 2; /* 200% — igual que CSS background-size:200% */
+
+  /*
+    Bug 1 fix: usar performance.now() en vez de contar frames.
+    Así la velocidad es SIEMPRE 2.5s por ciclo, sin importar
+    si la pantalla corre a 60fps, 120fps, o cualquier otra tasa.
+  */
+  const CYCLE_MS = 2500; /* 2.5 segundos — el estándar */
+  const now = performance.now(); /* siempre usa tiempo real → PNG captura el frame actual, video anima */
+  const progress = (now % CYCLE_MS) / CYCLE_MS; /* 0 a 1 */
+  const shift = progress * cycleW;
+
+  /* Gradiente 3× con colores repetidos para loop invisible */
+  const totalW = cycleW * 3;
+  const gx0 = logoX - shift;
+  const grad = tmpX.createLinearGradient(gx0, 0, gx0 + totalW, 0);
+  const colors = ['#ff0000','#ff7f00','#ffff00','#00ff00','#0000ff','#9400d3','#ff0000'];
+  for (let rep = 0; rep < 3; rep++) {
+    for (let i = 0; i < colors.length; i++) {
+      const stop = (rep + i / (colors.length - 1)) / 3;
+      grad.addColorStop(Math.min(1, stop), colors[i]);
+    }
+  }
+  tmpX.fillStyle = grad;
+  tmpX.fillRect(0, 0, firmW, 22);
+
+  /* Paso 3: copiar al canvas principal (drawImage escala automáticamente) */
+  targetCtx.drawImage(tmpC, fx, fy, firmW, 22);
+
+  /* ══ LÍNEA 2: Avatar circular + nombre ══ */
+  const avSize = 14;
+  const avX = fx + 10;
+  const avY = fy + 24;
+
+  const ini = usuario.trim().split(' ').map(n=>n[0]||'').slice(0,2).join('').toUpperCase();
+  const cols = ['#7c3aed','#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899','#06b6d4','#10b981'];
+  const ci = (ini.charCodeAt(0)||0) % cols.length;
+  const avGrad = targetCtx.createLinearGradient(avX, avY, avX + avSize, avY + avSize);
+  avGrad.addColorStop(0, cols[ci]); avGrad.addColorStop(1, cols[(ci+2)%cols.length]);
+  targetCtx.fillStyle = avGrad;
+  targetCtx.beginPath();
+  targetCtx.arc(avX + avSize/2, avY + avSize/2, avSize/2, 0, Math.PI*2);
+  targetCtx.fill();
+
+  targetCtx.fillStyle = '#fff';
+  targetCtx.font = '700 7px DM Sans, sans-serif';
+  targetCtx.textAlign = 'center'; targetCtx.textBaseline = 'middle';
+  targetCtx.fillText(ini, avX + avSize/2, avY + avSize/2 + 1);
+
+  const nameColor = modoOscuro.matches ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.45)';
+  targetCtx.fillStyle = nameColor;
   targetCtx.font = '500 10px DM Sans, sans-serif';
-  targetCtx.fillText(`${usuario} · ${fecha}`, fx + 8, fy + 28);
+  targetCtx.textAlign = 'left'; targetCtx.textBaseline = 'middle';
+  targetCtx.fillText(usuario, avX + avSize + 6, avY + avSize/2 + 1);
 
   targetCtx.restore();
 }
@@ -1582,12 +2932,18 @@ pngBtn.addEventListener('click', () => {
 
 /* ── VIDEO — tiempo real con compresión de gaps + progreso ── */
 vidBtn.addEventListener('click', async () => {
+  /* Bug 6: verificar soporte */
+  if (typeof MediaRecorder === 'undefined' || !HTMLCanvasElement.prototype.captureStream) {
+    toast('⚠️ Tu navegador no soporta grabación de video');
+    modalEl.classList.remove('open'); return;
+  }
   if (!trazos.length) { toast('✏️ ¡Dibuja algo primero!'); return; }
   modalEl.classList.remove('open');
 
   const segs = trazos.filter(s => s.tipo === 'seg' && s.t !== undefined);
   if (!segs.length) { toast('⚠️ Dibuja algo para exportar'); return; }
 
+  try {
   const compressed = comprimirGaps(segs);
   const duracionMs = compressed[compressed.length - 1].tRel;
   const durSec = Math.ceil(duracionMs / 1000);
@@ -1612,11 +2968,10 @@ vidBtn.addEventListener('click', async () => {
   const chunks = [];
   recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
-  /* Firma animada: se actualiza cada frame de animación */
-  let firmaFrame = 0;
+  /* Firma animada: se actualiza cada frame usando performance.now() internamente */
   let firmaLoop = null;
   function animarFirma() {
-    dibujarFirma(tc, cw, ch, true, firmaFrame++);
+    dibujarFirma(tc, cw, ch, true);
     firmaLoop = requestAnimationFrame(animarFirma);
   }
 
@@ -1656,6 +3011,11 @@ vidBtn.addEventListener('click', async () => {
     /* Detener grabación 1s después del último trazo */
     setTimeout(() => recorder.stop(), duracionMs + 1000);
   });
+
+  } catch (err) {
+    console.error('Video export error:', err);
+    toast('⚠️ Error al grabar video — intenta de nuevo');
+  }
 });
 
 /* ══════════════════════════════════════════════════════
@@ -1668,7 +3028,7 @@ vidBtn.addEventListener('click', async () => {
    Estructura:
    {
      "format": "SKS",
-     "version": "1.0",
+     "version": "1.0.0-beta",
      "meta": {
        "creator": "nombre",
        "createdAt": "ISO date",
@@ -1711,7 +3071,7 @@ sksBtn.addEventListener('click', () => {
       creator: usuario || 'Anónimo',
       createdAt: new Date().toISOString(),
       app: 'SketchSend',
-      appVersion: '0.4.0',
+      appVersion: '1.0.0-beta',
       canvasWidth: Math.round(cv.width / DPR),
       canvasHeight: Math.round(cv.height / DPR),
       dpr: DPR,
@@ -1796,19 +3156,25 @@ function reproducirLoop(strokes, rc, rctx, cssW, cssH) {
   const segs = strokes.filter(s => s.tipo === 'seg' && s.t !== undefined);
   if (!segs.length) return;
 
+  /* Escala contain: ajustar dibujo del emisor al canvas del receptor */
+  const meta = strokes.find(s => s.tipo === 'inicio' && s.origW);
+  const { scale, ox, oy } = getScaleTransform(
+    meta ? meta.origW : cssW, meta ? meta.origH : cssH, cssW, cssH
+  );
+
   /* Comprimir gaps */
   const compressed = comprimirGaps(segs);
   const duracionMs = compressed[compressed.length - 1].tRel;
 
-  /* Programar cada segmento con setTimeout */
+  /* Programar cada segmento con setTimeout (coordenadas pre-transformadas) */
   compressed.forEach(seg => {
     const timer = setTimeout(() => {
       if (!replayActivo) return;
       rctx.beginPath();
-      rctx.moveTo(seg.de.x, seg.de.y);
+      rctx.moveTo(ox + seg.de.x * scale, oy + seg.de.y * scale);
       rctx.strokeStyle = seg.color;
-      rctx.lineWidth   = seg.gw;
-      rctx.lineTo(seg.a.x, seg.a.y);
+      rctx.lineWidth   = seg.gw * scale;
+      rctx.lineTo(ox + seg.a.x * scale, oy + seg.a.y * scale);
       rctx.stroke();
     }, seg.tRel);
     replayTimers.push(timer);
@@ -1864,20 +3230,28 @@ volador.textContent = 'SketchSend ✏️';
 document.body.appendChild(volador);
 
 function posicionarVoladorEnLogin() {
-  const fantasma = document.getElementById('titulo-fantasma');
-  if (!fantasma) return;
-  const r = fantasma.getBoundingClientRect();
-  const fs = getComputedStyle(fantasma).fontSize;
+  volador.style.opacity = '0';
   volador.style.transition = 'none';
-  volador.style.fontSize = fs;
-  volador.style.top = r.top + 'px';
-  volador.style.left = r.left + 'px';
-  volador.style.opacity = '1';
 }
 
 function volarAlHeader() {
   const ph = document.getElementById('hdr-logo-placeholder');
-  if (!ph) return;
+  const fantasma = document.getElementById('titulo-fantasma');
+  if (!ph || !fantasma) return;
+
+  /* Posicionar volador ENCIMA del título del login antes de animar */
+  const rf = fantasma.getBoundingClientRect();
+  const fsSrc = getComputedStyle(fantasma).fontSize;
+  volador.style.transition = 'none';
+  volador.style.fontSize = fsSrc;
+  volador.style.top = rf.top + 'px';
+  volador.style.left = rf.left + 'px';
+  volador.style.opacity = '1';
+
+  /* Forzar reflow para que la transición arranque desde aquí */
+  volador.getBoundingClientRect();
+
+  /* Ahora animar hacia el header */
   const r = ph.getBoundingClientRect();
   const fs = getComputedStyle(ph).fontSize;
   volador.style.transition = '';
@@ -1885,11 +3259,9 @@ function volarAlHeader() {
   volador.style.top = r.top + 'px';
   volador.style.left = r.left + 'px';
   volador.addEventListener('transitionend', () => {
-    /* Activar animación rainbow en el placeholder del header */
     ph.style.animation = 'mover 2.5s linear infinite';
     ph.style.visibility = 'visible';
     volador.style.opacity = '0';
-    /* Detener la animación a los 20 segundos */
     setTimeout(() => {
       const pos = getComputedStyle(ph).backgroundPosition;
       ph.style.backgroundPosition = pos;
@@ -1912,15 +3284,73 @@ function abrirSettings() {
   /* Actualizar datos del perfil */
   document.getElementById('settings-avatar').src = genAvatar(usuario || '?');
   document.getElementById('settings-name').textContent = usuario || '—';
+  document.getElementById('settings-email').textContent = auth?.currentUser?.email || auth?.currentUser?.displayName || '';
 
-  /* Renderizar lista de amigos */
-  settingsFriends.innerHTML = '';
-  CONTACTOS.forEach(c => {
-    const chip = document.createElement('div');
-    chip.className = 'settings-friend-chip';
-    chip.innerHTML = `<img class="settings-friend-av rainbow-hover-ring" src="${genAvatar(c.nombre)}" alt="${c.nombre}">${c.nombre}`;
-    settingsFriends.appendChild(chip);
-  });
+  /* Cargar shortCode y email desde Firestore.
+     Si el usuario no tiene shortCode (cuenta antigua), generar uno ahora. */
+  if (firebaseReady && auth.currentUser) {
+    db.collection('users').doc(auth.currentUser.uid).get().then(async doc => {
+      if (doc.exists) {
+        const d = doc.data();
+        let code = d.shortCode;
+        /* Cuenta antigua sin shortCode → generar y guardar */
+        if (!code) {
+          code = generarShortCode();
+          await db.collection('users').doc(auth.currentUser.uid).update({ shortCode: code }).catch(() => {});
+        }
+        document.getElementById('user-shortcode').textContent = code;
+        document.getElementById('settings-email').textContent = auth.currentUser.email || '';
+        document.getElementById('settings-name').textContent = d.displayName || usuario;
+        document.getElementById('settings-username-display').textContent = d.username ? '@' + d.username : '';
+        /* Recargar QR con el código real */
+        if (window._reloadShareQR) window._reloadShareQR();
+      }
+    });
+  }
+
+  /* Renderizar lista de amigos reales */
+  settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">Cargando...</span>';
+  if (firebaseReady && auth.currentUser) {
+    cargarAmigos().then(amigos => {
+      settingsFriends.innerHTML = '';
+      if (amigos.length === 0) {
+        settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">Aún no tienes amigos en SketchSend</span>';
+        return;
+      }
+      amigos.forEach(c => {
+        const chip = document.createElement('div');
+        chip.className = 'settings-friend-chip';
+        chip.title = 'Toca para eliminar';
+        const avWrap = document.createElement('span'); avWrap.className='settings-friend-av-wrap rainbow-hover-ring';
+        const avImg = document.createElement('img'); avImg.className='settings-friend-av';
+        avImg.src = safeUrl(c.photoURL) || genAvatar(c.nombre); avImg.alt = c.nombre;
+        avWrap.appendChild(avImg);
+        const nameNode = document.createTextNode(c.nombre);
+        const rmSpan = document.createElement('span'); rmSpan.textContent='✕';
+        rmSpan.style.cssText='margin-left:4px;opacity:0.4;font-size:0.7rem;';
+        chip.appendChild(avWrap); chip.appendChild(nameNode); chip.appendChild(rmSpan);
+        chip.addEventListener('click', async () => {
+          if (!confirm(`¿Eliminar a ${c.nombre} de tus amigos?`)) return;
+          try {
+            const uid = auth.currentUser.uid;
+            const snap = await db.collection('friendships')
+              .where('users', 'array-contains', uid).get();
+            const docToDelete = snap.docs.find(d => d.data().users.includes(c.id));
+            if (docToDelete) await docToDelete.ref.delete();
+            toast('✅ Amigo eliminado');
+            chip.remove();
+            buildCarousel();
+          } catch(e) { toast('❌ ' + e.message); }
+        });
+        settingsFriends.appendChild(chip);
+      });
+    });
+  } else {
+    settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">Inicia sesión para ver tus amigos</span>';
+  }
+
+  /* Reset share tabs — QR se recarga dentro del bloque Firestore de arriba
+     una vez que el shortCode real esté disponible (incluyendo cuentas antiguas) */
 
   settingsOverlay.classList.add('activo');
 }
@@ -1938,35 +3368,182 @@ avMob.addEventListener('click', abrirSettings);
 settingsClose.addEventListener('click', cerrarSettings);
 settingsOverlay.addEventListener('click', e => { if (e.target === settingsOverlay) cerrarSettings(); });
 
-settingsRename.addEventListener('click', () => {
-  const nuevoNombre = prompt('Nuevo nombre (máx 15 caracteres):', usuario || '');
-  if (!nuevoNombre || !nuevoNombre.trim()) return;
-  const n = nuevoNombre.trim().slice(0, 15);
-  localStorage.setItem('ss_user', n);
+/* ── Cambiar nombre inline ── */
+document.getElementById('settings-rename').addEventListener('click', () => {
+  document.getElementById('rename-inp').value = document.getElementById('settings-name').textContent || '';
+  document.getElementById('rename-view-row').style.display = 'none';
+  document.getElementById('rename-edit-row').style.display = 'flex';
+  document.getElementById('rename-inp').focus();
+});
+document.getElementById('rename-cancel-btn').addEventListener('click', () => {
+  document.getElementById('rename-view-row').style.display = 'flex';
+  document.getElementById('rename-edit-row').style.display = 'none';
+});
+document.getElementById('rename-save-btn').addEventListener('click', async () => {
+  const n = document.getElementById('rename-inp').value.trim().slice(0, 20);
+  if (!n) return;
+  if (firebaseReady && auth?.currentUser) {
+    try {
+      await auth.currentUser.updateProfile({ displayName: n });
+      await db.collection('users').doc(auth.currentUser.uid).update({ displayName: n });
+    } catch(e) { toast('❌ ' + e.message); return; }
+  }
   usuario = n;
-  const av = genAvatar(n);
+  const av = auth?.currentUser?.photoURL || genAvatar(n);
   unameEl.textContent = n; avatarEl.src = av;
   unameMob.textContent = n; avMob.src = av;
   document.getElementById('settings-name').textContent = n;
   document.getElementById('settings-avatar').src = av;
-  toast(`✅ Nombre cambiado a "${n}"`);
+  document.getElementById('rename-view-row').style.display = 'flex';
+  document.getElementById('rename-edit-row').style.display = 'none';
+  toast(`✅ Nombre: "${n}"`);
 });
+document.getElementById('rename-inp').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('rename-save-btn').click(); if (e.key==='Escape') document.getElementById('rename-cancel-btn').click(); });
+
+/* ── Cambiar @usuario inline ── */
+document.getElementById('settings-change-username').addEventListener('click', () => {
+  const cur = document.getElementById('settings-username-display').textContent.replace('@','');
+  document.getElementById('uname-inp').value = cur;
+  document.getElementById('uname-edit-error').style.display = 'none';
+  document.getElementById('uname-view-row').style.display = 'none';
+  document.getElementById('uname-edit-row').style.display = 'flex';
+  document.getElementById('uname-inp').focus();
+});
+document.getElementById('uname-cancel-btn').addEventListener('click', () => {
+  document.getElementById('uname-view-row').style.display = 'flex';
+  document.getElementById('uname-edit-row').style.display = 'none';
+});
+document.getElementById('uname-save-btn').addEventListener('click', async () => {
+  const raw = document.getElementById('uname-inp').value.trim().toLowerCase().replace(/^@/,'');
+  const errEl = document.getElementById('uname-edit-error');
+  if (!/^[a-z0-9_]{3,20}$/.test(raw)) {
+    errEl.textContent = lang==='es' ? 'Solo letras, números y _ · mínimo 3 caracteres' : 'Letters, numbers and _ only · min 3 chars';
+    errEl.style.display = 'block'; return;
+  }
+  errEl.style.display = 'none';
+  document.getElementById('uname-save-btn').disabled = true;
+  try {
+    const uid = auth.currentUser.uid;
+    const snap = await db.collection('users').where('username','==',raw).get();
+    if (!snap.empty && snap.docs[0].id !== uid) {
+      errEl.textContent = lang==='es' ? 'Ese @usuario ya está tomado' : 'That @username is taken'; errEl.style.display='block';
+      document.getElementById('uname-save-btn').disabled = false; return;
+    }
+    /* Guardar historial de usernames */
+    const userDoc = await db.collection('users').doc(uid).get();
+    const prevHistory = userDoc.data()?.usernameHistory || [];
+    if (!prevHistory.includes(raw)) prevHistory.push(raw);
+    await db.collection('users').doc(uid).update({ username: raw, usernameHistory: prevHistory });
+    usuario = raw;
+    document.getElementById('settings-username-display').textContent = '@' + raw;
+    document.getElementById('uname-view-row').style.display = 'flex';
+    document.getElementById('uname-edit-row').style.display = 'none';
+    toast(`✅ @usuario: ${raw}`);
+  } catch(e) { errEl.textContent = e.message; errEl.style.display='block'; }
+  document.getElementById('uname-save-btn').disabled = false;
+});
+document.getElementById('uname-inp').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('uname-save-btn').click(); if (e.key==='Escape') document.getElementById('uname-cancel-btn').click(); });
 
 settingsInvite.addEventListener('click', () => {
-  const shareData = { title:'SketchSend', text:'¡Descarga SketchSend y dibujemos juntos! ✏️🌈', url:location.href };
+  const code = document.getElementById('user-shortcode').textContent;
+  const inviteUrl = code && code !== '——'
+    ? location.origin + location.pathname + '?add=' + code
+    : location.href;
+  const shareData = { title:'SketchSend', text:'¡Dibujemos juntos en SketchSend! ✏️🌈', url:inviteUrl };
   if (navigator.share) { navigator.share(shareData).catch(()=>{}); }
-  else { navigator.clipboard.writeText(location.href).then(()=>toast('🔗 Link copiado al portapapeles')).catch(()=>toast('🔗 Comparte: '+location.href)); }
+  else { navigator.clipboard.writeText(inviteUrl).then(()=>toast('🔗 Link copiado al portapapeles')).catch(()=>toast('🔗 Comparte: '+inviteUrl)); }
+});
+
+/* Share tabs — QR + Link */
+(function(){
+  const tabs = [
+    { btn: document.getElementById('share-tab-qr'),   panel: document.getElementById('share-content-qr') },
+    { btn: document.getElementById('share-tab-link'), panel: document.getElementById('share-content-link') },
+  ];
+  let qrLoaded = false;
+  function loadQR() {
+    const code = document.getElementById('user-shortcode').textContent.trim();
+    if (!code || code === '——') return; /* shortcode not loaded yet — _reloadShareQR called again when settings opens */
+    qrLoaded = true;
+    const appUrl = encodeURIComponent(location.origin + location.pathname + '?add=' + code);
+    const qrCanvas = document.getElementById('share-qr-canvas');
+    qrCanvas.width = 200; qrCanvas.height = 200;
+    const ctx2 = qrCanvas.getContext('2d');
+    ctx2.fillStyle = '#ccc'; ctx2.fillRect(0,0,200,200); /* placeholder while loading */
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${appUrl}`;
+    img.onload = () => { qrCanvas.width=400; qrCanvas.height=400; qrCanvas.getContext('2d').drawImage(img,0,0); };
+    img.onerror = () => { qrLoaded = false; }; /* allow retry */
+  }
+  function activate(idx) {
+    tabs.forEach((t, i) => {
+      t.btn.classList.toggle('active', i === idx);
+      t.panel.style.display = i === idx ? '' : 'none';
+    });
+    if (idx === 0 && !qrLoaded) loadQR();
+  }
+  tabs.forEach((t, i) => t.btn.addEventListener('click', () => activate(i)));
+  window._reloadShareQR = () => { qrLoaded = false; activate(0); };
+  /* Show first tab but don't pre-load QR — shortcode may not be set yet */
+  activate(0);
+})();
+
+/* Avatar pencil → open file picker for real photo upload
+   Solo funciona si Firebase Storage está habilitado (plan Blaze).
+   Si no, muestra un mensaje amigable en lugar de un error técnico. */
+const photoFileInput = document.getElementById('photo-file-input');
+document.getElementById('settings-edit-photo').addEventListener('click', () => {
+  if (!firebaseReady || !auth.currentUser) { toast('❌ Debes iniciar sesión'); return; }
+  if (!window.storage) {
+    toast(lang === 'en' ? '🚧 Photo upload coming soon' : '🚧 Subida de fotos próximamente');
+    return;
+  }
+  photoFileInput.click();
+});
+photoFileInput.addEventListener('change', async () => {
+  const file = photoFileInput.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('⚠️ La imagen debe pesar menos de 5 MB'); return; }
+  const uid = auth.currentUser.uid;
+  try {
+    toast('⏳ Subiendo foto...');
+    const ref = window.storage.ref(`avatars/${uid}`);
+    await ref.put(file);
+    const url = await ref.getDownloadURL();
+    await auth.currentUser.updateProfile({ photoURL: url });
+    await db.collection('users').doc(uid).update({ photoURL: url });
+    const avatarSrc = url;
+    document.getElementById('settings-avatar').src = avatarSrc;
+    avatarEl.src = avatarSrc; avMob.src = avatarSrc;
+    toast('✅ Foto actualizada');
+  } catch(e) {
+    console.error('Error subiendo foto:', e);
+    toast('❌ Error al subir foto: ' + e.message);
+  }
+  photoFileInput.value = '';
+});
+
+/* Botones de idioma */
+document.getElementById('lang-es-btn').addEventListener('click', () => {
+  lang = 'es'; localStorage.setItem('ss_lang', 'es');
+  applyLang();
+  toast('🇪🇸 Español');
+});
+document.getElementById('lang-en-btn').addEventListener('click', () => {
+  lang = 'en'; localStorage.setItem('ss_lang', 'en');
+  applyLang();
+  toast('🇺🇸 English');
 });
 
 settingsLogout.addEventListener('click', () => {
   cerrarSettings();
-  localStorage.removeItem('ss_user');
-  checkLogin();
+  doLogout();
 });
 
-/* Los botones de la tienda por ahora solo muestran toast */
-document.querySelectorAll('.settings-row-action.premium').forEach(btn => {
-  btn.addEventListener('click', () => toast('🚧 Tienda disponible pronto'));
+/* Botones de tienda */
+document.querySelectorAll('.store-soon').forEach(btn => {
+  btn.addEventListener('click', () => toast('🚧 ' + (lang === 'es' ? 'Disponible pronto' : 'Coming soon')));
 });
 
 /* ══════════════════════════════════════════════════════
@@ -1976,34 +3553,211 @@ document.querySelectorAll('.settings-row-action.premium').forEach(btn => {
    ya existe. Ejecutamos directamente.
 ══════════════════════════════════════════════════════ */
 applySeason();
-checkLogin();
+applyLang();
+/* Si Firebase está activo, onAuthStateChanged gestiona login/logout.
+   Si no, checkLogin() usa localStorage. En ambos casos arrancamos en login. */
+if (!firebaseReady) checkLogin();
+else mostrarLogin(); /* estado inicial mientras Firebase resuelve la sesión */
 actualizarBotones();
 posicionarVoladorEnLogin();
-cargarBandeja(); /* Cargar mensajes simulados (Firebase los reemplazará) */
-</script>
+cargarBandeja();
 
-<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.12.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
+/* Ocultar botón de video si el navegador no soporta grabación.
+   Verificamos sobre una instancia real (más fiable que el prototype en Safari iOS). */
+(function() {
+  const probe = document.createElement('canvas');
+  const soportaVideo = typeof MediaRecorder !== 'undefined' &&
+                       typeof probe.captureStream === 'function';
+  if (!soportaVideo) vidBtn.style.display = 'none';
+})();
 
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyBwsOO3je4iK63tid5KDDgYWeVHs0OanIc",
-    authDomain: "sketchsend-d1976.firebaseapp.com",
-    projectId: "sketchsend-d1976",
-    storageBucket: "sketchsend-d1976.firebasestorage.app",
-    messagingSenderId: "445386471766",
-    appId: "1:445386471766:web:6f8c0681a676d5a5b67ef7",
-    measurementId: "G-59Y6151V19"
-  };
 
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
+/* ══════════════════════════════════════════════════════
+   ERROR LOGGING — captura errores de dispositivos reales
+   y los guarda en Firestore para diagnóstico remoto.
+══════════════════════════════════════════════════════ */
+function logRemoteError(context, err) {
+  try {
+    if (!firebaseReady || !db) return;
+    const uid = (auth && auth.currentUser && auth.currentUser.uid) || 'anonymous';
+    db.collection('_errors').add({
+      uid, context,
+      msg: err ? (err.message || String(err)) : 'unknown',
+      stack: err && err.stack ? err.stack.slice(0, 500) : null,
+      ua: navigator.userAgent.slice(0, 200),
+      ts: Date.now(),
+      url: location.pathname
+    }).catch(() => {});
+  } catch(_) {}
+}
+window.onerror = (msg, src, line, col, err) => { logRemoteError('onerror:' + src?.split('/').pop() + ':' + line, err || { message: msg }); };
+window.onunhandledrejection = e => { logRemoteError('unhandledrejection', e.reason instanceof Error ? e.reason : { message: String(e.reason) }); };
+
+/* ══════════════════════════════════════════════════════
+   SERVICE WORKER — registro con detección de actualización
+   Cuando hay una nueva versión disponible, recarga la página
+   automáticamente para que todos los dispositivos actualicen.
+══════════════════════════════════════════════════════ */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').then(reg => {
+    /* Forzar verificación de actualización en cada carga */
+    reg.update().catch(() => {});
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      if (!newWorker) return;
+      newWorker.addEventListener('statechange', () => {
+        /* Nueva versión lista y controlador activo → recargar */
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          /* Mandar mensaje al nuevo SW para que tome control */
+          newWorker.postMessage({ type: 'SKIP_WAITING' });
+        }
+      });
+    });
+  }).catch(e => console.warn('SW register failed:', e));
+
+  /* Cuando el SW toma control, recargar la página */
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) { refreshing = true; window.location.reload(); }
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   VIEWER PÚBLICO — ?view=SKETCHID
+   Carga el sketch de Firestore y reproduce el dibujo
+   sin requerir login. Al tocar "Responder" lleva al login.
+══════════════════════════════════════════════════════ */
+(function() {
+  const params = new URLSearchParams(location.search);
+  const viewId = params.get('view');
+  if (!viewId || !/^[a-zA-Z0-9]{10,30}$/.test(viewId)) return;
+
+  /* Hay un ?view=ID — activar modo viewer antes de cualquier otra cosa */
+  const screen = document.getElementById('viewer-screen');
+  const loadingEl = document.getElementById('viewer-loading');
+  const canvasEl  = document.getElementById('viewer-canvas');
+  const ctaEl     = document.getElementById('viewer-cta');
+  const expiredEl = document.getElementById('viewer-expired');
+  const fromEl    = document.getElementById('viewer-from');
+
+  screen.classList.add('activo');
+
+  /* Esconder splash inmediatamente (el viewer es la experiencia) */
+  const splash = document.getElementById('splash-screen');
+  if (splash) splash.remove();
+
+  /* Esperar a que Firebase esté listo */
+  function waitFirebase(cb) {
+    if (firebaseReady && db) { cb(); return; }
+    const t = setInterval(() => { if (firebaseReady && db) { clearInterval(t); cb(); } }, 100);
+  }
+
+  waitFirebase(() => {
+    db.collection('sketches').doc(viewId).get().then(doc => {
+      if (!doc.exists) { showExpired(); return; }
+      const d = doc.data();
+      const now = Date.now();
+      const expires = d.expiresAt?.toMillis ? d.expiresAt.toMillis() : (d.expiresAt || 0);
+      if (expires < now) { showExpired(); return; }
+
+      fromEl.textContent = d.fromName || 'Alguien';
+      loadingEl.style.display = 'none';
+      canvasEl.style.display  = 'block';
+      ctaEl.style.display     = 'flex';
+
+      /* Ajustar canvas al viewport */
+      const size = Math.min(window.innerWidth * 0.92, window.innerHeight * 0.65, 520);
+      canvasEl.width  = Math.round(size * devicePixelRatio);
+      canvasEl.height = Math.round(size * devicePixelRatio);
+      canvasEl.style.width  = size + 'px';
+      canvasEl.style.height = size + 'px';
+
+      const ctx = canvasEl.getContext('2d');
+      ctx.setTransform(1,0,0,1,0,0);
+      ctx.scale(devicePixelRatio, devicePixelRatio);
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+      /* Replay en loop — reutiliza reproducirLoop */
+      let active = true;
+      const timers = [];
+
+      function loop(strokes) {
+        if (!active) return;
+        const cssW = size, cssH = size;
+        ctx.clearRect(0,0,cssW,cssH);
+        /* Fondo */
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--canvas-bg').trim() || '#12121a';
+        ctx.fillRect(0,0,cssW,cssH);
+
+        const segs = strokes.filter(s => s.tipo === 'seg' && s.t !== undefined);
+        if (!segs.length) return;
+
+        const meta = strokes.find(s => s.tipo === 'inicio' && s.origW);
+        const origW = meta ? meta.origW : cssW;
+        const origH = meta ? meta.origH : cssH;
+        const sc = Math.min(cssW/origW, cssH/origH);
+        const ox = (cssW - origW*sc)/2;
+        const oy = (cssH - origH*sc)/2;
+
+        /* Comprimir gaps (inline) */
+        const MAX_GAP = 2000;
+        let tAcc = 0, tPrev = segs[0].t;
+        const compressed = segs.map(s => {
+          tAcc += Math.min(s.t - tPrev, MAX_GAP); tPrev = s.t;
+          return {...s, tRel: tAcc};
+        });
+        const dur = compressed[compressed.length-1].tRel;
+
+        compressed.forEach(seg => {
+          const t = setTimeout(() => {
+            if (!active) return;
+            ctx.beginPath();
+            ctx.moveTo(ox + seg.de.x*sc, oy + seg.de.y*sc);
+            ctx.strokeStyle = seg.color;
+            ctx.lineWidth   = seg.gw*sc;
+            ctx.lineTo(ox + seg.a.x*sc, oy + seg.a.y*sc);
+            ctx.stroke();
+          }, seg.tRel);
+          timers.push(t);
+        });
+
+        const lt = setTimeout(() => loop(strokes), dur + 1500);
+        timers.push(lt);
+      }
+
+      loop(d.strokes || []);
+
+      /* Botón responder → lleva al login con ?reply=VIEWID para retomar */
+      document.getElementById('viewer-reply-btn').addEventListener('click', () => {
+        active = false;
+        timers.forEach(clearTimeout);
+        history.replaceState({}, '', location.pathname + '?reply=' + viewId);
+        screen.classList.remove('activo');
+        mostrarLogin();
+      });
+
+    }).catch(err => {
+      loadingEl.textContent = '⚠️ Error cargando el dibujo.';
+      logRemoteError('viewer:load', err);
+    });
+  });
+
+  function showExpired() {
+    loadingEl.style.display = 'none';
+    expiredEl.style.display = 'block';
+  }
+})();
+
+/* Splash screen: mostrar 1.8s luego fade out */
+(function() {
+  const splash = document.getElementById('splash-screen');
+  if (!splash) return;
+  setTimeout(() => {
+    splash.style.opacity = '0';
+    splash.addEventListener('transitionend', () => splash.remove(), { once: true });
+  }, 1800);
+})();
+
 </script>
 </body>
 </html>

@@ -2,7 +2,7 @@
   "name": "SketchSend",
   "short_name": "SketchSend",
   "description": "Send messages as drawings",
-  "start_url": "./sketchsendv14.html",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0f0f13",
   "theme_color": "#7c3aed",
