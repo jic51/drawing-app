@@ -76,7 +76,7 @@
     }
 
     @media (prefers-color-scheme: light) {
-      :root {
+      :root:not([data-theme="dark"]) {
         --bg:        #f0f0f7;
         --surface:   #ffffff;
         --surface2:  #f5f5fb;
@@ -85,6 +85,15 @@
         --muted:     #7070a0;
         --canvas-bg: #ffffff;
       }
+    }
+    :root[data-theme="light"] {
+      --bg:        #f0f0f7;
+      --surface:   #ffffff;
+      --surface2:  #f5f5fb;
+      --border:    #d0d0e0;
+      --text:      #1a1a2e;
+      --muted:     #7070a0;
+      --canvas-bg: #ffffff;
     }
 
     /* TEMAS ESTACIONALES — cambian los acentos según la época del año */
@@ -825,7 +834,7 @@
     #viewer-sender span { color:var(--accent2); }
     #viewer-canvas {
       border-radius:14px; box-shadow:0 0 60px var(--glow);
-      max-width:min(96vw,700px); max-height:min(70vh,700px);
+      max-width:min(98vw,900px); max-height:min(60vh,800px);
     }
     #viewer-cta {
       margin-top:20px; display:flex; flex-direction:column; align-items:center; gap:10px;
@@ -852,7 +861,7 @@
     <div class="titulo" style="font-size:1.3rem;">SketchSend ✏️</div>
     <div id="viewer-sender" style="display:flex;align-items:center;gap:8px;">
       <img id="viewer-avatar" style="width:28px;height:28px;border-radius:50%;border:2px solid var(--accent);object-fit:cover;" src="" alt="">
-      <span>Drawing by <span id="viewer-from" style="color:var(--accent2);">...</span></span>
+      <span style="color:var(--muted);">Drawing by </span><span id="viewer-from" style="color:#e0e0e8;font-weight:700;">...</span>
     </div>
   </div>
   <div id="viewer-loading">Loading drawing... ✏️</div>
@@ -862,14 +871,14 @@
     <a href="./" style="color:var(--accent2);margin-top:8px;display:inline-block;">Go to SketchSend →</a>
   </div>
   <div id="viewer-cta" style="display:none;">
-    <div id="viewer-context" style="font-size:0.82rem;color:var(--muted);text-align:center;max-width:280px;margin:0 auto 10px;line-height:1.5;">In SketchSend, messages are drawings. Free. They disappear in 24h.</div>
-    <button id="viewer-reply-btn" style="animation:viewerPulse 4s ease infinite;">✏️ Reply with a drawing</button>
-    <div id="viewer-hint">You need a free account to reply. It's quick!</div>
+    <div id="viewer-context" style="font-size:0.82rem;color:var(--muted);text-align:center;max-width:280px;margin:0 auto 10px;line-height:1.5;">In SketchSend, every message is a drawing ✏️</div>
+    <button id="viewer-reply-btn" style="animation:viewerPulse 4s ease infinite;">✏️ Send your own drawing</button>
+    <div id="viewer-hint">Create a free account and start drawing. It's quick!</div>
   </div>
 </div>
 
 <div id="splash-screen" style="position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity 0.6s ease;">
-  <div class="titulo" style="font-size:clamp(1.4rem, 6vw, 2.4rem);">SketchSend ✏️</div>
+  <div class="titulo" id="splash-titulo" style="font-size:clamp(1.4rem, 6vw, 2.4rem);">SketchSend ✏️</div>
   <p style="color:var(--muted);font-size:0.95rem;animation:aparecer 1s ease 0.3s both;">Where every message is a drawing</p>
   <div style="width:40px;height:3px;background:var(--accent);border-radius:2px;margin-top:8px;animation:pulse 1.5s infinite;"></div>
 </div>
@@ -1203,6 +1212,14 @@
         </div>
       </div>
       <div class="settings-row">
+        <div class="settings-row-label" id="lbl-theme">Theme</div>
+        <div style="display:flex;gap:6px;">
+          <button id="theme-auto-btn" class="btn-g" style="font-size:0.8rem;">🔄 Auto</button>
+          <button id="theme-dark-btn" class="btn-g" style="font-size:0.8rem;opacity:0.5;">🌙 Dark</button>
+          <button id="theme-light-btn" class="btn-g" style="font-size:0.8rem;opacity:0.5;">☀️ Light</button>
+        </div>
+      </div>
+      <div class="settings-row">
         <div>
           <div class="settings-row-label" id="lbl-replay-self">Replay after sending</div>
           <div class="settings-row-sub" id="lbl-replay-self-sub">Play back your drawing after you send it</div>
@@ -1292,7 +1309,7 @@ const I18N = {
     store_themes: '🌈 Temas de temporada', store_themes_sub: 'Halloween, Navidad, San Valentín',
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Dibujos permanentes, 4K, sin firma',
     install_app: 'Instalar app', install_app_sub: 'Agregar SketchSend a tu pantalla de inicio',
-    install_btn: 'Instalar 📲', language: 'Idioma', replay_self: 'Replay al enviar', replay_self_sub: 'Reproduce tu dibujo después de enviarlo', version: 'Versión', logout: 'Cerrar sesión',
+    install_btn: 'Instalar 📲', language: 'Idioma', theme: 'Tema', replay_self: 'Replay al enviar', replay_self_sub: 'Reproduce tu dibujo después de enviarlo', version: 'Versión', logout: 'Cerrar sesión',
     tool_rainbow: 'Arcoíris', tool_brush: 'Pincel', tool_erase: 'Borrar',
     store_section: 'Tienda',
     no_friends: 'Agrega amigos para enviarles dibujos →',
@@ -1373,7 +1390,7 @@ const I18N = {
     store_themes: '🌈 Seasonal themes', store_themes_sub: "Halloween, Christmas, Valentine's",
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Permanent drawings, 4K, no watermark',
     install_app: 'Install app', install_app_sub: 'Add SketchSend to your home screen',
-    install_btn: 'Install 📲', language: 'Language', replay_self: 'Replay after sending', replay_self_sub: 'Play back your drawing after you send it', version: 'Version', logout: 'Sign out',
+    install_btn: 'Install 📲', language: 'Language', theme: 'Theme', replay_self: 'Replay after sending', replay_self_sub: 'Play back your drawing after you send it', version: 'Version', logout: 'Sign out',
     tool_rainbow: 'Rainbow', tool_brush: 'Brush', tool_erase: 'Erase',
     store_section: 'Store',
     no_friends: 'Add friends to send them drawings →',
@@ -1520,6 +1537,7 @@ function applyLang() {
   set('lbl-invite', 'invite_friends');
   set('lbl-invite-sub', 'invite_friends_sub');
   set('lbl-language', 'language');
+  set('lbl-theme', 'theme');
   set('lbl-replay-self', 'replay_self'); set('lbl-replay-self-sub', 'replay_self_sub');
   set('lbl-version', 'version');
   // Tienda — labels con IDs, botones con "Pronto"/"Coming soon"
@@ -1635,7 +1653,8 @@ let bandejaEntrada = [];
 
 /* ── MODO OSCURO ── */
 const modoOscuro = window.matchMedia('(prefers-color-scheme: dark)');
-const canvasBg   = () => modoOscuro.matches ? '#12121a' : '#ffffff';
+function esDark() { const t = document.documentElement.getAttribute('data-theme'); return t === 'dark' || (t !== 'light' && modoOscuro.matches); }
+const canvasBg = () => esDark() ? '#12121a' : '#ffffff';
 
 function fondoCanvas(targetCtx, w, h) {
   targetCtx.save();
@@ -1858,10 +1877,14 @@ function finalizarLogin(username, displayName, photoURL) {
   unameMob.textContent = nombreMostrar; avMob.src = avatarSrc;
   ocultarTodasLasPantallas();
   appEl.style.display = 'flex';
-  const splash = document.getElementById('splash-screen');
-  if (splash) { splash.style.opacity = '0'; splash.addEventListener('transitionend', () => splash.remove(), { once: true }); }
   setupCanvas(); buildCarousel(); cargarBandeja(); iniciarPromptsCanvas();
-  requestAnimationFrame(() => requestAnimationFrame(volarAlHeader));
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      volarAlHeader();
+      const splash = document.getElementById('splash-screen');
+      if (splash) { splash.style.opacity = '0'; splash.addEventListener('transitionend', () => splash.remove(), { once: true }); }
+    });
+  });
   if (window.posthog) posthog.identify(username, { displayName, hasPhoto: !!photoURL });
 
   if (messaging && Notification.permission === 'granted') {
@@ -3010,7 +3033,7 @@ function dibujarFirma(targetCtx, w, h, animated) {
   }
 
   /* Fondo semi-transparente */
-  targetCtx.fillStyle = modoOscuro.matches ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.65)';
+  targetCtx.fillStyle = esDark() ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.65)';
   targetCtx.beginPath();
   targetCtx.roundRect(fx, fy, firmW, firmH, 8);
   targetCtx.fill();
@@ -3089,7 +3112,7 @@ function dibujarFirma(targetCtx, w, h, animated) {
   targetCtx.textAlign = 'center'; targetCtx.textBaseline = 'middle';
   targetCtx.fillText(ini, avX + avSize/2, avY + avSize/2 + 1);
 
-  const nameColor = modoOscuro.matches ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.45)';
+  const nameColor = esDark() ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.45)';
   targetCtx.fillStyle = nameColor;
   targetCtx.font = '500 10px DM Sans, sans-serif';
   targetCtx.textAlign = 'left'; targetCtx.textBaseline = 'middle';
@@ -3255,7 +3278,7 @@ sksBtn.addEventListener('click', () => {
       canvasWidth: Math.round(cv.width / DPR),
       canvasHeight: Math.round(cv.height / DPR),
       dpr: DPR,
-      theme: modoOscuro.matches ? 'dark' : 'light',
+      theme: esDark() ? 'dark' : 'light',
       season: seasonMap[m] || 'spring'
     },
     strokes: trazos,
@@ -3470,11 +3493,11 @@ function posicionarVoladorEnLogin() {
 
 function volarAlHeader() {
   const ph = document.getElementById('hdr-logo-placeholder');
-  const fantasma = document.getElementById('titulo-fantasma');
+  const fantasma = document.getElementById('splash-titulo') || document.getElementById('titulo-fantasma');
   if (!ph || !fantasma) return;
 
-  /* Posicionar volador ENCIMA del título del login antes de animar */
   const rf = fantasma.getBoundingClientRect();
+  if (rf.width === 0) return;
   const fsSrc = getComputedStyle(fantasma).fontSize;
   volador.style.transition = 'none';
   volador.style.fontSize = fsSrc;
@@ -3776,6 +3799,21 @@ document.getElementById('lang-en-btn').addEventListener('click', () => {
   toast('🇺🇸 English');
 });
 
+/* Theme toggle */
+function applyTheme(theme) {
+  localStorage.setItem('ss_theme', theme);
+  if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('theme-auto-btn').style.opacity = theme === 'auto' ? '1' : '0.5';
+  document.getElementById('theme-dark-btn').style.opacity = theme === 'dark' ? '1' : '0.5';
+  document.getElementById('theme-light-btn').style.opacity = theme === 'light' ? '1' : '0.5';
+  if (typeof setupCanvas === 'function' && cv) { const w=cv.width/DPR, h=cv.height/DPR; ctx.clearRect(0,0,w,h); fondoCanvas(ctx,w,h); }
+}
+applyTheme(localStorage.getItem('ss_theme') || 'auto');
+document.getElementById('theme-auto-btn').addEventListener('click', () => { applyTheme('auto'); toast('🔄 Auto'); });
+document.getElementById('theme-dark-btn').addEventListener('click', () => { applyTheme('dark'); toast('🌙 Dark'); });
+document.getElementById('theme-light-btn').addEventListener('click', () => { applyTheme('light'); toast('☀️ Light'); });
+
 /* Replay-self toggle */
 const replayToggle = document.getElementById('toggle-replay-self');
 const replayKnob = document.getElementById('toggle-replay-knob');
@@ -3929,8 +3967,8 @@ if ('serviceWorker' in navigator) {
       /* Ajustar canvas al viewport — usa proporciones del dibujo original si existen */
       const meta0 = (d.strokes || []).find(s => s.tipo === 'inicio' && s.origW);
       const origAspect = meta0 ? (meta0.origW / meta0.origH) : 1;
-      const maxW = Math.min(window.innerWidth * 0.96, 700);
-      const maxH = Math.min(window.innerHeight * 0.65, 700);
+      const maxW = Math.min(window.innerWidth * 0.98, 900);
+      const maxH = Math.min(window.innerHeight * 0.60, 800);
       let cssW, cssH;
       if (origAspect >= 1) {
         cssW = Math.min(maxW, maxH * origAspect);
@@ -4031,7 +4069,7 @@ if ('serviceWorker' in navigator) {
     splash.style.opacity = '0';
     splash.addEventListener('transitionend', () => splash.remove(), { once: true });
     if (firebaseReady && auth && !auth.currentUser) mostrarLogin();
-  }, 3000);
+  }, 5000);
 })();
 
 </script>
