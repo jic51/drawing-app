@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -18,14 +18,14 @@
   <!-- Open Graph — WhatsApp / iMessage / Telegram link preview -->
   <meta property="og:type"        content="website">
   <meta property="og:site_name"   content="SketchSend">
-  <meta property="og:title"       content="Alguien te envió un dibujo ✏️">
-  <meta property="og:description" content="Toca para ver el dibujo animado. Responde con tu propio dibujo.">
+  <meta property="og:title"       content="You received a drawing ✏️">
+  <meta property="og:description" content="Tap to see the animated drawing. Reply with your own.">
   <meta property="og:image"       content="https://jic51.github.io/drawing-app/og-preview.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card"       content="summary_large_image">
-  <meta name="twitter:title"      content="Alguien te envió un dibujo ✏️">
-  <meta name="twitter:description" content="Mira el dibujo animado en SketchSend">
+  <meta name="twitter:title"      content="You received a drawing ✏️">
+  <meta name="twitter:description" content="Watch the animated drawing on SketchSend">
   <meta name="twitter:image"      content="https://jic51.github.io/drawing-app/og-preview.png">
 
   <!-- PostHog Analytics — session replay, funnels, eventos -->
@@ -847,17 +847,17 @@
 <div id="viewer-screen">
   <div id="viewer-header">
     <div class="titulo" style="font-size:1.3rem;">SketchSend</div>
-    <div id="viewer-sender">Dibujo de <span id="viewer-from">...</span></div>
+    <div id="viewer-sender">Drawing by <span id="viewer-from">...</span></div>
   </div>
-  <div id="viewer-loading">Cargando dibujo... ✏️</div>
+  <div id="viewer-loading">Loading drawing... ✏️</div>
   <canvas id="viewer-canvas" style="display:none;"></canvas>
   <div id="viewer-expired" style="display:none;">
-    ⏳ Este dibujo ya expiró o no existe.<br>
-    <a href="./" style="color:var(--accent2);margin-top:8px;display:inline-block;">Ir a SketchSend →</a>
+    ⏳ This drawing has expired or doesn't exist.<br>
+    <a href="./" style="color:var(--accent2);margin-top:8px;display:inline-block;">Go to SketchSend →</a>
   </div>
   <div id="viewer-cta" style="display:none;">
-    <button id="viewer-reply-btn">✏️ Responder con un dibujo</button>
-    <div id="viewer-hint">Necesitas una cuenta gratuita para responder. ¡Es rápido!</div>
+    <button id="viewer-reply-btn">✏️ Reply with a drawing</button>
+    <div id="viewer-hint">You need a free account to reply. It's quick!</div>
   </div>
 </div>
 
@@ -984,7 +984,7 @@
             padding:8px 18px; font-size:0.82rem; color:var(--muted);
             white-space:nowrap;
           "></div>
-          <div style="font-size:0.68rem;color:var(--muted);opacity:0.6;">✏️ empieza a dibujar</div>
+          <div style="font-size:0.68rem;color:var(--muted);opacity:0.6;">✏️ start drawing</div>
         </div>
         <div id="preview"></div>
         <div class="fbtns" id="fbtns">
@@ -1351,8 +1351,8 @@ const I18N = {
   }
 };
 
-let lang = localStorage.getItem('ss_lang') || 'es';
-function t(key) { return I18N[lang][key] || I18N['es'][key] || key; }
+let lang = localStorage.getItem('ss_lang') || 'en';
+function t(key) { return I18N[lang][key] || I18N['en'][key] || key; }
 
 /* HTML escape — usar siempre que datos de Firestore / usuario entren en innerHTML */
 function esc(s) {
@@ -2614,7 +2614,7 @@ async function enviarSketchFirestore(toUid) {
     if (window.posthog) posthog.capture('sketch_sent', { strokeCount: trazos.length });
   } catch(e) {
     logRemoteError('enviarSketch', e);
-    toast('⚠️ Error al enviar: ' + e.message);
+    toast('⚠️ ' + (lang === 'es' ? 'Error al enviar: ' : 'Error sending: ') + e.message);
     if (window.posthog) posthog.capture('sketch_send_failed', { error: e.code || e.message });
   }
 }
@@ -3405,7 +3405,7 @@ function abrirSettings() {
   }
 
   /* Renderizar lista de amigos reales */
-  settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">Cargando...</span>';
+  settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">' + t('loading') + '</span>';
   if (firebaseReady && auth.currentUser) {
     cargarAmigos().then(amigos => {
       settingsFriends.innerHTML = '';
@@ -3416,7 +3416,7 @@ function abrirSettings() {
       amigos.forEach(c => {
         const chip = document.createElement('div');
         chip.className = 'settings-friend-chip';
-        chip.title = 'Toca para eliminar';
+        chip.title = lang === 'es' ? 'Toca para eliminar' : 'Tap to remove';
         const avWrap = document.createElement('span'); avWrap.className='settings-friend-av-wrap rainbow-hover-ring';
         const avImg = document.createElement('img'); avImg.className='settings-friend-av';
         avImg.src = safeUrl(c.photoURL) || genAvatar(c.nombre); avImg.alt = c.nombre;
@@ -3426,7 +3426,7 @@ function abrirSettings() {
         rmSpan.style.cssText='margin-left:4px;opacity:0.4;font-size:0.7rem;';
         chip.appendChild(avWrap); chip.appendChild(nameNode); chip.appendChild(rmSpan);
         chip.addEventListener('click', async () => {
-          if (!confirm(`¿Eliminar a ${c.nombre} de tus amigos?`)) return;
+          if (!confirm(lang === 'es' ? `¿Eliminar a ${c.nombre} de tus amigos?` : `Remove ${c.nombre} from your friends?`)) return;
           try {
             const uid = auth.currentUser.uid;
             const snap = await db.collection('friendships')

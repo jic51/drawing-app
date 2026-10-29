@@ -107,6 +107,7 @@
 | F15 | **Botón "Delete my account"** | Obligatorio por Apple App Store guidelines. Debe eliminar: documento de usuario, friendships, sketches enviados, FCM token, y datos en Firebase Auth. Poner en Settings. | 🔴 Pre-lanzamiento |
 | F16 | **Edad mínima (13+ / COPPA compliance)** | Mostrar en Terms of Service y en el registro. Si un usuario indica <13 años, no permitir crear cuenta. COPPA (US) y GDPR-K (EU) lo requieren. | 🔴 Pre-lanzamiento |
 | F17 | **Política de devolución** | Necesaria cuando se implemente Premium. Cubrir: reembolsos, cancelación de suscripción, qué pasa con los dibujos permanentes si se cancela. No necesaria hasta que haya pagos. | 🟢 Con Premium |
+| F18 | **Mensajes privados (Premium)** | Sketches que solo puede abrir el destinatario. Sin link público, sin viewer. Si alguien intenta abrirlo y no es el destinatario, se bloquea. Requiere verificar auth del usuario contra el campo `to` del sketch. Feature premium de alto valor. | 🟢 Con Premium |
 
 ---
 
