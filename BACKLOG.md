@@ -15,12 +15,14 @@
 > 8. ~~I8: Google primero en login~~ ✅
 > 9. ~~I7: Contexto en viewer público~~ ✅
 > 10. ~~I16: UI invitar amigos (link + copy + share)~~ ✅
-> 11. I21: Optimistic UI en toda la app
-> 12. I22: Lista de amigos incremental (no reescribir todo)
-> 13. I24: Viewer público mejorado (canvas adaptable + pulse CTA + perfil clickeable)
-> 14. I26: Clic en amigo = perfil, X = eliminar
-> 15. I15: Notificación in-app animada al recibir dibujo
-> 16. C3: Firestore TTL (requiere acción del usuario en Firebase Console)
+> 11. I28: Rediseño bandeja de entrada (layout mitad/mitad, reloj rainbow, link, X borrar, perfil al tocar avatar)
+> 12. I29: Popup de perfil de usuario (reutilizable)
+> 13. I21: Optimistic UI en toda la app
+> 14. I22: Lista de amigos incremental (no reescribir todo)
+> 15. I24: Viewer público mejorado (canvas adaptable + pulse CTA + perfil clickeable)
+> 16. I26: Clic en amigo = perfil, X = eliminar
+> 17. I15: Notificación in-app animada al recibir dibujo
+> 18. C3: Firestore TTL (requiere acción del usuario en Firebase Console)
 
 ---
 
@@ -46,6 +48,9 @@
 | 16 | Repo limpio (borrados 27 archivos viejos) | Solo quedan archivos activos |
 | 17 | Toolbar reestructurado: colores arriba, herramientas abajo | Rainbow 🌈, blanco, negro + pincel/borrador. Sin selección dual. |
 | 18 | Share links limpios (sin sketchsendv14.html) | getBaseUrl() strip filename |
+| 19 | Inbox ordenado (más viejos arriba, más nuevos abajo) | sort by receivedAt ascending |
+| 20 | Wake Lock API en replay y viewer público | Pantalla no se apaga durante replay |
+| 21 | Textos de inbox traducidos a inglés | agoText, empty state, subtitle |
 
 ---
 
@@ -95,6 +100,8 @@
 | I25 | **Logo completo en viewer y toda la app** | El logo "SketchSend" debe incluir siempre el lápiz con colores arcoíris recorriendo. En el viewer público el logo está incompleto (falta el lápiz). Unificar en toda la app. | 🟡 Alta |
 | I26 | **Amigos: clic en nombre = ver perfil, X = eliminar** | Cambiar la interacción de amigos: dar clic en el nombre/contenedor abre ventana de perfil (avatar, @username, QR, link para compartir). Solo la X elimina. Actualmente al dar clic en cualquier parte se pregunta si quieres eliminar. | 🟡 Alta |
 | I27 | **Sistema de solicitud de amistad híbrido** | Código/QR = agregar directo (confianza alta, tú diste tu código). Desde perfil público = solicitud que el otro acepta/rechaza (confianza baja, no te conoce). Protege privacidad sin añadir fricción innecesaria entre amigos reales. | 🟡 Media |
+| I28 | **Rediseño bandeja de entrada** | Cada mensaje ocupa la mitad de la pantalla. La otra mitad dividida: 1/3 reloj (horas:minutos:segundos con animación rainbow en los números, misma animación del logo — colores en los números no en el fondo) y 2/3 link del viewer (visible, tap para copiar). Botón X al final de cada fila para borrar sin ver. Tocar avatar/nombre → popup perfil del usuario (no abrir el mensaje). Orden: más viejos arriba, más nuevos abajo. | 🟡 Alta |
+| I29 | **Popup de perfil de usuario** | Al tocar nombre/avatar de un mensaje o amigo, abrir ventana emergente con: avatar circular, @username, nombre, botón "Add as friend" (si no es amigo), botón "Remove friend" (si es amigo). Reutilizable desde bandeja, viewer público, lista de amigos. | 🟡 Alta |
 
 ---
 
