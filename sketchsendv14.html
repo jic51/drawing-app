@@ -1138,8 +1138,10 @@
           <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;" id="lbl-qr-hint">Escanea para agregar automáticamente</div>
         </div>
         <div class="share-content" id="share-content-link" style="display:none;">
-          <div class="share-code-row">
-            <button class="settings-row-action rainbow-hover-bg" style="flex:1" id="settings-invite">Compartir link 🔗</button>
+          <div style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 10px;">
+            <div id="invite-link-text" style="flex:1;font-size:0.75rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;user-select:all;"></div>
+            <button class="settings-row-action" id="invite-copy-btn" style="padding:6px 10px;font-size:0.78rem;flex-shrink:0;">📋</button>
+            <button class="settings-row-action rainbow-hover-bg" id="settings-invite" style="padding:6px 10px;font-size:0.78rem;flex-shrink:0;">📤</button>
           </div>
           <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;" id="lbl-link-hint">El link agrega automáticamente a quien lo abra</div>
         </div>
@@ -3522,7 +3524,8 @@ function abrirSettings() {
         document.getElementById('settings-email').textContent = auth.currentUser.email || '';
         document.getElementById('settings-name').textContent = d.displayName || usuario;
         document.getElementById('settings-username-display').textContent = d.username ? '@' + d.username : '';
-        /* Recargar QR con el código real */
+        const invUrl = getBaseUrl() + '?add=' + code;
+        document.getElementById('invite-link-text').textContent = invUrl;
         if (window._reloadShareQR) window._reloadShareQR();
       }
     });
@@ -3672,6 +3675,11 @@ settingsInvite.addEventListener('click', () => {
   const shareData = { title:'SketchSend', text:t('share_together'), url:inviteUrl };
   if (navigator.share) { navigator.share(shareData).catch(()=>{}); }
   else { navigator.clipboard.writeText(inviteUrl).then(()=>toast('🔗 Link copiado al portapapeles')).catch(()=>toast('🔗 Comparte: '+inviteUrl)); }
+});
+
+document.getElementById('invite-copy-btn').addEventListener('click', () => {
+  const link = document.getElementById('invite-link-text').textContent;
+  if (link) navigator.clipboard.writeText(link).then(() => toast('📋 ' + (lang === 'es' ? 'Link copiado' : 'Link copied'))).catch(() => toast(link));
 });
 
 /* Share tabs — QR + Link */
