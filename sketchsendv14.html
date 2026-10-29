@@ -3248,7 +3248,7 @@ let replayActivo = false, replayTimers = [];
 
 /* Comprime tiempos muertos: cualquier gap > MAX_GAP se recorta */
 function comprimirGaps(segs) {
-  const MAX_GAP = 2000; /* 2 segundos máximo de pausa */
+  const MAX_GAP = 500;
   if (!segs.length) return [];
 
   const result = [];
@@ -3908,7 +3908,7 @@ if ('serviceWorker' in navigator) {
         const oy = (cssH - origH*sc)/2;
 
         /* Comprimir gaps (inline) */
-        const MAX_GAP = 2000;
+        const MAX_GAP = 500;
         let tAcc = 0, tPrev = segs[0].t;
         const compressed = segs.map(s => {
           tAcc += Math.min(s.t - tPrev, MAX_GAP); tPrev = s.t;
