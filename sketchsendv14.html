@@ -805,6 +805,8 @@
     @keyframes aparecer { from{opacity:0} to{opacity:1} }
     @keyframes subir { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
     @keyframes pulse { 0%,100%{opacity:0.4} 50%{opacity:0.8} }
+    @keyframes ssmFadeIn { from{opacity:0} to{opacity:1} }
+    @keyframes ssmSlideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
 
     /* ── VIEWER PÚBLICO (?view=ID) ── */
     #viewer-screen {
@@ -1845,12 +1847,11 @@ function finalizarLogin(username, displayName, photoURL) {
   if (addCode && /^[A-Z0-9]{4,10}$/.test(addCode)) {
     history.replaceState({}, '', location.pathname);
     /* Confirmar antes de agregar — evita que links de terceros agreguen amigos sin permiso */
-    setTimeout(() => {
-      if (confirm(lang === 'en'
-        ? `Add a friend using invite code "${addCode}"?`
-        : `¿Agregar amigo con el código "${addCode}"?`)) {
-        agregarAmigo(addCode);
-      }
+    setTimeout(async () => {
+      const yes = await ssConfirm(lang === 'en'
+        ? `Add a friend using invite code "<b>${esc(addCode)}</b>"?`
+        : `¿Agregar amigo con el código "<b>${esc(addCode)}</b>"?`);
+      if (yes) agregarAmigo(addCode);
     }, 800);
   }
 }
@@ -1873,32 +1874,33 @@ function doLogout() {
    cuando el usuario toca el enlace desde su correo.
 ══════════════════════════════════════════════════════ */
 if (firebaseReady && auth && auth.isSignInWithEmailLink(window.location.href)) {
-  let pendingEmail = localStorage.getItem('ss_email_pending');
-  let pendingNombre = localStorage.getItem('ss_nombre_pending') || '';
-  if (!pendingEmail) {
-    /* El usuario abrió el link en un dispositivo diferente */
-    pendingEmail = window.prompt('Confirma tu correo para entrar:') || '';
-  }
-  if (pendingEmail) {
-    auth.signInWithEmailLink(pendingEmail, window.location.href)
-      .then(result => {
+  (async () => {
+    let pendingEmail = localStorage.getItem('ss_email_pending');
+    let pendingNombre = localStorage.getItem('ss_nombre_pending') || '';
+    if (!pendingEmail) {
+      pendingEmail = await ssPrompt(
+        lang === 'en' ? 'Confirm your email to sign in:' : 'Confirma tu correo para entrar:',
+        'email@example.com'
+      ) || '';
+    }
+    if (pendingEmail) {
+      try {
+        const result = await auth.signInWithEmailLink(pendingEmail, window.location.href);
         localStorage.removeItem('ss_email_pending');
-        /* Guardar nombre pendiente para usarlo en onAuthStateChanged */
         if (pendingNombre) {
-          /* updateProfile si el user es nuevo y no tiene displayName */
           if (!result.user.displayName && pendingNombre) {
             result.user.updateProfile({ displayName: pendingNombre }).catch(() => {});
           }
           localStorage.removeItem('ss_nombre_pending');
         }
         history.replaceState({}, '', location.pathname);
-      })
-      .catch(e => {
+      } catch (e) {
         console.error('Magic link error:', e);
         toast(t('link_expired'));
         mostrarLogin();
-      });
-  }
+      }
+    }
+  })();
 }
 
 /* ── Observer principal ── */
@@ -2591,8 +2593,8 @@ async function buildCarousel() {
   const addBtn = document.createElement('div');
   addBtn.className = 'citem';
   addBtn.innerHTML = `<div class="cwrap" style="background:var(--surface2);border:2px dashed var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="font-size:1.5rem">+</span></div><span class="cname">${esc(t('add_friend'))}</span>`;
-  addBtn.addEventListener('click', () => {
-    const raw = prompt(t('add_friend_prompt'));
+  addBtn.addEventListener('click', async () => {
+    const raw = await ssPrompt(t('add_friend_prompt'), lang === 'en' ? '@username or code' : '@usuario o código');
     if (raw) agregarAmigo(raw.replace(/^@/,'').toLowerCase().trim());
   });
   carouselEl.appendChild(addBtn);
@@ -3349,6 +3351,57 @@ function toast(msg) {
   clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 3000);
 }
 
+/* ── SketchSend Modal System (replaces native prompt/confirm/alert) ── */
+function ssModal(html, buttons, {input = false, placeholder = ''} = {}) {
+  return new Promise(resolve => {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);animation:ssmFadeIn .2s ease';
+    const box = document.createElement('div');
+    box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:340px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.4);animation:ssmSlideUp .25s ease';
+    const msg = document.createElement('div');
+    msg.style.cssText = 'color:var(--text);font-size:0.95rem;line-height:1.5;margin-bottom:16px;text-align:center;word-break:break-word';
+    msg.innerHTML = html;
+    box.appendChild(msg);
+    let inp;
+    if (input) {
+      inp = document.createElement('input');
+      inp.type = 'text'; inp.placeholder = placeholder;
+      inp.style.cssText = 'width:100%;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.95rem;margin-bottom:16px;outline:none;box-sizing:border-box';
+      inp.addEventListener('focus', () => inp.style.borderColor = 'var(--accent)');
+      inp.addEventListener('blur', () => inp.style.borderColor = 'var(--border)');
+      box.appendChild(inp);
+    }
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:10px;justify-content:center';
+    const close = val => { overlay.style.opacity = '0'; overlay.style.transition = 'opacity .15s'; setTimeout(() => overlay.remove(), 150); resolve(val); };
+    buttons.forEach(b => {
+      const btn = document.createElement('button');
+      btn.textContent = b.label;
+      btn.style.cssText = `flex:1;padding:10px 0;border-radius:10px;font-size:0.9rem;font-weight:600;cursor:pointer;border:none;transition:opacity .15s;${b.primary ? 'background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;box-shadow:0 4px 16px var(--glow)' : 'background:var(--surface2);border:1px solid var(--border);color:var(--text)'}`;
+      btn.addEventListener('click', () => close(input ? (b.primary ? (inp.value || null) : null) : b.value));
+      row.appendChild(btn);
+    });
+    box.appendChild(row);
+    overlay.appendChild(box);
+    overlay.addEventListener('click', e => { if (e.target === overlay) close(input ? null : false); });
+    document.body.appendChild(overlay);
+    if (inp) setTimeout(() => inp.focus(), 100);
+  });
+}
+function ssConfirm(msg) {
+  const cancel = lang === 'es' ? 'Cancelar' : 'Cancel';
+  const ok = lang === 'es' ? 'Aceptar' : 'OK';
+  return ssModal(msg, [{label: cancel, value: false}, {label: ok, value: true, primary: true}]);
+}
+function ssPrompt(msg, placeholder) {
+  const cancel = lang === 'es' ? 'Cancelar' : 'Cancel';
+  const ok = lang === 'es' ? 'Aceptar' : 'OK';
+  return ssModal(msg, [{label: cancel}, {label: ok, primary: true}], {input: true, placeholder});
+}
+function ssAlert(msg) {
+  return ssModal(msg, [{label: 'OK', value: true, primary: true}]);
+}
+
 function genAvatar(nombre) {
   const c = document.createElement('canvas'); c.width=64; c.height=64;
   const cx = c.getContext('2d');
@@ -3472,7 +3525,7 @@ function abrirSettings() {
         rmSpan.style.cssText='margin-left:4px;opacity:0.4;font-size:0.7rem;';
         chip.appendChild(avWrap); chip.appendChild(nameNode); chip.appendChild(rmSpan);
         chip.addEventListener('click', async () => {
-          if (!confirm(lang === 'es' ? `¿Eliminar a ${c.nombre} de tus amigos?` : `Remove ${c.nombre} from your friends?`)) return;
+          if (!await ssConfirm(lang === 'es' ? `¿Eliminar a <b>${esc(c.nombre)}</b> de tus amigos?` : `Remove <b>${esc(c.nombre)}</b> from your friends?`)) return;
           try {
             const uid = auth.currentUser.uid;
             const snap = await db.collection('friendships')

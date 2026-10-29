@@ -2,15 +2,20 @@
 
 > Este archivo es la fuente de verdad del proyecto.
 > Se actualiza en cada sesión de trabajo con Claude.
-> Última actualización: 2026-10-28
+> Última actualización: 2026-10-29
 >
 > **Orden de trabajo actual:**
-> 1. PostHog analytics (esperando API key del usuario)
-> 2. Push notifications (FCM)
-> 3. Firestore TTL (limpieza automática de sketches expirados)
-> 4. window.prompt → modal SketchSend
-> 5. Onboarding interactivo
-> 6. Más agentes IA tester con diferentes personas
+> 1. ~~C6: Login flash fix~~ ✅
+> 2. ~~C7: OG preview + favicon~~ ✅
+> 3. ~~C8: Idioma inglés por defecto~~ ✅
+> 4. ~~Toolbar restructure + rainbow emoji~~ ✅
+> 5. C4: Reemplazar todos los prompt/confirm/alert nativos → modales SketchSend
+> 6. I10: Comprimir tiempo muerto en replay + reducir MAX_GAP
+> 7. I11: Feedback instantáneo al enviar + replay propio opcional
+> 8. I8: Google primero en login
+> 9. I7: Contexto en viewer público
+> 10. I16: UI de invitar amigos (link visible + copiar + compartir)
+> 11. C3: Firestore TTL (requiere acción del usuario en Firebase Console)
 
 ---
 
@@ -34,6 +39,8 @@
 | 14 | Firestore Security Rules aplicadas | Usuario aplicó en Firebase Console |
 | 15 | index.html = versión actual | Antes era sketchsendv14.html |
 | 16 | Repo limpio (borrados 27 archivos viejos) | Solo quedan archivos activos |
+| 17 | Toolbar reestructurado: colores arriba, herramientas abajo | Rainbow 🌈, blanco, negro + pincel/borrador. Sin selección dual. |
+| 18 | Share links limpios (sin sketchsendv14.html) | getBaseUrl() strip filename |
 
 ---
 
@@ -46,9 +53,9 @@
 | C3 | **Limpieza automática de sketches expirados en Firestore** | Los sketches tienen `expiresAt` pero Firestore no los borra — se filtran solo en el cliente. Los documentos expirados se acumulan para siempre en la DB (hay ~44 sketches acumulados). Solución: activar **Firestore TTL** (Time-to-Live) en Firebase Console → campo `expiresAt` como TTL field. Firebase los borra automáticamente. | 🔴 Alta |
 | C4 | **`window.prompt()` y `confirm()` nativos → modales SketchSend** | Todos los `window.prompt()`, `window.confirm()` y `alert()` nativos del navegador se ven feos y poco profesionales. Reemplazar TODOS con modales/overlays en el estilo visual de SketchSend. Incluye: confirmar correo en dispositivo nuevo, eliminar amigo, agregar amigo por código. | 🔴 Alta |
 | C5 | **Bug: Google login popup cierra pero la app no recarga** | ✅ Fix desplegado: fallback manual si `onAuthStateChanged` no dispara. Verificar que funcione. | ✅ Verificar |
-| C6 | **Pantalla de login parpadea al recargar la página** | Al recargar, se muestra la pantalla de login (hasta 2 veces) mientras Firebase verifica el auth. Debe mostrar la app cacheada inmediatamente y actualizar en background. El usuario ya logueado no debe ver el login nunca. | 🔴 Alta |
-| C7 | **OG preview image incorrecta + favicon faltante** | (1) La imagen que se muestra al compartir links no es el logo correcto de SketchSend. (2) Falta favicon/ícono en la pestaña del navegador. El logo correcto: "SketchSend" con lápiz al lado, el lápiz sigue la línea de colores arcoíris del nombre. Crear imagen OG correcta (1200x630) y favicon (32x32 + 192x192). Cambiar og:title a inglés. | 🔴 Alta |
-| C8 | **Idioma principal → inglés, español secundario** | Toda la app debe estar en inglés por defecto. Español como opción. Revisar TODOS los textos hardcodeados (Settings dice "Cerrar sesión" duplicado — quitar el texto, dejar solo el botón). Viewer público también en inglés. | 🔴 Alta |
+| C6 | **Pantalla de login parpadea al recargar la página** | ✅ Splash screen se mantiene hasta que onAuthStateChanged resuelve. Fallback de 3s. Login no parpadea. | ✅ Hecho |
+| C7 | **OG preview image incorrecta + favicon faltante** | ✅ OG 1200x630 con logo rainbow + texto inglés. Favicon 512x192 con ✏️ emoji en fondo rainbow. og:title en inglés. | ✅ Hecho |
+| C8 | **Idioma principal → inglés, español secundario** | ✅ App en inglés por defecto. Español como opción en Settings. Viewer público en inglés. | ✅ Hecho |
 
 ---
 
@@ -139,7 +146,7 @@
 | Service Worker cache versión `sketchsend-v4` | Actualizar nombre de cache cuando haya cambios breaking en SW |
 | Strokes se comprimen antes de guardar | Verificar que el límite de 1MB de Firestore no se alcanza con dibujos complejos |
 | Versionado de la app | Agregar número de versión visible (ej: v1.5.0) en la UI y actualizar con cada release. Llevar changelog. |
-| Merge `claude/sharp-hamilton-JPQNj` → `main` | Las push notifications y PostHog solo están en la rama de desarrollo. Hay que hacer merge a main para que funcionen en producción (GitHub Pages). |
+
 
 ---
 
