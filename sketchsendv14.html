@@ -1287,6 +1287,26 @@ const I18N = {
     err_username_fmt: 'Solo letras minúsculas, números y _ · mínimo 3 chars',
     err_username_taken: 'Ese @usuario ya está tomado, elige otro',
     err_saving: 'Error al guardar: ',
+    link_expired: '❌ El enlace expiró o ya fue usado. Pide uno nuevo.',
+    canvas_clean: 'El canvas ya está limpio',
+    need_login: '❌ Necesitas iniciar sesión',
+    no_video_support: '⚠️ Tu navegador no soporta grabación de video',
+    draw_to_export: '⚠️ Dibuja algo para exportar',
+    hello_name_saved: 'Hola, {name} 👋 — tu nombre real ya está guardado',
+    share_sent_drawing: '¡Te envié un dibujo!',
+    share_together: '¡Dibujemos juntos en SketchSend! ✏️🌈',
+    share_sent_you: '{name} te envió un dibujo ✏️',
+    friend_removed: '✅ Amigo eliminado',
+    canvas_cleared: '🗑️ Canvas limpiado',
+    sent_generic: '✉️ Enviado',
+    share_link_hint: '🔗 Comparte este link con tus amigos',
+    link_copied: '🔗 Link copiado',
+    uploading_photo: '⏳ Subiendo foto...',
+    photo_updated: '✅ Foto actualizada',
+    err_upload_photo: '❌ Error al subir foto: ',
+    photo_too_large: '⚠️ La imagen debe pesar menos de 5 MB',
+    downloading_img: '🖼️ Descargando imagen...',
+    anonymous: 'Anónimo',
   },
   en: {
     welcome: 'Welcome', welcome_sub: 'Enter your name and email to get started',
@@ -1348,6 +1368,26 @@ const I18N = {
     err_username_fmt: 'Only lowercase letters, numbers and _ · minimum 3 chars',
     err_username_taken: 'That @username is taken, choose another',
     err_saving: 'Error saving: ',
+    link_expired: '❌ The link expired or was already used. Request a new one.',
+    canvas_clean: 'Canvas is already clean',
+    need_login: '❌ You need to log in',
+    no_video_support: '⚠️ Your browser does not support video recording',
+    draw_to_export: '⚠️ Draw something to export',
+    hello_name_saved: 'Hi, {name} 👋 — your real name is saved',
+    share_sent_drawing: 'I sent you a drawing!',
+    share_together: "Let's draw together on SketchSend! ✏️🌈",
+    share_sent_you: '{name} sent you a drawing ✏️',
+    friend_removed: '✅ Friend removed',
+    canvas_cleared: '🗑️ Canvas cleared',
+    sent_generic: '✉️ Sent',
+    share_link_hint: '🔗 Share this link with your friends',
+    link_copied: '🔗 Link copied',
+    uploading_photo: '⏳ Uploading photo...',
+    photo_updated: '✅ Photo updated',
+    err_upload_photo: '❌ Error uploading photo: ',
+    photo_too_large: '⚠️ Image must be under 5 MB',
+    downloading_img: '🖼️ Downloading image...',
+    anonymous: 'Anonymous',
   }
 };
 
@@ -1721,7 +1761,7 @@ function mostrarPantallaUsername(nombre, fotoUrl) {
   const usernameScreen = document.getElementById('username-screen');
   usernameScreen.style.display = 'flex';
   const dnEl = document.getElementById('username-screen-displayname');
-  if (dnEl) dnEl.textContent = 'Hola, ' + nombre + ' 👋 — tu nombre real ya está guardado';
+  if (dnEl) dnEl.textContent = t('hello_name_saved').replace('{name}', nombre);
   const usernameInp = document.getElementById('username-inp');
   const confirmBtn  = document.getElementById('username-confirm-btn');
   const errorEl     = document.getElementById('username-error');
@@ -1735,14 +1775,14 @@ function mostrarPantallaUsername(nombre, fotoUrl) {
   newBtn.addEventListener('click', async () => {
     const raw = usernameInp.value.trim().toLowerCase().replace(/^@/, '');
     if (!/^[a-z0-9_]{3,20}$/.test(raw)) {
-      errorEl.textContent = 'Solo letras minúsculas, números y _ · mínimo 3 chars'; errorEl.style.display='block'; return;
+      errorEl.textContent = t('err_username_fmt'); errorEl.style.display='block'; return;
     }
     errorEl.style.display = 'none';
-    newBtn.disabled = true; newBtn.textContent = 'Verificando…';
+    newBtn.disabled = true; newBtn.textContent = t('verifying');
     try {
       const snap = await db.collection('users').where('username','==',raw).get();
       if (!snap.empty) {
-        errorEl.textContent = 'Ese @usuario ya está tomado, elige otro'; errorEl.style.display='block';
+        errorEl.textContent = t('err_username_taken'); errorEl.style.display='block';
         newBtn.disabled = false; newBtn.textContent = t('confirm'); return;
       }
       const uid = auth.currentUser.uid;
@@ -1855,7 +1895,7 @@ if (firebaseReady && auth && auth.isSignInWithEmailLink(window.location.href)) {
       })
       .catch(e => {
         console.error('Magic link error:', e);
-        toast('❌ El enlace expiró o ya fue usado. Pide uno nuevo.');
+        toast(t('link_expired'));
         mostrarLogin();
       });
   }
@@ -2418,11 +2458,11 @@ function iniciarPromptsCanvas() {
 limpiarBtn.addEventListener('click', limpiarCanvas);
 limpiarBtnMob.addEventListener('click', limpiarCanvas);
 function limpiarCanvas() {
-  if (!trazos.length) { toast('El canvas ya está limpio'); return; }
+  if (!trazos.length) { toast(t('canvas_clean')); return; }
   pilaRedo = []; trazos = []; currentStrokeId = 0;
   const w = cv.width/DPR, h = cv.height/DPR;
   ctx.clearRect(0, 0, w, h); fondoCanvas(ctx, w, h);
-  actualizarBotones(); toast('🗑️ Canvas limpiado');
+  actualizarBotones(); toast(t('canvas_cleared'));
   setTimeout(mostrarPrompt, 1000);
 }
 
@@ -2466,7 +2506,7 @@ async function cargarAmigos() {
 }
 
 async function agregarAmigo(input) {
-  if (!firebaseReady || !auth.currentUser) { toast('❌ Necesitas iniciar sesión'); return; }
+  if (!firebaseReady || !auth.currentUser) { toast(t('need_login')); return; }
   const uid = auth.currentUser.uid;
   const isCode = /^[A-Z0-9]{6}$/.test(input.toUpperCase());
   const query = isCode
@@ -2544,19 +2584,19 @@ async function buildCarousel() {
   /* Botón + para agregar amigo */
   const addBtn = document.createElement('div');
   addBtn.className = 'citem';
-  addBtn.innerHTML = `<div class="cwrap" style="background:var(--surface2);border:2px dashed var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="font-size:1.5rem">+</span></div><span class="cname">Agregar</span>`;
+  addBtn.innerHTML = `<div class="cwrap" style="background:var(--surface2);border:2px dashed var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="font-size:1.5rem">+</span></div><span class="cname">${esc(t('add_friend'))}</span>`;
   addBtn.addEventListener('click', () => {
-    const raw = prompt('Buscar amigo por @usuario o código (ej: XK9P2M):');
+    const raw = prompt(t('add_friend_prompt'));
     if (raw) agregarAmigo(raw.replace(/^@/,'').toLowerCase().trim());
   });
   carouselEl.appendChild(addBtn);
 
   /* Botón compartir */
   const share = document.createElement('div'); share.className='sharebtn';
-  share.innerHTML=`<div class="sharecircle">🔗</div><span class="cname" style="max-width:52px">Compartir</span>`;
+  share.innerHTML=`<div class="sharecircle">🔗</div><span class="cname" style="max-width:52px">${esc(t('share_label'))}</span>`;
   share.addEventListener('click', () => {
-    if (navigator.share) navigator.share({title:'SketchSend',text:'¡Te envié un dibujo!',url:location.href}).catch(()=>{});
-    else toast('🔗 Comparte este link con tus amigos');
+    if (navigator.share) navigator.share({title:'SketchSend',text:t('share_sent_drawing'),url:location.href}).catch(()=>{});
+    else toast(t('share_link_hint'));
   });
   carouselEl.appendChild(share);
 }
@@ -2565,7 +2605,7 @@ async function buildCarousel() {
    ENVIAR → replay automático del propio dibujo
 ══════════════════════════════════════════════════════ */
 enviarBtn.addEventListener('click', async () => {
-  if (!trazos.length) { toast('✏️ ¡Dibuja algo primero!'); return; }
+  if (!trazos.length) { toast(t('draw_first')); return; }
 
   /* Modo respuesta: enviando directamente a quien nos escribió */
   if (replyingTo) {
@@ -2577,11 +2617,11 @@ enviarBtn.addEventListener('click', async () => {
     salirModoRespuesta();
   } else {
     /* Modo normal: enviar a los seleccionados del carrusel */
-    if (!seleccionados.size) { toast('👆 Selecciona a quién enviar'); return; }
+    if (!seleccionados.size) { toast(t('select_contact')); return; }
     if (firebaseReady && auth.currentUser) {
       for (const uid of seleccionados) await enviarSketchFirestore(uid);
     }
-    toast(`✉️ Enviado`);
+    toast(t('sent_generic'));
   }
 
   /* Captura snapshot y muestra replay */
@@ -2759,9 +2799,9 @@ function renderInbox() {
       e.stopPropagation();
       const shareUrl = location.origin + location.pathname + '?view=' + msg.id;
       if (navigator.share) {
-        navigator.share({ title:'SketchSend', text:`${esc(msg.sender)} te envió un dibujo ✏️`, url: shareUrl }).catch(() => {});
+        navigator.share({ title:'SketchSend', text:t('share_sent_you').replace('{name}', esc(msg.sender)), url: shareUrl }).catch(() => {});
       } else {
-        navigator.clipboard.writeText(shareUrl).then(() => toast('🔗 Link copiado')).catch(() => toast(shareUrl));
+        navigator.clipboard.writeText(shareUrl).then(() => toast(t('link_copied'))).catch(() => toast(shareUrl));
       }
     });
 
@@ -3023,21 +3063,21 @@ pngBtn.addEventListener('click', () => {
   tc.drawImage(cv, 0, 0);
   dibujarFirma(tc, tmp.width, tmp.height, false);
   descargarDataURL(tmp.toDataURL('image/png'), `sketchsend_${Date.now()}.png`);
-  modalEl.classList.remove('open'); toast('🖼️ Descargando imagen...');
+  modalEl.classList.remove('open'); toast(t('downloading_img'));
 });
 
 /* ── VIDEO — tiempo real con compresión de gaps + progreso ── */
 vidBtn.addEventListener('click', async () => {
   /* Bug 6: verificar soporte */
   if (typeof MediaRecorder === 'undefined' || !HTMLCanvasElement.prototype.captureStream) {
-    toast('⚠️ Tu navegador no soporta grabación de video');
+    toast(t('no_video_support'));
     modalEl.classList.remove('open'); return;
   }
-  if (!trazos.length) { toast('✏️ ¡Dibuja algo primero!'); return; }
+  if (!trazos.length) { toast(t('draw_first')); return; }
   modalEl.classList.remove('open');
 
   const segs = trazos.filter(s => s.tipo === 'seg' && s.t !== undefined);
-  if (!segs.length) { toast('⚠️ Dibuja algo para exportar'); return; }
+  if (!segs.length) { toast(t('draw_to_export')); return; }
 
   try {
   const compressed = comprimirGaps(segs);
@@ -3110,7 +3150,7 @@ vidBtn.addEventListener('click', async () => {
 
   } catch (err) {
     console.error('Video export error:', err);
-    toast('⚠️ Error al grabar video — intenta de nuevo');
+    toast(lang === 'en' ? '⚠️ Error recording video — try again' : '⚠️ Error al grabar video — intenta de nuevo');
   }
 });
 
@@ -3149,7 +3189,7 @@ vidBtn.addEventListener('click', async () => {
    - Usado como base para animaciones y exports
 ══════════════════════════════════════════════════════ */
 sksBtn.addEventListener('click', () => {
-  if (!trazos.length) { toast('✏️ ¡Dibuja algo primero!'); return; }
+  if (!trazos.length) { toast(t('draw_first')); return; }
 
   /* Detectar temporada */
   const m = new Date().getMonth();
@@ -3164,7 +3204,7 @@ sksBtn.addEventListener('click', () => {
     format: 'SKS',
     version: '1.0',
     meta: {
-      creator: usuario || 'Anónimo',
+      creator: usuario || t('anonymous'),
       createdAt: new Date().toISOString(),
       app: 'SketchSend',
       appVersion: '1.0.0-beta',
@@ -3410,7 +3450,7 @@ function abrirSettings() {
     cargarAmigos().then(amigos => {
       settingsFriends.innerHTML = '';
       if (amigos.length === 0) {
-        settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">Aún no tienes amigos en SketchSend</span>';
+        settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">' + esc(t('no_friends_yet')) + '</span>';
         return;
       }
       amigos.forEach(c => {
@@ -3433,7 +3473,7 @@ function abrirSettings() {
               .where('users', 'array-contains', uid).get();
             const docToDelete = snap.docs.find(d => d.data().users.includes(c.id));
             if (docToDelete) await docToDelete.ref.delete();
-            toast('✅ Amigo eliminado');
+            toast(t('friend_removed'));
             chip.remove();
             buildCarousel();
           } catch(e) { toast('❌ ' + e.message); }
@@ -3442,7 +3482,7 @@ function abrirSettings() {
       });
     });
   } else {
-    settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">Inicia sesión para ver tus amigos</span>';
+    settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">' + esc(t('login_to_see')) + '</span>';
   }
 
   /* Reset share tabs — QR se recarga dentro del bloque Firestore de arriba
@@ -3545,7 +3585,7 @@ settingsInvite.addEventListener('click', () => {
   const inviteUrl = code && code !== '——'
     ? location.origin + location.pathname + '?add=' + code
     : location.href;
-  const shareData = { title:'SketchSend', text:'¡Dibujemos juntos en SketchSend! ✏️🌈', url:inviteUrl };
+  const shareData = { title:'SketchSend', text:t('share_together'), url:inviteUrl };
   if (navigator.share) { navigator.share(shareData).catch(()=>{}); }
   else { navigator.clipboard.writeText(inviteUrl).then(()=>toast('🔗 Link copiado al portapapeles')).catch(()=>toast('🔗 Comparte: '+inviteUrl)); }
 });
@@ -3590,7 +3630,7 @@ settingsInvite.addEventListener('click', () => {
    Si no, muestra un mensaje amigable en lugar de un error técnico. */
 const photoFileInput = document.getElementById('photo-file-input');
 document.getElementById('settings-edit-photo').addEventListener('click', () => {
-  if (!firebaseReady || !auth.currentUser) { toast('❌ Debes iniciar sesión'); return; }
+  if (!firebaseReady || !auth.currentUser) { toast(t('need_login')); return; }
   if (!window.storage) {
     toast(lang === 'en' ? '🚧 Photo upload coming soon' : '🚧 Subida de fotos próximamente');
     return;
@@ -3600,10 +3640,10 @@ document.getElementById('settings-edit-photo').addEventListener('click', () => {
 photoFileInput.addEventListener('change', async () => {
   const file = photoFileInput.files[0];
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { toast('⚠️ La imagen debe pesar menos de 5 MB'); return; }
+  if (file.size > 5 * 1024 * 1024) { toast(t('photo_too_large')); return; }
   const uid = auth.currentUser.uid;
   try {
-    toast('⏳ Subiendo foto...');
+    toast(t('uploading_photo'));
     const ref = window.storage.ref(`avatars/${uid}`);
     await ref.put(file);
     const url = await ref.getDownloadURL();
@@ -3612,10 +3652,10 @@ photoFileInput.addEventListener('change', async () => {
     const avatarSrc = url;
     document.getElementById('settings-avatar').src = avatarSrc;
     avatarEl.src = avatarSrc; avMob.src = avatarSrc;
-    toast('✅ Foto actualizada');
+    toast(t('photo_updated'));
   } catch(e) {
     console.error('Error subiendo foto:', e);
-    toast('❌ Error al subir foto: ' + e.message);
+    toast(t('err_upload_photo') + e.message);
   }
   photoFileInput.value = '';
 });
