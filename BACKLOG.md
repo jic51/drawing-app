@@ -142,6 +142,12 @@
 | Posicionamiento: "cuaderno compartido entre 2 personas" en lugar de "mensajería masiva" | Análisis de mercado | Estrategia |
 | Lanzar en nicho específico (diseño, arte casual, parejas) antes de ir a todos | Lección de Draw Something / BeReal | Estrategia |
 | Estrategia de distribución: PWA → dominio propio → Play Store (TWA) → App Store (Capacitor) | Análisis de mercado | Estrategia — no entrar a tiendas hasta tener tracción. 90% del código se reutiliza. |
+| **Avatares pasan sobre el header de Settings al hacer scroll** | z-index del header de Settings debe ser más alto. | Sesión 2026-10-29 | ✅ Corregido |
+| **Hover en avatares mueve algo blanco debajo/sobre ellos** | Efecto hover en lista de amigos crea artefacto blanco visible. | Sesión 2026-10-29 | ✅ Corregido |
+| **"Cerrar sesión" texto aparece en inglés** | El label de logout aparece en ambos idiomas, debe eliminarse y dejar solo el botón. | Sesión 2026-10-29 | ✅ Corregido |
+| **Versión 1.0.0-beta desactualizada** | Actualizar a v1.20.0 para reflejar el estado real del proyecto. | Sesión 2026-10-29 | ✅ Corregido |
+| **Splash logo se nota desapareciendo al volar** | Al hacer la animación fly-to-header, el original se ve desvaneciéndose en el centro. Ocultar inmediatamente. | Sesión 2026-10-29 | ✅ Corregido |
+| **Theme toggle se ve feo** | Rediseñar Auto/Dark/Light como pill/segmented control más estilizado. | Sesión 2026-10-29 | ✅ Corregido |
 | **Branding en sketch viewer:** al abrir un sketch recibido, mostrar logo SketchSend + nombre del usuario que lo envió. No solo al descargar video/imagen — brandear toda la experiencia de visualización. | Sesión 2026-10-29 | Pendiente |
 | **QR estilizado con forma/estilo de la app** | El QR actual es genérico. Hacerlo con los colores y estilo visual de SketchSend (colores rainbow, fondo oscuro). | Sesión 2026-10-29 | Pendiente |
 | **Tagline/slogan para la app** | Buscar una frase corta en inglés que defina SketchSend. Actualmente "Donde cada mensaje es un dibujo" en español. Debe ser memorable y comunicar la esencia de la app. | Sesión 2026-10-29 | Pendiente |
