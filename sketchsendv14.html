@@ -825,7 +825,7 @@
     #viewer-sender span { color:var(--accent2); }
     #viewer-canvas {
       border-radius:14px; box-shadow:0 0 60px var(--glow);
-      max-width:min(96vw,520px); max-height:min(75vh,520px);
+      max-width:min(96vw,700px); max-height:min(70vh,700px);
     }
     #viewer-cta {
       margin-top:20px; display:flex; flex-direction:column; align-items:center; gap:10px;
@@ -836,6 +836,7 @@
       box-shadow:0 0 20px var(--glow); transition:transform 0.15s, box-shadow 0.15s;
     }
     #viewer-reply-btn:hover { transform:scale(1.04); box-shadow:0 0 30px var(--glow); }
+    @keyframes viewerPulse { 0%,80%,100%{transform:scale(1)} 90%{transform:scale(1.06)} }
     #viewer-hint { font-size:0.78rem; color:var(--muted); text-align:center; max-width:260px; }
     #viewer-loading { color:var(--muted); font-size:0.95rem; animation:pulse 1.5s infinite; }
     #viewer-expired { color:var(--danger); font-size:0.95rem; text-align:center; }
@@ -848,8 +849,11 @@
 <!-- ── VIEWER PÚBLICO — se muestra cuando llegan con ?view=SKETCHID ── -->
 <div id="viewer-screen">
   <div id="viewer-header">
-    <div class="titulo" style="font-size:1.3rem;">SketchSend</div>
-    <div id="viewer-sender">Drawing by <span id="viewer-from">...</span></div>
+    <div class="titulo" style="font-size:1.3rem;">SketchSend ✏️</div>
+    <div id="viewer-sender" style="display:flex;align-items:center;gap:8px;">
+      <img id="viewer-avatar" style="width:28px;height:28px;border-radius:50%;border:2px solid var(--accent);object-fit:cover;" src="" alt="">
+      <span>Drawing by <span id="viewer-from" style="color:var(--accent2);">...</span></span>
+    </div>
   </div>
   <div id="viewer-loading">Loading drawing... ✏️</div>
   <canvas id="viewer-canvas" style="display:none;"></canvas>
@@ -859,7 +863,7 @@
   </div>
   <div id="viewer-cta" style="display:none;">
     <div id="viewer-context" style="font-size:0.82rem;color:var(--muted);text-align:center;max-width:280px;margin:0 auto 10px;line-height:1.5;">In SketchSend, messages are drawings. Free. They disappear in 24h.</div>
-    <button id="viewer-reply-btn">✏️ Reply with a drawing</button>
+    <button id="viewer-reply-btn" style="animation:viewerPulse 4s ease infinite;">✏️ Reply with a drawing</button>
     <div id="viewer-hint">You need a free account to reply. It's quick!</div>
   </div>
 </div>
@@ -3915,7 +3919,9 @@ if ('serviceWorker' in navigator) {
       const expires = d.expiresAt?.toMillis ? d.expiresAt.toMillis() : (d.expiresAt || 0);
       if (expires < now) { showExpired(); return; }
 
-      fromEl.textContent = d.fromName || 'Alguien';
+      const senderName = d.fromName || 'Someone';
+      fromEl.textContent = '@' + senderName;
+      document.getElementById('viewer-avatar').src = genAvatar(senderName);
       loadingEl.style.display = 'none';
       canvasEl.style.display  = 'block';
       ctaEl.style.display     = 'flex';
@@ -3923,8 +3929,8 @@ if ('serviceWorker' in navigator) {
       /* Ajustar canvas al viewport — usa proporciones del dibujo original si existen */
       const meta0 = (d.strokes || []).find(s => s.tipo === 'inicio' && s.origW);
       const origAspect = meta0 ? (meta0.origW / meta0.origH) : 1;
-      const maxW = Math.min(window.innerWidth * 0.94, 520);
-      const maxH = Math.min(window.innerHeight * 0.62, 520);
+      const maxW = Math.min(window.innerWidth * 0.96, 700);
+      const maxH = Math.min(window.innerHeight * 0.65, 700);
       let cssW, cssH;
       if (origAspect >= 1) {
         cssW = Math.min(maxW, maxH * origAspect);
