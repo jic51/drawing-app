@@ -1522,6 +1522,10 @@ function applyLang() {
   document.documentElement.lang = lang;
 }
 
+function getBaseUrl() {
+  return location.origin + location.pathname.replace(/\/?(index|sketchsendv\d+)\.html$/, '/');
+}
+
 function generarShortCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const arr = new Uint8Array(8);
@@ -2599,7 +2603,7 @@ async function buildCarousel() {
   const share = document.createElement('div'); share.className='sharebtn';
   share.innerHTML=`<div class="sharecircle">🔗</div><span class="cname" style="max-width:52px">${esc(t('share_label'))}</span>`;
   share.addEventListener('click', () => {
-    if (navigator.share) navigator.share({title:'SketchSend',text:t('share_sent_drawing'),url:location.href}).catch(()=>{});
+    if (navigator.share) navigator.share({title:'SketchSend',text:t('share_sent_drawing'),url:getBaseUrl()}).catch(()=>{});
     else toast(t('share_link_hint'));
   });
   carouselEl.appendChild(share);
@@ -2801,7 +2805,7 @@ function renderInbox() {
     /* Botón compartir — no abre el replay */
     card.querySelector('.inbox-share-btn').addEventListener('click', e => {
       e.stopPropagation();
-      const shareUrl = location.origin + location.pathname + '?view=' + msg.id;
+      const shareUrl = getBaseUrl() + '?view=' + msg.id;
       if (navigator.share) {
         navigator.share({ title:'SketchSend', text:t('share_sent_you').replace('{name}', esc(msg.sender)), url: shareUrl }).catch(() => {});
       } else {
@@ -3588,7 +3592,7 @@ settingsInvite.addEventListener('click', () => {
   const code = document.getElementById('user-shortcode').textContent;
   const inviteUrl = code && code !== '——'
     ? location.origin + location.pathname + '?add=' + code
-    : location.href;
+    : getBaseUrl();
   const shareData = { title:'SketchSend', text:t('share_together'), url:inviteUrl };
   if (navigator.share) { navigator.share(shareData).catch(()=>{}); }
   else { navigator.clipboard.writeText(inviteUrl).then(()=>toast('🔗 Link copiado al portapapeles')).catch(()=>toast('🔗 Comparte: '+inviteUrl)); }
