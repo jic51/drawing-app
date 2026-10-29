@@ -1999,7 +1999,7 @@ document.getElementById('magic-btn').addEventListener('click', async () => {
   btn.disabled = true; btn.textContent = lang==='es' ? 'Enviando…' : 'Sending…';
   try {
     const actionCodeSettings = {
-      url: location.origin + location.pathname,
+      url: getBaseUrl(),
       handleCodeInApp: true
     };
     await auth.sendSignInLinkToEmail(email, actionCodeSettings);
@@ -2029,7 +2029,7 @@ document.getElementById('verify-resend-btn').addEventListener('click', async () 
   const email = localStorage.getItem('ss_email_pending');
   if (!email) { mostrarLogin(); return; }
   try {
-    const actionCodeSettings = { url: location.origin + location.pathname, handleCodeInApp: true };
+    const actionCodeSettings = { url: getBaseUrl(), handleCodeInApp: true };
     await auth.sendSignInLinkToEmail(email, actionCodeSettings);
     toast('📬 ' + (lang==='es' ? 'Enlace reenviado a ' : 'Link resent to ') + email);
   } catch(e) { toast('⚠️ ' + e.message); }
@@ -3678,11 +3678,11 @@ document.getElementById('uname-inp').addEventListener('keydown', e => { if (e.ke
 settingsInvite.addEventListener('click', () => {
   const code = document.getElementById('user-shortcode').textContent;
   const inviteUrl = code && code !== '——'
-    ? location.origin + location.pathname + '?add=' + code
+    ? getBaseUrl() + '?add=' + code
     : getBaseUrl();
   const shareData = { title:'SketchSend', text:t('share_together'), url:inviteUrl };
   if (navigator.share) { navigator.share(shareData).catch(()=>{}); }
-  else { navigator.clipboard.writeText(inviteUrl).then(()=>toast('🔗 Link copiado al portapapeles')).catch(()=>toast('🔗 Comparte: '+inviteUrl)); }
+  else { navigator.clipboard.writeText(inviteUrl).then(()=>toast('🔗 ' + (lang === 'es' ? 'Link copiado' : 'Link copied'))).catch(()=>toast(inviteUrl)); }
 });
 
 document.getElementById('invite-copy-btn').addEventListener('click', () => {
@@ -3701,7 +3701,7 @@ document.getElementById('invite-copy-btn').addEventListener('click', () => {
     const code = document.getElementById('user-shortcode').textContent.trim();
     if (!code || code === '——') return; /* shortcode not loaded yet — _reloadShareQR called again when settings opens */
     qrLoaded = true;
-    const appUrl = encodeURIComponent(location.origin + location.pathname + '?add=' + code);
+    const appUrl = encodeURIComponent(getBaseUrl() + '?add=' + code);
     const qrCanvas = document.getElementById('share-qr-canvas');
     qrCanvas.width = 200; qrCanvas.height = 200;
     const ctx2 = qrCanvas.getContext('2d');
@@ -3999,7 +3999,7 @@ if ('serviceWorker' in navigator) {
         if (window.posthog) posthog.capture('viewer_reply_clicked', { sketchId: viewId });
         active = false;
         timers.forEach(clearTimeout);
-        history.replaceState({}, '', location.pathname + '?reply=' + viewId);
+        history.replaceState({}, '', getBaseUrl() + '?reply=' + viewId);
         screen.classList.remove('activo');
         mostrarLogin();
       });
