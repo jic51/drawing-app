@@ -2797,11 +2797,12 @@ function renderInbox() {
     inboxBody.innerHTML = `
       <div class="inbox-empty">
         <div class="inbox-empty-icon">✉️</div>
-        <div class="inbox-empty-text">No tienes dibujos nuevos</div>
+        <div class="inbox-empty-text">${lang === 'es' ? 'No tienes dibujos nuevos' : 'No new drawings'}</div>
       </div>`;
     return;
   }
 
+  bandejaEntrada.sort((a, b) => a.receivedAt - b.receivedAt);
   bandejaEntrada.forEach(msg => {
     const card = document.createElement('div');
     card.className = 'inbox-card';
@@ -2815,14 +2816,16 @@ function renderInbox() {
     /* Hace cuánto llegó */
     const ago = Date.now() - msg.receivedAt;
     const agoMins = Math.floor(ago/60000);
-    const agoText = agoMins < 60 ? `hace ${agoMins}m` : `hace ${Math.floor(agoMins/60)}h`;
+    const agoText = agoMins < 60
+      ? (lang === 'es' ? `hace ${agoMins}m` : `${agoMins}m ago`)
+      : (lang === 'es' ? `hace ${Math.floor(agoMins/60)}h` : `${Math.floor(agoMins/60)}h ago`);
 
     card.innerHTML = `
       ${!msg.visto ? '<div class="inbox-card-new"></div>' : ''}
       <img class="inbox-card-av" src="${esc(safeUrl(genAvatar(msg.sender)))}" alt="${esc(msg.sender)}">
       <div class="inbox-card-info">
         <div class="inbox-card-name">${esc(msg.sender)}</div>
-        <div class="inbox-card-sub">Te envió un dibujo · ${esc(agoText)}</div>
+        <div class="inbox-card-sub">${lang === 'es' ? 'Te envió un dibujo' : 'Sent you a drawing'} · ${esc(agoText)}</div>
       </div>
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
         <div class="inbox-card-timer">⏱ ${esc(timerText)}</div>
@@ -2879,6 +2882,8 @@ function iniciarReplayInbox(msg) {
 
   overlay.classList.add('activo');
   replayActivo = true;
+
+  if ('wakeLock' in navigator) navigator.wakeLock.request('screen').then(l => { window._wakeLock = l; }).catch(() => {});
 
   function onTouch() {
     cerrarReplay();
@@ -3310,6 +3315,8 @@ function iniciarReplay(strokes) {
   overlay.classList.add('activo');
   replayActivo = true;
 
+  if ('wakeLock' in navigator) navigator.wakeLock.request('screen').then(l => { window._wakeLock = l; }).catch(() => {});
+
   /* Toque en cualquier parte → cerrar */
   overlay.addEventListener('pointerdown', cerrarReplay, { once: true });
 
@@ -3364,6 +3371,7 @@ function cerrarReplay() {
   replayTimers.forEach(t => clearTimeout(t));
   replayTimers = [];
   document.getElementById('replay-overlay').classList.remove('activo');
+  if (window._wakeLock) { window._wakeLock.release().catch(() => {}); window._wakeLock = null; }
 }
 
 /* (Timer de expiración eliminado de la UI principal —
@@ -3886,6 +3894,7 @@ if ('serviceWorker' in navigator) {
   const fromEl    = document.getElementById('viewer-from');
 
   screen.classList.add('activo');
+  if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(() => {});
   if (window.posthog) posthog.capture('viewer_opened', { sketchId: viewId });
 
   /* Esconder splash inmediatamente (el viewer es la experiencia) */
