@@ -1748,6 +1748,7 @@ function mostrarPantallaUsername(nombre, fotoUrl) {
       const uid = auth.currentUser.uid;
       await db.collection('users').doc(uid).set({
         username: raw, displayName: nombre, photoURL: fotoUrl || '',
+        email: auth.currentUser.email || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(), uid,
         shortCode: generarShortCode(),
         usernameHistory: [raw]
@@ -1871,7 +1872,6 @@ if (firebaseReady && auth) {
   auth.onAuthStateChanged(async user => {
     if (!user) {
       if (!appVisible) mostrarLogin();
-      /* Si ya estamos en la app, ignorar el null (puede ser ITP/token refresh) */
       return;
     }
     appVisible = true;
@@ -1883,6 +1883,15 @@ if (firebaseReady && auth) {
         mostrarPantallaUsername(nombre, user.photoURL);
       } else {
         const d = doc.data();
+        /* I19+I20: guardar email y migrar campos faltantes */
+        const updates = {};
+        if (user.email && d.email !== user.email) updates.email = user.email;
+        if (!d.shortCode) updates.shortCode = generarShortCode();
+        if (user.photoURL && !d.photoURL) updates.photoURL = user.photoURL;
+        if (!d.uid) updates.uid = user.uid;
+        if (Object.keys(updates).length > 0) {
+          db.collection('users').doc(user.uid).update(updates).catch(() => {});
+        }
         finalizarLogin(d.username, d.displayName, user.photoURL || d.photoURL);
       }
     } catch(e) {
@@ -2024,7 +2033,25 @@ document.getElementById('google-btn').addEventListener('click', async () => {
 
   /* Resto de navegadores: popup */
   try {
-    await auth.signInWithPopup(provider);
+    const result = await auth.signInWithPopup(provider);
+    /* Si onAuthStateChanged no dispara (race condition en algunos navegadores),
+       forzar la navegación manualmente con el usuario del resultado */
+    if (result && result.user && !document.getElementById('app').style.display) {
+      const user = result.user;
+      try {
+        const doc = await db.collection('users').doc(user.uid).get();
+        if (!doc.exists) {
+          const nombre = user.displayName || user.email?.split('@')[0] || 'Usuario';
+          mostrarPantallaUsername(nombre, user.photoURL);
+        } else {
+          const d = doc.data();
+          finalizarLogin(d.username, d.displayName, user.photoURL || d.photoURL);
+        }
+      } catch(e2) {
+        const nombre = user.displayName || user.email?.split('@')[0] || 'Usuario';
+        finalizarLogin(nombre, nombre, user.photoURL);
+      }
+    }
   } catch(e) {
     if (e.code === 'auth/popup-closed-by-user') return;
     if (e.code === 'auth/popup-blocked') {
