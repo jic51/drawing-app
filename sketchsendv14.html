@@ -680,7 +680,7 @@
       animation: spinAngle 2.5s linear infinite;
       pointer-events: none;
     }
-    .rainbow-hover-ring:hover::before { opacity: 0.3; }
+    .rainbow-hover-ring:hover::before { opacity: 0.15; }
 
     /* ══════════════════════════════════════════════════════
        PANEL DE SETTINGS
@@ -715,7 +715,7 @@
     .settings-header {
       display:flex; align-items:center; gap:12px; padding:20px 20px 16px;
       border-bottom:1px solid var(--border); position:sticky; top:0;
-      background:var(--surface); z-index:1;
+      background:var(--surface); z-index:10;
     }
     .settings-header h3 { font-family:var(--display); font-size:1.05rem; flex:1; }
     .settings-close {
@@ -834,7 +834,7 @@
     #viewer-sender span { color:var(--accent2); }
     #viewer-canvas {
       border-radius:14px; box-shadow:0 0 60px var(--glow);
-      max-width:min(98vw,900px); max-height:min(60vh,800px);
+      max-width:min(98vw,900px); max-height:min(75vh,900px);
     }
     #viewer-cta {
       margin-top:20px; display:flex; flex-direction:column; align-items:center; gap:10px;
@@ -1213,10 +1213,10 @@
       </div>
       <div class="settings-row">
         <div class="settings-row-label" id="lbl-theme">Theme</div>
-        <div style="display:flex;gap:6px;">
-          <button id="theme-auto-btn" class="btn-g" style="font-size:0.8rem;">🔄 Auto</button>
-          <button id="theme-dark-btn" class="btn-g" style="font-size:0.8rem;opacity:0.5;">🌙 Dark</button>
-          <button id="theme-light-btn" class="btn-g" style="font-size:0.8rem;opacity:0.5;">☀️ Light</button>
+        <div style="display:flex;gap:4px;background:var(--surface2);border-radius:8px;padding:2px;">
+          <button id="theme-auto-btn" style="font-size:0.75rem;padding:4px 10px;border-radius:6px;border:none;cursor:pointer;background:var(--accent);color:#fff;transition:.2s;">🔄 Auto</button>
+          <button id="theme-dark-btn" style="font-size:0.75rem;padding:4px 10px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:var(--muted);transition:.2s;">🌙 Dark</button>
+          <button id="theme-light-btn" style="font-size:0.75rem;padding:4px 10px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:var(--muted);transition:.2s;">☀️ Light</button>
         </div>
       </div>
       <div class="settings-row">
@@ -1232,11 +1232,10 @@
       </div>
       <div class="settings-row">
         <div class="settings-row-label" id="lbl-version">Versión</div>
-        <div style="font-size:0.82rem;color:var(--muted);">1.0.0-beta</div>
+        <div style="font-size:0.82rem;color:var(--muted);">1.20.0</div>
       </div>
-      <div class="settings-row">
-        <div class="settings-row-label" id="lbl-cerrar-sesion">Cerrar sesión</div>
-        <button class="settings-row-action danger" id="settings-logout">Salir</button>
+      <div class="settings-row" style="justify-content:center;">
+        <button class="settings-row-action danger" id="settings-logout" style="width:100%;">Sign out</button>
       </div>
     </div>
   </div>
@@ -3231,7 +3230,7 @@ vidBtn.addEventListener('click', async () => {
    Estructura:
    {
      "format": "SKS",
-     "version": "1.0.0-beta",
+     "version": "1.20.0",
      "meta": {
        "creator": "nombre",
        "createdAt": "ISO date",
@@ -3274,7 +3273,7 @@ sksBtn.addEventListener('click', () => {
       creator: usuario || t('anonymous'),
       createdAt: new Date().toISOString(),
       app: 'SketchSend',
-      appVersion: '1.0.0-beta',
+      appVersion: '1.20.0',
       canvasWidth: Math.round(cv.width / DPR),
       canvasHeight: Math.round(cv.height / DPR),
       dpr: DPR,
@@ -3498,6 +3497,7 @@ function volarAlHeader() {
 
   const rf = fantasma.getBoundingClientRect();
   if (rf.width === 0) return;
+  fantasma.style.visibility = 'hidden';
   const fsSrc = getComputedStyle(fantasma).fontSize;
   volador.style.transition = 'none';
   volador.style.fontSize = fsSrc;
@@ -3804,9 +3804,11 @@ function applyTheme(theme) {
   localStorage.setItem('ss_theme', theme);
   if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', theme);
-  document.getElementById('theme-auto-btn').style.opacity = theme === 'auto' ? '1' : '0.5';
-  document.getElementById('theme-dark-btn').style.opacity = theme === 'dark' ? '1' : '0.5';
-  document.getElementById('theme-light-btn').style.opacity = theme === 'light' ? '1' : '0.5';
+  ['auto','dark','light'].forEach(v => {
+    const b = document.getElementById('theme-'+v+'-btn');
+    b.style.background = theme === v ? 'var(--accent)' : 'transparent';
+    b.style.color = theme === v ? '#fff' : 'var(--muted)';
+  });
   if (typeof setupCanvas === 'function' && cv) { const w=cv.width/DPR, h=cv.height/DPR; ctx.clearRect(0,0,w,h); fondoCanvas(ctx,w,h); }
 }
 applyTheme(localStorage.getItem('ss_theme') || 'auto');
@@ -3968,7 +3970,7 @@ if ('serviceWorker' in navigator) {
       const meta0 = (d.strokes || []).find(s => s.tipo === 'inicio' && s.origW);
       const origAspect = meta0 ? (meta0.origW / meta0.origH) : 1;
       const maxW = Math.min(window.innerWidth * 0.98, 900);
-      const maxH = Math.min(window.innerHeight * 0.60, 800);
+      const maxH = Math.min(window.innerHeight * 0.75, 900);
       let cssW, cssH;
       if (origAspect >= 1) {
         cssW = Math.min(maxW, maxH * origAspect);
