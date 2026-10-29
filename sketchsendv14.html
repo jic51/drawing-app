@@ -322,7 +322,7 @@
     .color-dot:hover { transform:scale(1.15); }
     .color-dot.activo { border-color:var(--text); box-shadow:0 0 0 2px var(--glow); }
     .color-dot.rainbow-dot {
-      background:conic-gradient(#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000);
+      background:none; font-size:18px; display:flex; align-items:center; justify-content:center;
     }
     /* Black dot needs a visible outline in dark theme */
     .color-dot[data-color="#1a1a2e"] { box-shadow: inset 0 0 0 2px rgba(255,255,255,0.35); }
@@ -955,7 +955,7 @@
     <!-- Toolbar lateral (solo desktop) -->
     <aside class="toolbar" id="desktop-toolbar">
       <div class="color-picker" id="color-picker-desk">
-        <div class="color-dot rainbow-dot activo" data-color="rainbow" title="Rainbow"></div>
+        <div class="color-dot rainbow-dot activo" data-color="rainbow" title="Rainbow">🌈</div>
         <div class="color-dot" data-color="#ffffff" style="background:#fff;border-color:#ccc;" title="White"></div>
         <div class="color-dot" data-color="#1a1a2e" style="background:#1a1a2e;" title="Black"></div>
       </div>
@@ -993,7 +993,7 @@
       <!-- Toolbar inferior (solo mobile) -->
       <div class="mob-toolbar" id="mob-toolbar">
         <div class="color-picker" id="color-picker-mob">
-          <div class="color-dot rainbow-dot activo" data-color="rainbow" style="width:24px;height:24px;" title="Rainbow"></div>
+          <div class="color-dot rainbow-dot activo" data-color="rainbow" style="width:24px;height:24px;" title="Rainbow">🌈</div>
           <div class="color-dot" data-color="#ffffff" style="background:#fff;border-color:#ccc;width:24px;height:24px;" title="White"></div>
           <div class="color-dot" data-color="#1a1a2e" style="background:#1a1a2e;width:24px;height:24px;" title="Black"></div>
         </div>
