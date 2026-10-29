@@ -954,21 +954,17 @@
   <div class="body">
     <!-- Toolbar lateral (solo desktop) -->
     <aside class="toolbar" id="desktop-toolbar">
-      <button class="tbtn activo" data-tool="rainbow">🌈</button>
-      <div class="tlabel" id="lbl-tool-rainbow">Rainbow</div>
-      <div class="tsep"></div>
-      <button class="tbtn" data-tool="pincel">🖌️</button>
-      <div class="tlabel" id="lbl-tool-pincel">Pincel</div>
-      <div class="tsep"></div>
-      <button class="tbtn" data-tool="borrador">⬜</button>
-      <div class="tlabel" id="lbl-tool-borrar">Borrar</div>
-      <div class="tsep"></div>
-      <div class="tlabel">COLOR</div>
       <div class="color-picker" id="color-picker-desk">
         <div class="color-dot rainbow-dot activo" data-color="rainbow" title="Rainbow"></div>
         <div class="color-dot" data-color="#ffffff" style="background:#fff;border-color:#ccc;" title="White"></div>
         <div class="color-dot" data-color="#1a1a2e" style="background:#1a1a2e;" title="Black"></div>
       </div>
+      <div class="tsep"></div>
+      <button class="tbtn activo" data-tool="pincel">🖌️</button>
+      <div class="tlabel" id="lbl-tool-pincel">Pincel</div>
+      <div class="tsep"></div>
+      <button class="tbtn" data-tool="borrador">⬜</button>
+      <div class="tlabel" id="lbl-tool-borrar">Borrar</div>
     </aside>
 
     <div class="czone">
@@ -996,11 +992,12 @@
 
       <!-- Toolbar inferior (solo mobile) -->
       <div class="mob-toolbar" id="mob-toolbar">
-        <button class="mob-tool activo" data-tool="rainbow">
-          <div class="mob-tool-icon">🌈</div>
-          <div class="mob-tool-label" id="lbl-mob-rainbow">Rainbow</div>
-        </button>
-        <button class="mob-tool" data-tool="pincel">
+        <div class="color-picker" id="color-picker-mob">
+          <div class="color-dot rainbow-dot activo" data-color="rainbow" style="width:24px;height:24px;" title="Rainbow"></div>
+          <div class="color-dot" data-color="#ffffff" style="background:#fff;border-color:#ccc;width:24px;height:24px;" title="White"></div>
+          <div class="color-dot" data-color="#1a1a2e" style="background:#1a1a2e;width:24px;height:24px;" title="Black"></div>
+        </div>
+        <button class="mob-tool activo" data-tool="pincel">
           <div class="mob-tool-icon">🖌️</div>
           <div class="mob-tool-label" id="lbl-mob-pincel">Pincel</div>
         </button>
@@ -1008,11 +1005,6 @@
           <div class="mob-tool-icon">⬜</div>
           <div class="mob-tool-label" id="lbl-mob-borrar">Borrar</div>
         </button>
-        <div class="color-picker" id="color-picker-mob">
-          <div class="color-dot rainbow-dot activo" data-color="rainbow" style="width:20px;height:20px;" title="Rainbow"></div>
-          <div class="color-dot" data-color="#ffffff" style="background:#fff;border-color:#ccc;width:20px;height:20px;" title="White"></div>
-          <div class="color-dot" data-color="#1a1a2e" style="background:#1a1a2e;width:20px;height:20px;" title="Black"></div>
-        </div>
       </div>
 
       <div class="strip">
@@ -1510,7 +1502,7 @@ function applyLang() {
   set('lbl-qr-hint', 'qr_hint'); set('lbl-link-hint', 'link_hint');
 
   // Toolbar tool labels
-  set('lbl-tool-rainbow', 'tool_rainbow'); set('lbl-mob-rainbow', 'tool_rainbow');
+  /* rainbow tool labels removed — colors are now separate dots */
   set('lbl-tool-pincel', 'tool_brush');   set('lbl-mob-pincel', 'tool_brush');
   set('lbl-tool-borrar', 'tool_erase');   set('lbl-mob-borrar', 'tool_erase');
 
@@ -2321,16 +2313,14 @@ function actualizarBotones() {
 /* ── SELECCIÓN DE HERRAMIENTA (sincronizada desktop + mobile) ── */
 allToolBtns.forEach(b => b.addEventListener('click', () => {
   if (b.dataset.tool === 'pincel') {
-    /* Pincel only controls size — show popup, don't switch drawing mode */
     window._openBrushPopup(b);
     return;
   }
-  allToolBtns.forEach(x => { x.classList.remove('activo'); });
-  document.querySelectorAll(`[data-tool="${b.dataset.tool}"]`).forEach(x => x.classList.add('activo'));
-  herramienta = b.dataset.tool;
-  if (b.dataset.tool === 'rainbow') {
-    colorSeleccionado = 'rainbow';
-    allColorDots.forEach(d => d.classList.toggle('activo', d.dataset.color === 'rainbow'));
+  if (b.dataset.tool === 'borrador') {
+    herramienta = 'borrador';
+    allToolBtns.forEach(x => x.classList.remove('activo'));
+    document.querySelectorAll('[data-tool="borrador"]').forEach(x => x.classList.add('activo'));
+    allColorDots.forEach(d => d.classList.remove('activo'));
   }
 }));
 
@@ -2338,7 +2328,9 @@ allToolBtns.forEach(b => b.addEventListener('click', () => {
 allColorDots.forEach(dot => dot.addEventListener('click', () => {
   colorSeleccionado = dot.dataset.color;
   allColorDots.forEach(d => d.classList.toggle('activo', d.dataset.color === colorSeleccionado));
-  /* Selecting a color does NOT change the active tool */
+  herramienta = colorSeleccionado === 'rainbow' ? 'rainbow' : 'pincel';
+  allToolBtns.forEach(x => x.classList.remove('activo'));
+  document.querySelectorAll('[data-tool="pincel"]').forEach(x => x.classList.add('activo'));
 }));
 
 /* ── UNDO / REDO con strokeId ── */
