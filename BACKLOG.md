@@ -82,6 +82,9 @@
 | F6 | **Feed público / "states" + board público** | (1) Estados de dibujos visibles a contactos (como Stories). (2) Board público donde todos ven los dibujos de todos y pueden dar like. (3) Concursos: el dibujo más votado hasta una fecha gana premios (colores/pinceles gratis). Verificar que solo se pueda votar una vez por dibujo. | 🟢 Planificado |
 | F7 | Lanzamiento ProductHunt | Después de push notifications y onboarding | 🟢 Planificado |
 | F8 | BetaList / r/alphaandbetausers | Para conseguir early adopters y testers externos | 🟢 Planificado |
+| F9 | **Dominio propio (sketchsend.app o similar)** | Mover de `jic51.github.io/drawing-app` a dominio propio. ~$12/año. Da credibilidad profesional. Mismo código, solo cambia hosting. Hacer cuando haya ~500-1000 usuarios activos. | 🟢 Planificado |
+| F10 | **Google Play Store (TWA)** | Envolver la PWA en Trusted Web Activity para publicar en Play Store. Mismo código web empaquetado como APK. Costo: $25 una vez. Hacer cuando usuarios pidan "¿por qué no está en la tienda?". Mejora: push al 100%, descubrimiento en tienda. | 🟢 Planificado |
+| F11 | **Apple App Store (Capacitor/TWA)** | Wrapper con Capacitor o similar. Costo: $99/año. Apple cobra 30% de pagos in-app. Hacer después de Google Play. Mejora: push nativo en iOS, acceso a contactos, haptics. | 🟢 Planificado |
 
 ---
 
@@ -94,6 +97,7 @@
 | GIF animado del replay como OG image | Requiere Cloudflare Worker | Fase 3 |
 | Posicionamiento: "cuaderno compartido entre 2 personas" en lugar de "mensajería masiva" | Análisis de mercado | Estrategia |
 | Lanzar en nicho específico (diseño, arte casual, parejas) antes de ir a todos | Lección de Draw Something / BeReal | Estrategia |
+| Estrategia de distribución: PWA → dominio propio → Play Store (TWA) → App Store (Capacitor) | Análisis de mercado | Estrategia — no entrar a tiendas hasta tener tracción. 90% del código se reutiliza. |
 
 ---
 
