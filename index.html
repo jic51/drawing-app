@@ -1187,6 +1187,17 @@
         </div>
       </div>
       <div class="settings-row">
+        <div>
+          <div class="settings-row-label" id="lbl-replay-self">Replay after sending</div>
+          <div class="settings-row-sub" id="lbl-replay-self-sub">Play back your drawing after you send it</div>
+        </div>
+        <label style="position:relative;width:44px;height:24px;flex-shrink:0;">
+          <input type="checkbox" id="toggle-replay-self" checked style="display:none;">
+          <span style="position:absolute;inset:0;border-radius:12px;background:var(--border);transition:.2s;cursor:pointer;"></span>
+          <span style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;cursor:pointer;" id="toggle-replay-knob"></span>
+        </label>
+      </div>
+      <div class="settings-row">
         <div class="settings-row-label" id="lbl-version">Versión</div>
         <div style="font-size:0.82rem;color:var(--muted);">1.0.0-beta</div>
       </div>
@@ -1265,7 +1276,7 @@ const I18N = {
     store_themes: '🌈 Temas de temporada', store_themes_sub: 'Halloween, Navidad, San Valentín',
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Dibujos permanentes, 4K, sin firma',
     install_app: 'Instalar app', install_app_sub: 'Agregar SketchSend a tu pantalla de inicio',
-    install_btn: 'Instalar 📲', language: 'Idioma', version: 'Versión', logout: 'Cerrar sesión',
+    install_btn: 'Instalar 📲', language: 'Idioma', replay_self: 'Replay al enviar', replay_self_sub: 'Reproduce tu dibujo después de enviarlo', version: 'Versión', logout: 'Cerrar sesión',
     tool_rainbow: 'Arcoíris', tool_brush: 'Pincel', tool_erase: 'Borrar',
     store_section: 'Tienda',
     no_friends: 'Agrega amigos para enviarles dibujos →',
@@ -1346,7 +1357,7 @@ const I18N = {
     store_themes: '🌈 Seasonal themes', store_themes_sub: "Halloween, Christmas, Valentine's",
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Permanent drawings, 4K, no watermark',
     install_app: 'Install app', install_app_sub: 'Add SketchSend to your home screen',
-    install_btn: 'Install 📲', language: 'Language', version: 'Version', logout: 'Sign out',
+    install_btn: 'Install 📲', language: 'Language', replay_self: 'Replay after sending', replay_self_sub: 'Play back your drawing after you send it', version: 'Version', logout: 'Sign out',
     tool_rainbow: 'Rainbow', tool_brush: 'Brush', tool_erase: 'Erase',
     store_section: 'Store',
     no_friends: 'Add friends to send them drawings →',
@@ -1492,6 +1503,7 @@ function applyLang() {
   set('lbl-invite', 'invite_friends');
   set('lbl-invite-sub', 'invite_friends_sub');
   set('lbl-language', 'language');
+  set('lbl-replay-self', 'replay_self'); set('lbl-replay-self-sub', 'replay_self_sub');
   set('lbl-version', 'version');
   // Tienda — labels con IDs, botones con "Pronto"/"Coming soon"
   set('store-colors-lbl', 'store_colors'); set('store-colors-sub', 'store_colors_sub');
@@ -2615,31 +2627,33 @@ async function buildCarousel() {
 enviarBtn.addEventListener('click', async () => {
   if (!trazos.length) { toast(t('draw_first')); return; }
 
+  /* Instant feedback — show toast and capture snapshot BEFORE network */
+  const snap = JSON.parse(JSON.stringify(trazos));
+  toast('✅ ' + t('sent_generic'));
+  enviarBtn.disabled = true;
+
+  /* Self-replay (optional, default on) */
+  const replaySelf = localStorage.getItem('ss_replay_self') !== 'false';
+  if (replaySelf) setTimeout(() => iniciarReplay(snap), 300);
+
   /* Modo respuesta: enviando directamente a quien nos escribió */
   if (replyingTo) {
     if (firebaseReady && auth.currentUser) {
-      await enviarSketchFirestore(replyingTo.uid);
-    } else {
-      toast(`✉️ Respuesta enviada a: ${replyingTo.nombre || replyingTo}`);
+      enviarSketchFirestore(replyingTo.uid).catch(() => {});
     }
     salirModoRespuesta();
   } else {
     /* Modo normal: enviar a los seleccionados del carrusel */
-    if (!seleccionados.size) { toast(t('select_contact')); return; }
+    if (!seleccionados.size) { enviarBtn.disabled = false; return; }
     if (firebaseReady && auth.currentUser) {
-      for (const uid of seleccionados) await enviarSketchFirestore(uid);
+      const uids = [...seleccionados];
+      Promise.all(uids.map(uid => enviarSketchFirestore(uid))).catch(() => {});
     }
-    toast(t('sent_generic'));
   }
-
-  /* Captura snapshot y muestra replay */
-  const snap = JSON.parse(JSON.stringify(trazos));
-  setTimeout(() => iniciarReplay(snap), 500);
 
   seleccionados.clear();
   document.querySelectorAll('.citem.sel').forEach(el => el.classList.remove('sel'));
   selCount.textContent = '';
-  enviarBtn.disabled = true;
 });
 
 async function enviarSketchFirestore(toUid) {
@@ -3730,6 +3744,23 @@ document.getElementById('lang-en-btn').addEventListener('click', () => {
   applyLang();
   toast('🇺🇸 English');
 });
+
+/* Replay-self toggle */
+const replayToggle = document.getElementById('toggle-replay-self');
+const replayKnob = document.getElementById('toggle-replay-knob');
+function syncReplayToggle() {
+  const on = localStorage.getItem('ss_replay_self') !== 'false';
+  replayToggle.checked = on;
+  replayKnob.style.transform = on ? 'translateX(20px)' : 'none';
+  replayKnob.parentElement.previousElementSibling.style.background = on ? 'var(--accent)' : 'var(--border)';
+}
+syncReplayToggle();
+replayToggle.addEventListener('change', () => {
+  localStorage.setItem('ss_replay_self', replayToggle.checked ? 'true' : 'false');
+  syncReplayToggle();
+});
+replayKnob.addEventListener('click', () => { replayToggle.checked = !replayToggle.checked; replayToggle.dispatchEvent(new Event('change')); });
+replayKnob.parentElement.previousElementSibling.addEventListener('click', () => { replayToggle.checked = !replayToggle.checked; replayToggle.dispatchEvent(new Event('change')); });
 
 settingsLogout.addEventListener('click', () => {
   cerrarSettings();
