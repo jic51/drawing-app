@@ -66,6 +66,7 @@
 | I12 | **Simplificar registro: ¿nombre + @usuario + correo es demasiado?** | El correo es para auth, el @usuario es ID público, el nombre es display. Evaluar: eliminar el paso de "nombre" y usar solo @usuario, o auto-generarlo del perfil de Google. Menos pasos = menos abandono. | 🟡 Media |
 | I13 | **Indicador verde de "online" en avatares de contactos** | Punto verde en los avatares de amigos que están conectados. Requiere actualizar un campo `lastSeen` en Firestore periódicamente y considerar como "online" si < 5 min. | 🟡 Media |
 | I14 | **Diferencias de replay entre desktop y móvil** | El replay se ve diferente en computadora vs teléfono. Revisar escalado, aspect ratio y tamaño del canvas en ambos. Reportado con video. | 🟡 Media |
+| I15 | **Notificación in-app animada al recibir un dibujo** | Cuando la app está abierta y llega un sketch, mostrar una notificación in-app con el logo de SketchSend animado (colores moviéndose en loop infinito) y texto: "You got a new sketch from @user1234". Las push notifications del sistema son limitadas (solo ícono estático), pero dentro de la app controlamos el diseño completo. | 🟡 Alta |
 
 ---
 
