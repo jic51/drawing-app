@@ -122,6 +122,9 @@
 | Posicionamiento: "cuaderno compartido entre 2 personas" en lugar de "mensajería masiva" | Análisis de mercado | Estrategia |
 | Lanzar en nicho específico (diseño, arte casual, parejas) antes de ir a todos | Lección de Draw Something / BeReal | Estrategia |
 | Estrategia de distribución: PWA → dominio propio → Play Store (TWA) → App Store (Capacitor) | Análisis de mercado | Estrategia — no entrar a tiendas hasta tener tracción. 90% del código se reutiliza. |
+| **Branding en sketch viewer:** al abrir un sketch recibido, mostrar logo SketchSend + nombre del usuario que lo envió. No solo al descargar video/imagen — brandear toda la experiencia de visualización. | Sesión 2026-10-29 | Pendiente |
+| **QR estilizado con forma/estilo de la app** | El QR actual es genérico. Hacerlo con los colores y estilo visual de SketchSend (colores rainbow, fondo oscuro). | Sesión 2026-10-29 | Pendiente |
+| **Estandarizar logo en toda la app** | Mismo logo (wordmark rainbow + lápiz) en: OG image, favicon, viewer, videos descargados, imágenes descargadas, header de la app, notificaciones. Un solo diseño consistente. | Sesión 2026-10-29 | Pendiente |
 | Dominio temporal: usar `iamjosecastro.com` hasta conseguir dominio de SketchSend | Usuario tiene este dominio disponible. sketchsend.com está ocupado. Buscar alternativas: sketchsend.app, sketchsend.io, etc. | Pendiente |
 | **Prioridades competitivas (SIEMPRE PRESENTES):** (1) Retención: streaks, notificaciones in-app. (2) Onboarding que impresione en 30s. (3) Board público + concursos (nadie lo tiene). (4) Replay timing perfecto. (5) Monetización inteligente (no repetir errores de Zynga). (6) Nicho primero, mainstream después. | Análisis competitivo | Estrategia — aplicar en cada decisión de diseño y desarrollo |
 
