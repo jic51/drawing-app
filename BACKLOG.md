@@ -41,7 +41,7 @@
 
 | # | Tarea | Detalle | Prioridad |
 |---|-------|---------|-----------|
-| C1 | **Push notifications (FCM)** | Código cliente listo (SDK, token, SW push handler). Cloud Function lista en `functions/`. **Falta del usuario:** (1) Plan Blaze en Firebase, (2) Generar VAPID key en Console → Project Settings → Cloud Messaging → Web Push certificates, (3) Reemplazar `PLACEHOLDER_VAPID_KEY` en sketchsendv14.html + index.html, (4) `firebase deploy --only functions`. | 🔴 En progreso |
+| C1 | **Push notifications (FCM)** | ✅ Cloud Function desplegada. VAPID key configurada. **Pendiente:** merge a `main` para que funcione en producción. En iOS Safari solo funciona si la app está instalada como PWA. | 🟡 Merge pendiente |
 | C2 | **Canvas del viewer — probar escalado en más dispositivos** | Un dibujo hecho en desktop puede verse diferente en móvil. Se hizo un fix de aspect ratio pero falta verificar en dispositivos reales. | 🟡 Media |
 | C3 | **Limpieza automática de sketches expirados en Firestore** | Los sketches tienen `expiresAt` pero Firestore no los borra — se filtran solo en el cliente. Los documentos expirados se acumulan para siempre en la DB. Solución: activar **Firestore TTL** (Time-to-Live) en Firebase Console → campo `expiresAt` como TTL field. Firebase los borra automáticamente. | 🔴 Alta |
 | C4 | **`window.prompt()` al confirmar correo en dispositivo nuevo** | Cuando el link de email se abre en otro dispositivo, aparece un `window.prompt()` nativo del navegador pidiendo el correo. Se ve feo y poco profesional. Reemplazar con un modal/overlay en el estilo visual de SketchSend. | 🔴 Alta |
@@ -61,6 +61,11 @@
 | I7 | **Contexto en el viewer público para nuevos usuarios** | Agregar una línea antes del CTA: "En SketchSend los mensajes son dibujos. Gratis. Desaparecen en 24h." Valentina (persona) no entiende qué es la app al llegar por primera vez. | 🟡 Alta |
 | I8 | **Google primero en login, email como opción secundaria** | 80% de usuarios móviles elige Google si está arriba. El magic link tiene 4-5 pasos (escribir correo → ir al email → encontrar link → tocarlo → volver). Google son 2 toques. | 🟡 Alta |
 | I9 | **Correo de invitación sin asunto ni contenido útil** | Cuando alguien invita a un amigo, el correo llega "(sin asunto)" y solo dice "¡Dibujemos juntos en SketchSend! ✏️🌈" sin link ni explicación. Necesita: asunto claro, link a la app, breve explicación de qué es SketchSend. Reportado por 2 usuarios. | 🟡 Alta |
+| I10 | **Replay: comprimir tiempo muerto al inicio y reducir MAX_GAP** | `comprimirGaps()` comprime pausas entre trazos a máx 2s, pero NO comprime el espacio vacío antes del primer trazo. Si alguien espera 10s antes de dibujar, se reproducen 10s de nada. Además 2s de gap máximo es mucho — reducir a ~500ms. Afecta también videos descargados. | 🟡 Alta |
+| I11 | **Feedback instantáneo al enviar + replay propio opcional** | Al dar clic en "Send" la app tarda en responder. Debe ser instantáneo (feedback visual). Después de enviar, reproducir el dibujo del usuario. Agregar toggle en menú: "Replay your own drawing when sent" para que sea opcional. | 🟡 Alta |
+| I12 | **Simplificar registro: ¿nombre + @usuario + correo es demasiado?** | El correo es para auth, el @usuario es ID público, el nombre es display. Evaluar: eliminar el paso de "nombre" y usar solo @usuario, o auto-generarlo del perfil de Google. Menos pasos = menos abandono. | 🟡 Media |
+| I13 | **Indicador verde de "online" en avatares de contactos** | Punto verde en los avatares de amigos que están conectados. Requiere actualizar un campo `lastSeen` en Firestore periódicamente y considerar como "online" si < 5 min. | 🟡 Media |
+| I14 | **Diferencias de replay entre desktop y móvil** | El replay se ve diferente en computadora vs teléfono. Revisar escalado, aspect ratio y tamaño del canvas en ambos. Reportado con video. | 🟡 Media |
 
 ---
 
@@ -73,7 +78,7 @@
 | F3 | Colores premium + selector libre | Tienda en-app, modelo freemium | 🟢 Baja |
 | F4 | Pinceles especiales (acuarela, neón, caligrafía, pixel) | Tienda en-app | 🟢 Baja |
 | F5 | Dibujo colaborativo en tiempo real | Firestore onSnapshot bidireccional, 2 personas dibujando a la vez | 🟢 Planificado |
-| F6 | Feed público / "states" | Dibujos efímeros visibles a todos los contactos (como Stories) | 🟢 Planificado |
+| F6 | **Feed público / "states" + board público** | (1) Estados de dibujos visibles a contactos (como Stories). (2) Board público donde todos ven los dibujos de todos y pueden dar like. (3) Concursos: el dibujo más votado hasta una fecha gana premios (colores/pinceles gratis). Verificar que solo se pueda votar una vez por dibujo. | 🟢 Planificado |
 | F7 | Lanzamiento ProductHunt | Después de push notifications y onboarding | 🟢 Planificado |
 | F8 | BetaList / r/alphaandbetausers | Para conseguir early adopters y testers externos | 🟢 Planificado |
 
@@ -98,6 +103,8 @@
 | `sketchsendv14.html` duplicado de `index.html` | Mantener solo uno como fuente. Decidir si renombramos o eliminamos el .html numerado. |
 | Service Worker cache versión `sketchsend-v4` | Actualizar nombre de cache cuando haya cambios breaking en SW |
 | Strokes se comprimen antes de guardar | Verificar que el límite de 1MB de Firestore no se alcanza con dibujos complejos |
+| Versionado de la app | Agregar número de versión visible (ej: v1.5.0) en la UI y actualizar con cada release. Llevar changelog. |
+| Merge `claude/sharp-hamilton-JPQNj` → `main` | Las push notifications y PostHog solo están en la rama de desarrollo. Hay que hacer merge a main para que funcionen en producción (GitHub Pages). |
 
 ---
 
