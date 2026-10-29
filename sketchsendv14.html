@@ -965,8 +965,9 @@
       <div class="tsep"></div>
       <div class="tlabel">COLOR</div>
       <div class="color-picker" id="color-picker-desk">
-        <div class="color-dot" data-color="#ffffff" style="background:#fff;border-color:#ccc;" title="Blanco"></div>
-        <div class="color-dot" data-color="#1a1a2e" style="background:#1a1a2e;" title="Negro"></div>
+        <div class="color-dot rainbow-dot activo" data-color="rainbow" title="Rainbow"></div>
+        <div class="color-dot" data-color="#ffffff" style="background:#fff;border-color:#ccc;" title="White"></div>
+        <div class="color-dot" data-color="#1a1a2e" style="background:#1a1a2e;" title="Black"></div>
       </div>
     </aside>
 
@@ -1008,8 +1009,9 @@
           <div class="mob-tool-label" id="lbl-mob-borrar">Borrar</div>
         </button>
         <div class="color-picker" id="color-picker-mob">
-          <div class="color-dot" data-color="#ffffff" style="background:#fff;border-color:#ccc;width:20px;height:20px;" title="Blanco"></div>
-          <div class="color-dot" data-color="#1a1a2e" style="background:#1a1a2e;width:20px;height:20px;" title="Negro"></div>
+          <div class="color-dot rainbow-dot activo" data-color="rainbow" style="width:20px;height:20px;" title="Rainbow"></div>
+          <div class="color-dot" data-color="#ffffff" style="background:#fff;border-color:#ccc;width:20px;height:20px;" title="White"></div>
+          <div class="color-dot" data-color="#1a1a2e" style="background:#1a1a2e;width:20px;height:20px;" title="Black"></div>
         </div>
       </div>
 
@@ -2326,6 +2328,10 @@ allToolBtns.forEach(b => b.addEventListener('click', () => {
   allToolBtns.forEach(x => { x.classList.remove('activo'); });
   document.querySelectorAll(`[data-tool="${b.dataset.tool}"]`).forEach(x => x.classList.add('activo'));
   herramienta = b.dataset.tool;
+  if (b.dataset.tool === 'rainbow') {
+    colorSeleccionado = 'rainbow';
+    allColorDots.forEach(d => d.classList.toggle('activo', d.dataset.color === 'rainbow'));
+  }
 }));
 
 /* ── SELECTOR DE COLOR (sincronizado desktop + mobile) ── */
