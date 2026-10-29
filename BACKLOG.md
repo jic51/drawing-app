@@ -41,10 +41,11 @@
 
 | # | Tarea | Detalle | Prioridad |
 |---|-------|---------|-----------|
-| C1 | **Push notifications (FCM)** | ✅ Cloud Function desplegada. VAPID key configurada. **Pendiente:** merge a `main` para que funcione en producción. En iOS Safari solo funciona si la app está instalada como PWA. | 🟡 Merge pendiente |
+| C1 | **Push notifications (FCM)** | ✅ Cloud Function desplegada. VAPID key configurada. Merge a `main` hecho. FCM token confirmado en Firestore. En iOS Safari solo funciona si la app está instalada como PWA. Verificar que las notificaciones lleguen con un test real entre 2 cuentas. | ✅ Verificar |
 | C2 | **Canvas del viewer — probar escalado en más dispositivos** | Un dibujo hecho en desktop puede verse diferente en móvil. Se hizo un fix de aspect ratio pero falta verificar en dispositivos reales. | 🟡 Media |
-| C3 | **Limpieza automática de sketches expirados en Firestore** | Los sketches tienen `expiresAt` pero Firestore no los borra — se filtran solo en el cliente. Los documentos expirados se acumulan para siempre en la DB. Solución: activar **Firestore TTL** (Time-to-Live) en Firebase Console → campo `expiresAt` como TTL field. Firebase los borra automáticamente. | 🔴 Alta |
-| C4 | **`window.prompt()` al confirmar correo en dispositivo nuevo** | Cuando el link de email se abre en otro dispositivo, aparece un `window.prompt()` nativo del navegador pidiendo el correo. Se ve feo y poco profesional. Reemplazar con un modal/overlay en el estilo visual de SketchSend. | 🔴 Alta |
+| C3 | **Limpieza automática de sketches expirados en Firestore** | Los sketches tienen `expiresAt` pero Firestore no los borra — se filtran solo en el cliente. Los documentos expirados se acumulan para siempre en la DB (hay ~44 sketches acumulados). Solución: activar **Firestore TTL** (Time-to-Live) en Firebase Console → campo `expiresAt` como TTL field. Firebase los borra automáticamente. | 🔴 Alta |
+| C4 | **`window.prompt()` y `confirm()` nativos → modales SketchSend** | Todos los `window.prompt()`, `window.confirm()` y `alert()` nativos del navegador se ven feos y poco profesionales. Reemplazar TODOS con modales/overlays en el estilo visual de SketchSend. Incluye: confirmar correo en dispositivo nuevo, eliminar amigo, agregar amigo por código. | 🔴 Alta |
+| C5 | **Bug: Google login popup cierra pero la app no recarga** | Al dar clic en Google, se abre el popup, se selecciona la cuenta, el popup desaparece pero la pantalla de login sigue visible. Solo al recargar la página se abre la app. `onAuthStateChanged` no dispara o la UI no se actualiza. Un usuario nuevo lo intentará de nuevo o se irá. | 🔴 Crítico |
 
 ---
 
@@ -67,6 +68,11 @@
 | I13 | **Indicador verde de "online" en avatares de contactos** | Punto verde en los avatares de amigos que están conectados. Requiere actualizar un campo `lastSeen` en Firestore periódicamente y considerar como "online" si < 5 min. | 🟡 Media |
 | I14 | **Diferencias de replay entre desktop y móvil** | El replay se ve diferente en computadora vs teléfono. Revisar escalado, aspect ratio y tamaño del canvas en ambos. Reportado con video. | 🟡 Media |
 | I15 | **Notificación in-app animada al recibir un dibujo** | Cuando la app está abierta y llega un sketch, mostrar una notificación in-app con el logo de SketchSend animado (colores moviéndose en loop infinito) y texto: "You got a new sketch from @user1234". Las push notifications del sistema son limitadas (solo ícono estático), pero dentro de la app controlamos el diseño completo. | 🟡 Alta |
+| I16 | **UI de invitar amigos: mostrar link visible + botón copiar + botón compartir** | El link de invitación no se ve. Debe mostrarse el texto del link (aunque esté truncado), con un botón de copiar al lado (un toque = copiado) y al otro lado el botón de compartir. Todo en una fila compacta. | 🟡 Alta |
+| I17 | **Lista de amigos: cachear en local, no recargar cada vez** | Al abrir Settings, la lista de amigos dice "Cargando..." cada vez aunque ya se cargó antes. Guardar en localStorage y solo consultar Firestore si hubo cambios (o en background). Evita parpadeo y reduce lecturas de Firestore. | 🟡 Media |
+| I18 | **Sistema de amistades: ¿aceptar/rechazar solicitud?** | Actualmente cualquiera te agrega como amigo sin tu permiso (y también te elimina sin aviso). Evaluar si necesitamos un sistema de solicitud de amistad con aceptar/rechazar. Riesgo de spam y privacidad si se queda como está. Riesgo de fricción si se agrega aprobación. Analizar trade-offs. | 🟡 Media |
+| I19 | **Guardar email del usuario en Firestore** | El documento del usuario no guarda el correo electrónico. Está en Firebase Auth pero no en la colección `users`. Agregarlo al crear/actualizar el perfil para tener datos completos. | 🟡 Baja |
+| I20 | **Migrar usuarios legacy: campos faltantes** | Usuarios creados con versiones viejas (ej: antonellaqui) no tienen todos los campos (shortCode, etc.). Al hacer login, verificar y rellenar campos faltantes automáticamente. | 🟡 Media |
 
 ---
 
@@ -98,6 +104,8 @@
 | Posicionamiento: "cuaderno compartido entre 2 personas" en lugar de "mensajería masiva" | Análisis de mercado | Estrategia |
 | Lanzar en nicho específico (diseño, arte casual, parejas) antes de ir a todos | Lección de Draw Something / BeReal | Estrategia |
 | Estrategia de distribución: PWA → dominio propio → Play Store (TWA) → App Store (Capacitor) | Análisis de mercado | Estrategia — no entrar a tiendas hasta tener tracción. 90% del código se reutiliza. |
+| Dominio temporal: usar `iamjosecastro.com` hasta conseguir dominio de SketchSend | Usuario tiene este dominio disponible. sketchsend.com está ocupado. Buscar alternativas: sketchsend.app, sketchsend.io, etc. | Pendiente |
+| **Prioridades competitivas (SIEMPRE PRESENTES):** (1) Retención: streaks, notificaciones in-app. (2) Onboarding que impresione en 30s. (3) Board público + concursos (nadie lo tiene). (4) Replay timing perfecto. (5) Monetización inteligente (no repetir errores de Zynga). (6) Nicho primero, mainstream después. | Análisis competitivo | Estrategia — aplicar en cada decisión de diseño y desarrollo |
 
 ---
 
