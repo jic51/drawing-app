@@ -9,13 +9,18 @@
 > 2. ~~C7: OG preview + favicon~~ ✅
 > 3. ~~C8: Idioma inglés por defecto~~ ✅
 > 4. ~~Toolbar restructure + rainbow emoji~~ ✅
-> 5. C4: Reemplazar todos los prompt/confirm/alert nativos → modales SketchSend
-> 6. I10: Comprimir tiempo muerto en replay + reducir MAX_GAP
-> 7. I11: Feedback instantáneo al enviar + replay propio opcional
-> 8. I8: Google primero en login
-> 9. I7: Contexto en viewer público
-> 10. I16: UI de invitar amigos (link visible + copiar + compartir)
-> 11. C3: Firestore TTL (requiere acción del usuario en Firebase Console)
+> 5. ~~C4: Modales SketchSend~~ ✅
+> 6. ~~I10: MAX_GAP 2s → 500ms~~ ✅
+> 7. ~~I11: Feedback instantáneo al enviar + replay toggle~~ ✅
+> 8. ~~I8: Google primero en login~~ ✅
+> 9. ~~I7: Contexto en viewer público~~ ✅
+> 10. ~~I16: UI invitar amigos (link + copy + share)~~ ✅
+> 11. I21: Optimistic UI en toda la app
+> 12. I22: Lista de amigos incremental (no reescribir todo)
+> 13. I24: Viewer público mejorado (canvas adaptable + pulse CTA + perfil clickeable)
+> 14. I26: Clic en amigo = perfil, X = eliminar
+> 15. I15: Notificación in-app animada al recibir dibujo
+> 16. C3: Firestore TTL (requiere acción del usuario en Firebase Console)
 
 ---
 
@@ -51,7 +56,7 @@
 | C1 | **Push notifications (FCM)** | ✅ Cloud Function desplegada. VAPID key configurada. Merge a `main` hecho. FCM token confirmado en Firestore. En iOS Safari solo funciona si la app está instalada como PWA. Verificar que las notificaciones lleguen con un test real entre 2 cuentas. | ✅ Verificar |
 | C2 | **Canvas del viewer — probar escalado en más dispositivos** | Un dibujo hecho en desktop puede verse diferente en móvil. Se hizo un fix de aspect ratio pero falta verificar en dispositivos reales. | 🟡 Media |
 | C3 | **Limpieza automática de sketches expirados en Firestore** | Los sketches tienen `expiresAt` pero Firestore no los borra — se filtran solo en el cliente. Los documentos expirados se acumulan para siempre en la DB (hay ~44 sketches acumulados). Solución: activar **Firestore TTL** (Time-to-Live) en Firebase Console → campo `expiresAt` como TTL field. Firebase los borra automáticamente. | 🔴 Alta |
-| C4 | **`window.prompt()` y `confirm()` nativos → modales SketchSend** | Todos los `window.prompt()`, `window.confirm()` y `alert()` nativos del navegador se ven feos y poco profesionales. Reemplazar TODOS con modales/overlays en el estilo visual de SketchSend. Incluye: confirmar correo en dispositivo nuevo, eliminar amigo, agregar amigo por código. | 🔴 Alta |
+| C4 | **`window.prompt()` y `confirm()` nativos → modales SketchSend** | ✅ ssModal/ssConfirm/ssPrompt/ssAlert con blur backdrop, animaciones, botones accent. 4 diálogos reemplazados. | ✅ Hecho |
 | C5 | **Bug: Google login popup cierra pero la app no recarga** | ✅ Fix desplegado: fallback manual si `onAuthStateChanged` no dispara. Verificar que funcione. | ✅ Verificar |
 | C6 | **Pantalla de login parpadea al recargar la página** | ✅ Splash screen se mantiene hasta que onAuthStateChanged resuelve. Fallback de 3s. Login no parpadea. | ✅ Hecho |
 | C7 | **OG preview image incorrecta + favicon faltante** | ✅ OG 1200x630 con logo rainbow + texto inglés. Favicon 512x192 con ✏️ emoji en fondo rainbow. og:title en inglés. | ✅ Hecho |
@@ -69,16 +74,16 @@
 | I4 | **Rate limiting / anti-spam** | Un usuario puede spamear la DB con sketches. Limitar: max 20 sketches/hora por usuario. Implementar en Firestore Rules con timestamps. | 🟡 Media |
 | I5 | **App Check (reCAPTCHA v3)** | Protege Firebase de bots y abuso. Opcional pero recomendado antes del lanzamiento público. | 🟡 Media |
 | I6 | **Agente IA tester — más personas y escenarios** | Primera ronda hecha (Valentina, 23, CDMX). Falta simular: (1) Hombre de 45 años poco técnico, (2) Adolescente de 15 con iPhone, (3) Usuario que llega desde Instagram, (4) Persona que recibe el link pero no conoce al remitente, (5) Usuario que vuelve después de 1 semana. Correr después de cada cambio importante de UX. | 🟡 Media |
-| I7 | **Contexto en el viewer público para nuevos usuarios** | Agregar una línea antes del CTA: "En SketchSend los mensajes son dibujos. Gratis. Desaparecen en 24h." Valentina (persona) no entiende qué es la app al llegar por primera vez. | 🟡 Alta |
-| I8 | **Google primero en login, email como opción secundaria** | 80% de usuarios móviles elige Google si está arriba. El magic link tiene 4-5 pasos (escribir correo → ir al email → encontrar link → tocarlo → volver). Google son 2 toques. | 🟡 Alta |
+| I7 | **Contexto en el viewer público para nuevos usuarios** | ✅ "In SketchSend, messages are drawings. Free. They disappear in 24h." antes del CTA. | ✅ Hecho |
+| I8 | **Google primero en login, email como opción secundaria** | ✅ Google con logo SVG como botón principal. Email colapsado bajo `<details>`. | ✅ Hecho |
 | I9 | **Correo de invitación sin asunto ni contenido útil** | Cuando alguien invita a un amigo, el correo llega "(sin asunto)" y solo dice "¡Dibujemos juntos en SketchSend! ✏️🌈" sin link ni explicación. Necesita: asunto claro, link a la app, breve explicación de qué es SketchSend. Reportado por 2 usuarios. | 🟡 Alta |
-| I10 | **Replay: comprimir tiempo muerto al inicio y reducir MAX_GAP** | `comprimirGaps()` comprime pausas entre trazos a máx 2s, pero NO comprime el espacio vacío antes del primer trazo. Si alguien espera 10s antes de dibujar, se reproducen 10s de nada. Además 2s de gap máximo es mucho — reducir a ~500ms. Afecta también videos descargados. | 🟡 Alta |
-| I11 | **Feedback instantáneo al enviar + replay propio opcional** | Al dar clic en "Send" la app tarda en responder. Debe ser instantáneo (feedback visual). Después de enviar, reproducir el dibujo del usuario. Agregar toggle en menú: "Replay your own drawing when sent" para que sea opcional. | 🟡 Alta |
+| I10 | **Replay: comprimir tiempo muerto al inicio y reducir MAX_GAP** | ✅ MAX_GAP reducido de 2s a 500ms. El primer trazo ya comenzaba en tRel=0. | ✅ Hecho |
+| I11 | **Feedback instantáneo al enviar + replay propio opcional** | ✅ Toast inmediato, envío en background, replay opcional con toggle en Settings (ss_replay_self). | ✅ Hecho |
 | I12 | **Simplificar registro: ¿nombre + @usuario + correo es demasiado?** | El correo es para auth, el @usuario es ID público, el nombre es display. Evaluar: eliminar el paso de "nombre" y usar solo @usuario, o auto-generarlo del perfil de Google. Menos pasos = menos abandono. | 🟡 Media |
 | I13 | **Indicador verde de "online" en avatares de contactos** | Punto verde en los avatares de amigos que están conectados. Requiere actualizar un campo `lastSeen` en Firestore periódicamente y considerar como "online" si < 5 min. | 🟡 Media |
 | I14 | **Diferencias de replay entre desktop y móvil** | El replay se ve diferente en computadora vs teléfono. Revisar escalado, aspect ratio y tamaño del canvas en ambos. Reportado con video. | 🟡 Media |
 | I15 | **Notificación in-app animada al recibir un dibujo** | Cuando la app está abierta y llega un sketch, mostrar una notificación in-app con el logo de SketchSend animado (colores moviéndose en loop infinito) y texto: "You got a new sketch from @user1234". Las push notifications del sistema son limitadas (solo ícono estático), pero dentro de la app controlamos el diseño completo. | 🟡 Alta |
-| I16 | **UI de invitar amigos: mostrar link visible + botón copiar + botón compartir** | El link de invitación no se ve. Debe mostrarse el texto del link (aunque esté truncado), con un botón de copiar al lado (un toque = copiado) y al otro lado el botón de compartir. Todo en una fila compacta. | 🟡 Alta |
+| I16 | **UI de invitar amigos: mostrar link visible + botón copiar + botón compartir** | ✅ Fila compacta con URL visible (truncada), botón 📋 copiar, botón 📤 compartir. | ✅ Hecho |
 | I17 | **Lista de amigos: cachear en local, no recargar cada vez** | Al abrir Settings, la lista de amigos dice "Cargando..." cada vez aunque ya se cargó antes. Guardar en localStorage y solo consultar Firestore si hubo cambios (o en background). Evita parpadeo y reduce lecturas de Firestore. | 🟡 Media |
 | I18 | **Sistema de amistades: ¿aceptar/rechazar solicitud?** | Actualmente cualquiera te agrega como amigo sin tu permiso (y también te elimina sin aviso). Evaluar si necesitamos un sistema de solicitud de amistad con aceptar/rechazar. Riesgo de spam y privacidad si se queda como está. Riesgo de fricción si se agrega aprobación. Analizar trade-offs. | 🟡 Media |
 | I19 | **Guardar email del usuario en Firestore** | El documento del usuario no guarda el correo electrónico. Está en Firebase Auth pero no en la colección `users`. Agregarlo al crear/actualizar el perfil para tener datos completos. | 🟡 Alta — hacer ya |
