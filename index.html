@@ -221,9 +221,10 @@
     .hdr-space { flex:1; }
     /* Header buttons — mismo sistema, tamaño pequeño */
     .hbtn {
-      display:flex; align-items:center; gap:5px; padding:6px 13px; border-radius:8px;
+      display:flex; align-items:center; justify-content:center; gap:5px; padding:6px 13px; border-radius:8px;
       border:2px solid var(--border); background:var(--surface2); color:var(--text);
       font-family:var(--sans); font-size:0.82rem; font-weight:500; cursor:pointer; transition:all 0.2s;
+      min-width:90px;
     }
     .hbtn:hover { border-color:var(--accent); color:var(--accent2); }
     .hbtn:disabled { opacity:0.35; cursor:not-allowed; }
@@ -820,13 +821,12 @@
     /* ── VIEWER PÚBLICO (?view=ID) ── */
     #viewer-screen {
       display:none; position:fixed; inset:0; z-index:9000;
-      background:var(--bg); flex-direction:column; align-items:center; justify-content:center;
+      background:var(--bg); flex-direction:column; align-items:center; justify-content:flex-start;
     }
     #viewer-screen.activo { display:flex; animation:aparecer 0.35s ease; }
     #viewer-header {
-      position:absolute; top:0; left:0; right:0;
+      width:100%;
       padding:14px 18px; display:flex; align-items:center; justify-content:space-between;
-      background:linear-gradient(180deg,rgba(15,15,19,0.95) 0%,transparent 100%);
     }
     #viewer-sender {
       font-size:0.95rem; font-weight:600; color:var(--text);
@@ -858,10 +858,13 @@
 <!-- ── VIEWER PÚBLICO — se muestra cuando llegan con ?view=SKETCHID ── -->
 <div id="viewer-screen">
   <div id="viewer-header">
-    <div class="titulo" style="font-size:1.3rem;">SketchSend ✏️</div>
+    <div>
+      <div class="titulo" style="font-size:1.3rem;">SketchSend ✏️</div>
+      <div id="viewer-context" style="font-size:0.72rem;color:var(--muted);margin-top:2px;">In SketchSend, every message is a drawing ✏️</div>
+    </div>
     <div id="viewer-sender" style="display:flex;align-items:center;gap:8px;">
       <img id="viewer-avatar" style="width:28px;height:28px;border-radius:50%;border:2px solid var(--accent);object-fit:cover;" src="" alt="">
-      <span style="color:var(--muted);">Drawing by </span><span id="viewer-from" style="color:#e0e0e8;font-weight:700;">...</span>
+      <span id="viewer-drawing-by" style="color:#666;">Drawing by </span><span id="viewer-from" style="color:var(--accent);font-weight:700;">...</span>
     </div>
   </div>
   <div id="viewer-loading">Loading drawing... ✏️</div>
@@ -871,13 +874,13 @@
     <a href="./" style="color:var(--accent2);margin-top:8px;display:inline-block;">Go to SketchSend →</a>
   </div>
   <div id="viewer-cta" style="display:none;">
-    <div id="viewer-context" style="font-size:0.82rem;color:var(--muted);text-align:center;max-width:280px;margin:0 auto 10px;line-height:1.5;">In SketchSend, every message is a drawing ✏️</div>
     <button id="viewer-reply-btn" style="animation:viewerPulse 4s ease infinite;">✏️ Send your own drawing</button>
     <div id="viewer-hint">Create a free account and start drawing. It's quick!</div>
   </div>
 </div>
 
 <div id="splash-screen" style="position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity 0.6s ease;">
+<script>window._splashStart = Date.now();</script>
   <div class="titulo" id="splash-titulo" style="font-size:clamp(1.4rem, 6vw, 2.4rem);">SketchSend ✏️</div>
   <p style="color:var(--muted);font-size:0.95rem;animation:aparecer 1s ease 0.3s both;">Where every message is a drawing</p>
   <div style="width:40px;height:3px;background:var(--accent);border-radius:2px;margin-top:8px;animation:pulse 1.5s infinite;"></div>
@@ -959,7 +962,6 @@
       <div class="uinfo">
         <img id="av" class="avatar" src="" alt="">
         <span id="uname" class="uname"></span>
-        <button class="btn-g" id="salir-btn">Salir</button>
       </div>
     </div>
     <!-- Row 2: Mobile only — user + actions -->
@@ -972,7 +974,6 @@
       <button class="hbtn inbox-btn" id="inbox-btn-mob">
         ✉️ <span class="inbox-badge" id="inbox-badge-mob" style="display:none;">0</span>
       </button>
-      <button class="hbtn" id="salir-btn-mob">🚪</button>
     </div>
   </header>
 
@@ -1346,6 +1347,7 @@ const I18N = {
     photo_too_large: '⚠️ La imagen debe pesar menos de 5 MB',
     downloading_img: '🖼️ Descargando imagen...',
     anonymous: 'Anónimo',
+    viewer_drawing_by: 'Dibujo de', viewer_tagline: 'En SketchSend, cada mensaje es un dibujo ✏️', viewer_cta: '✏️ Envía tu propio dibujo', viewer_hint: 'Crea una cuenta gratis y empieza a dibujar. ¡Es rápido!', viewer_loading: 'Cargando dibujo... ✏️', viewer_expired: '⏳ Este dibujo expiró o no existe.',
   },
   en: {
     welcome: 'Welcome', welcome_sub: 'Enter your name and email to get started',
@@ -1427,6 +1429,7 @@ const I18N = {
     photo_too_large: '⚠️ Image must be under 5 MB',
     downloading_img: '🖼️ Downloading image...',
     anonymous: 'Anonymous',
+    viewer_drawing_by: 'Drawing by', viewer_tagline: 'In SketchSend, every message is a drawing ✏️', viewer_cta: '✏️ Send your own drawing', viewer_hint: 'Create a free account and start drawing. It\'s quick!', viewer_loading: 'Loading drawing... ✏️', viewer_expired: '⏳ This drawing has expired or doesn\'t exist.',
   }
 };
 
@@ -1478,8 +1481,6 @@ function applyLang() {
 
   // ── Header / app ──
   set('enviar-btn', 'send');
-  set('salir-btn', 'exit');
-  set('salir-btn-mob', 'exit');
   ['guardar-btn','guardar-btn-mob'].forEach(id => {
     const el = q(id); if (!el) return;
     const sp = el.querySelector('.hbtn-text');
@@ -1562,6 +1563,7 @@ function applyLang() {
   const langEn = q('lang-en-btn'); if (langEn) langEn.style.opacity = lang==='en' ? '1' : '0.5';
 
   document.documentElement.lang = lang;
+  if (typeof applySeason === 'function') applySeason();
 }
 
 function getBaseUrl() {
@@ -1578,7 +1580,6 @@ function generarShortCode() {
 /* ── REFERENCIAS DOM ── */
 const authScreen = document.getElementById('auth-screen');
 const appEl      = document.getElementById('app');
-const salirBtn   = document.getElementById('salir-btn');
 const avatarEl   = document.getElementById('av');
 const unameEl    = document.getElementById('uname');
 const cv         = document.getElementById('canvas');
@@ -1593,7 +1594,6 @@ const limpiarBtn = document.getElementById('limpiar-btn');
 /* Mobile header duplicates */
 const guardarBtnMob = document.getElementById('guardar-btn-mob');
 const limpiarBtnMob = document.getElementById('limpiar-btn-mob');
-const salirBtnMob   = document.getElementById('salir-btn-mob');
 const avMob          = document.getElementById('av-mob');
 const unameMob       = document.getElementById('uname-mob');
 const enviarBtn  = document.getElementById('enviar-btn');
@@ -1666,10 +1666,10 @@ modoOscuro.addEventListener('change', () => redibujar());
 
 /* ── TEMAS ESTACIONALES ── */
 const SEASONS = [
-  { months:[2,3,4],  label:'🌸 Primavera', cls:'season-spring' },
-  { months:[5,6,7],  label:'☀️ Verano',    cls:'season-summer' },
-  { months:[8,9,10], label:'🍂 Otoño',     cls:'season-autumn' },
-  { months:[11,0,1], label:'❄️ Invierno',  cls:'season-winter' },
+  { months:[2,3,4],  es:'🌸 Primavera', en:'🌸 Spring', cls:'season-spring' },
+  { months:[5,6,7],  es:'☀️ Verano',    en:'☀️ Summer', cls:'season-summer' },
+  { months:[8,9,10], es:'🍂 Otoño',     en:'🍂 Autumn', cls:'season-autumn' },
+  { months:[11,0,1], es:'❄️ Invierno',  en:'❄️ Winter', cls:'season-winter' },
 ];
 function applySeason() {
   const m = new Date().getMonth();
@@ -1678,7 +1678,7 @@ function applySeason() {
   document.documentElement.classList.remove(...SEASONS.map(x => x.cls));
   document.documentElement.classList.add(s.cls);
   const badge = document.getElementById('season-badge');
-  if (badge) badge.textContent = s.label;
+  if (badge) badge.textContent = s[lang] || s.en;
 }
 
 /* ══════════════════════════════════════════════════════
@@ -1877,13 +1877,17 @@ function finalizarLogin(username, displayName, photoURL) {
   ocultarTodasLasPantallas();
   appEl.style.display = 'flex';
   setupCanvas(); buildCarousel(); cargarBandeja(); iniciarPromptsCanvas();
-  requestAnimationFrame(() => {
+  const elapsed = Date.now() - (window._splashStart || 0);
+  const wait = Math.max(0, 3000 - elapsed);
+  setTimeout(() => {
     requestAnimationFrame(() => {
-      volarAlHeader();
-      const splash = document.getElementById('splash-screen');
-      if (splash) { splash.style.opacity = '0'; splash.addEventListener('transitionend', () => splash.remove(), { once: true }); }
+      requestAnimationFrame(() => {
+        volarAlHeader();
+        const splash = document.getElementById('splash-screen');
+        if (splash) { splash.style.opacity = '0'; splash.addEventListener('transitionend', () => splash.remove(), { once: true }); }
+      });
     });
-  });
+  }, wait);
   if (window.posthog) posthog.identify(username, { displayName, hasPhoto: !!photoURL });
 
   if (messaging && Notification.permission === 'granted') {
@@ -2170,8 +2174,6 @@ document.getElementById('google-btn').addEventListener('click', async () => {
   document.getElementById(id)?.addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('reg-btn').click(); });
 });
 
-salirBtn.addEventListener('click', doLogout);
-salirBtnMob.addEventListener('click', doLogout);
 
 /* ══════════════════════════════════════════════════════
    CANVAS CON HiDPI — sin pixelación al exportar
@@ -3938,6 +3940,16 @@ if ('serviceWorker' in navigator) {
   const fromEl    = document.getElementById('viewer-from');
 
   screen.classList.add('activo');
+  /* Apply i18n to viewer */
+  const vCtx = document.getElementById('viewer-context');
+  if (vCtx) vCtx.textContent = t('viewer_tagline');
+  loadingEl.textContent = t('viewer_loading');
+  const vBy = document.getElementById('viewer-drawing-by');
+  if (vBy) vBy.textContent = t('viewer_drawing_by') + ' ';
+  const vBtn = document.getElementById('viewer-reply-btn');
+  if (vBtn) vBtn.textContent = t('viewer_cta');
+  const vHint = document.getElementById('viewer-hint');
+  if (vHint) vHint.textContent = t('viewer_hint');
   if ('wakeLock' in navigator) navigator.wakeLock.request('screen').catch(() => {});
   if (window.posthog) posthog.capture('viewer_opened', { sketchId: viewId });
 
@@ -4058,6 +4070,7 @@ if ('serviceWorker' in navigator) {
 
   function showExpired() {
     loadingEl.style.display = 'none';
+    expiredEl.innerHTML = t('viewer_expired') + '<br><a href="./" style="color:var(--accent2);margin-top:8px;display:inline-block;">Go to SketchSend →</a>';
     expiredEl.style.display = 'block';
   }
 })();
