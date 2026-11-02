@@ -344,7 +344,7 @@ footer a { color: var(--accent2); }
       <div class="step-num">01</div>
       <span class="step-icon">🎨</span>
       <div class="step-title" data-i18n="step1_title">Draw</div>
-      <div class="step-desc" data-i18n="step1_desc">Use brushes, rainbow colors, and your creativity</div>
+      <div class="step-desc" data-i18n="step1_desc">Use the rainbow brush and your creativity</div>
     </div>
     <div class="step-card reveal">
       <div class="step-num">02</div>
@@ -372,7 +372,7 @@ footer a { color: var(--accent2); }
     </div>
     <div class="feature-card reveal">
       <span class="feature-icon">🌈</span>
-      <div class="feature-title" data-i18n="f2_title">Rainbow brushes</div>
+      <div class="feature-title" data-i18n="f2_title">Rainbow brush</div>
       <div class="feature-desc" data-i18n="f2_desc">Draw with colors that flow and shift. Your strokes become art.</div>
     </div>
     <div class="feature-card reveal">
@@ -419,12 +419,12 @@ const I18N = {
     hero_cta: 'Start Drawing — It\'s Free',
     hero_note: 'No download needed. Works in your browser.',
     how_title: 'How it works',
-    step1_title: 'Draw', step1_desc: 'Use brushes, rainbow colors, and your creativity',
+    step1_title: 'Draw', step1_desc: 'Use the rainbow brush and your creativity',
     step2_title: 'Send', step2_desc: 'Pick a friend and send your masterpiece',
     step3_title: 'They watch it come alive', step3_desc: 'Your drawing replays stroke by stroke',
     why_title: 'Why SketchSend?',
     f1_title: 'No text. Just drawings.', f1_desc: 'Every message is a hand-drawn creation. Express what words can\'t.',
-    f2_title: 'Rainbow brushes', f2_desc: 'Draw with colors that flow and shift. Your strokes become art.',
+    f2_title: 'Rainbow brush', f2_desc: 'Draw with colors that flow and shift. Your strokes become art.',
     f3_title: 'Disappears in 24h', f3_desc: 'Like a real sketch on paper. Here today, gone tomorrow.',
     f4_title: 'Animated replay', f4_desc: 'Watch every stroke appear just as it was drawn. Pure magic.',
     try_title: 'Try it yourself', try_subtitle: 'Go ahead, draw something!',
@@ -438,12 +438,12 @@ const I18N = {
     hero_cta: 'Empieza a Dibujar — Es Gratis',
     hero_note: 'Sin descargas. Funciona en tu navegador.',
     how_title: 'Cómo funciona',
-    step1_title: 'Dibuja', step1_desc: 'Usa pinceles, colores arcoíris y tu creatividad',
+    step1_title: 'Dibuja', step1_desc: 'Usa el pincel arcoíris y tu creatividad',
     step2_title: 'Envía', step2_desc: 'Elige un amigo y envía tu obra maestra',
     step3_title: 'Lo ven cobrar vida', step3_desc: 'Tu dibujo se reproduce trazo a trazo',
     why_title: '¿Por qué SketchSend?',
     f1_title: 'Sin texto. Solo dibujos.', f1_desc: 'Cada mensaje es una creación a mano. Expresa lo que las palabras no pueden.',
-    f2_title: 'Pinceles arcoíris', f2_desc: 'Dibuja con colores que fluyen y cambian. Tus trazos se vuelven arte.',
+    f2_title: 'Pincel arcoíris', f2_desc: 'Dibuja con colores que fluyen y cambian. Tus trazos se vuelven arte.',
     f3_title: 'Desaparece en 24h', f3_desc: 'Como un dibujo real en papel. Hoy está, mañana no.',
     f4_title: 'Replay animado', f4_desc: 'Mira cada trazo aparecer tal como fue dibujado. Pura magia.',
     try_title: 'Pruébalo tú mismo', try_subtitle: '¡Adelante, dibuja algo!',
@@ -489,93 +489,75 @@ document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
   ctx.scale(DPR, DPR);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
-  const COLORS = ['#ff6b6b','#ffa500','#ffd700','#4ecdc4','#45b7d1','#7c3aed','#ff6b9d'];
   const cx = W / 2, cy = H / 2;
 
-  // Define strokes: each is {points:[[x,y],...], color, width}
-  const strokes = [];
-
-  // Circle (sun body)
-  const circPts = [];
-  for (let a = 0; a <= Math.PI * 2 + 0.1; a += 0.12) {
-    circPts.push([cx + Math.cos(a) * 40, cy + Math.sin(a) * 40]);
+  // Rainbow color cycling — matches the real app's rainbow brush
+  function hslColor(t) {
+    return `hsl(${(t * 360) % 360}, 90%, 55%)`;
   }
-  strokes.push({ points: circPts, color: '#ffd700', width: 5 });
 
-  // Rays
-  for (let i = 0; i < 12; i++) {
-    const a = (Math.PI * 2 / 12) * i;
-    const pts = [];
-    for (let r = 55; r <= 90; r += 4) {
-      pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+  // Build a continuous path for a nice drawing — a flower with stem
+  const allPoints = [];
+  let colorOffset = 0;
+
+  // Stem (bottom to center)
+  for (let y = H - 30; y >= cy + 40; y -= 3) {
+    const wobble = Math.sin(y * 0.05) * 8;
+    allPoints.push([cx + wobble, y]);
+  }
+  // Left leaf
+  for (let a = 0; a <= Math.PI; a += 0.1) {
+    allPoints.push([cx - 10 - Math.sin(a) * 25, cy + 60 - Math.cos(a) * 12]);
+  }
+  // Right leaf
+  for (let a = Math.PI; a >= 0; a -= 0.1) {
+    allPoints.push([cx + 10 + Math.sin(a) * 25, cy + 45 - Math.cos(a) * 12]);
+  }
+  // Flower petals (5 petals as loops)
+  for (let p = 0; p < 5; p++) {
+    const pa = (Math.PI * 2 / 5) * p - Math.PI / 2;
+    const pcx = cx + Math.cos(pa) * 35;
+    const pcy = cy - 5 + Math.sin(pa) * 35;
+    for (let a = 0; a <= Math.PI * 2 + 0.2; a += 0.15) {
+      allPoints.push([pcx + Math.cos(a) * 20, pcy + Math.sin(a) * 18]);
     }
-    strokes.push({ points: pts, color: COLORS[i % COLORS.length], width: 3.5 });
   }
-
-  // Smiley eyes
-  const eyeL = [], eyeR = [];
-  for (let a = 0; a <= Math.PI * 2 + 0.1; a += 0.3) {
-    eyeL.push([cx - 14 + Math.cos(a) * 5, cy - 10 + Math.sin(a) * 5]);
-    eyeR.push([cx + 14 + Math.cos(a) * 5, cy - 10 + Math.sin(a) * 5]);
+  // Center circle
+  for (let a = 0; a <= Math.PI * 2 + 0.2; a += 0.12) {
+    allPoints.push([cx + Math.cos(a) * 14, cy - 5 + Math.sin(a) * 14]);
   }
-  strokes.push({ points: eyeL, color: '#1a1a2e', width: 3 });
-  strokes.push({ points: eyeR, color: '#1a1a2e', width: 3 });
-
-  // Smile arc
-  const smilePts = [];
-  for (let a = 0.3; a <= Math.PI - 0.3; a += 0.12) {
-    smilePts.push([cx + Math.cos(a) * 20, cy + 4 + Math.sin(a) * 14]);
+  // Spiral inside center
+  for (let a = 0; a <= Math.PI * 4; a += 0.2) {
+    const r = 2 + a * 1.2;
+    allPoints.push([cx + Math.cos(a) * Math.min(r, 12), cy - 5 + Math.sin(a) * Math.min(r, 12)]);
   }
-  strokes.push({ points: smilePts, color: '#ff6b6b', width: 3 });
-
-  // Small hearts / stars around
-  function starPoints(sx, sy, size) {
-    const pts = [];
-    for (let a = -Math.PI/2; a <= Math.PI * 1.6; a += 0.15) {
-      const r = size * (1 + 0.4 * Math.cos(a * 5));
-      pts.push([sx + Math.cos(a) * r, sy + Math.sin(a) * r]);
-    }
-    return pts;
-  }
-  strokes.push({ points: starPoints(cx - 120, cy - 80, 12), color: '#4ecdc4', width: 2.5 });
-  strokes.push({ points: starPoints(cx + 130, cy - 60, 10), color: '#ff6b9d', width: 2.5 });
-  strokes.push({ points: starPoints(cx + 100, cy + 90, 14), color: '#ffa500', width: 2.5 });
-  strokes.push({ points: starPoints(cx - 110, cy + 70, 11), color: '#45b7d1', width: 2.5 });
 
   // Animation state
-  let strokeIdx = 0, ptIdx = 0, frame = 0;
-  const SPEED = 3; // points per frame
-  const PAUSE = 120; // frames to pause after done
+  let ptIdx = 0;
+  const SPEED = 3;
+  const PAUSE = 120;
   let pauseCount = 0;
+  const totalPts = allPoints.length;
 
   function animate() {
-    if (strokeIdx >= strokes.length) {
+    if (ptIdx >= totalPts) {
       pauseCount++;
       if (pauseCount > PAUSE) {
         ctx.clearRect(0, 0, W, H);
-        strokeIdx = 0; ptIdx = 0; pauseCount = 0;
+        ptIdx = 0; pauseCount = 0; colorOffset += 0.3;
       }
       requestAnimationFrame(animate);
       return;
     }
 
-    const s = strokes[strokeIdx];
-    ctx.strokeStyle = s.color;
-    ctx.lineWidth = s.width;
-    ctx.fillStyle = s.color;
-
-    for (let i = 0; i < SPEED && ptIdx < s.points.length; i++, ptIdx++) {
-      if (ptIdx === 0) { ctx.beginPath(); ctx.moveTo(s.points[0][0], s.points[0][1]); }
-      else {
-        ctx.beginPath();
-        ctx.moveTo(s.points[ptIdx - 1][0], s.points[ptIdx - 1][1]);
-        ctx.lineTo(s.points[ptIdx][0], s.points[ptIdx][1]);
-        ctx.stroke();
-      }
-    }
-
-    if (ptIdx >= s.points.length) {
-      strokeIdx++; ptIdx = 0;
+    for (let i = 0; i < SPEED && ptIdx < totalPts; i++, ptIdx++) {
+      if (ptIdx === 0) continue;
+      ctx.beginPath();
+      ctx.moveTo(allPoints[ptIdx - 1][0], allPoints[ptIdx - 1][1]);
+      ctx.lineTo(allPoints[ptIdx][0], allPoints[ptIdx][1]);
+      ctx.strokeStyle = hslColor(colorOffset + ptIdx / totalPts);
+      ctx.lineWidth = 4;
+      ctx.stroke();
     }
 
     requestAnimationFrame(animate);
