@@ -854,6 +854,17 @@
     #viewer-loading { color:var(--muted); font-size:0.95rem; animation:pulse 1.5s infinite; }
     #viewer-expired { color:var(--danger); font-size:0.95rem; text-align:center; }
 
+    @media (max-width:600px) {
+      #viewer-header { padding:10px 12px; flex-wrap:wrap; gap:6px; }
+      #viewer-header .titulo { font-size:1rem; }
+      #viewer-header #viewer-context { font-size:0.65rem; }
+      #viewer-sender { font-size:0.8rem; }
+      #viewer-canvas { max-width:96vw; max-height:60vh; border-radius:10px; }
+      #viewer-cta { margin-top:14px; padding:0 16px; width:100%; }
+      #viewer-reply-btn { width:100%; padding:14px 20px; font-size:0.95rem; }
+      #viewer-hint { font-size:0.72rem; max-width:90vw; }
+    }
+
   </style>
 </head>
 <body>
@@ -864,7 +875,7 @@
   <div id="viewer-header">
     <div>
       <div class="titulo" style="font-size:1.3rem;">SketchSend ✏️</div>
-      <div id="viewer-context" style="font-size:0.72rem;color:var(--muted);margin-top:2px;">In SketchSend, every message is a drawing ✏️</div>
+      <div id="viewer-context" style="font-size:0.72rem;color:var(--muted);margin-top:2px;">Every message is a drawing ✏️</div>
     </div>
     <div id="viewer-sender" style="display:flex;align-items:center;gap:8px;">
       <img id="viewer-avatar" style="width:28px;height:28px;border-radius:50%;border:2px solid var(--accent);object-fit:cover;" src="" alt="">
@@ -1229,15 +1240,15 @@
           <button id="theme-light-btn" style="font-size:0.75rem;padding:4px 10px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:var(--muted);transition:.2s;">☀️ Light</button>
         </div>
       </div>
-      <div class="settings-row">
+      <div class="settings-row" id="replay-toggle-row" style="cursor:pointer;">
         <div>
           <div class="settings-row-label" id="lbl-replay-self">Replay after sending</div>
           <div class="settings-row-sub" id="lbl-replay-self-sub">Play back your drawing after you send it</div>
         </div>
-        <label style="position:relative;width:44px;height:24px;flex-shrink:0;">
+        <label style="position:relative;width:44px;height:24px;flex-shrink:0;pointer-events:none;">
           <input type="checkbox" id="toggle-replay-self" checked style="display:none;">
-          <span style="position:absolute;inset:0;border-radius:12px;background:var(--border);transition:.2s;cursor:pointer;"></span>
-          <span style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.2s;cursor:pointer;" id="toggle-replay-knob"></span>
+          <span style="position:absolute;inset:0;border-radius:12px;background:var(--border);transition:.3s;"></span>
+          <span style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.3s;box-shadow:0 1px 3px rgba(0,0,0,0.3);" id="toggle-replay-knob"></span>
         </label>
       </div>
       <div class="settings-row">
@@ -1356,7 +1367,7 @@ const I18N = {
     photo_too_large: '⚠️ La imagen debe pesar menos de 5 MB',
     downloading_img: '🖼️ Descargando imagen...',
     anonymous: 'Anónimo',
-    viewer_drawing_by: 'Dibujo de', viewer_tagline: 'En SketchSend, cada mensaje es un dibujo ✏️', viewer_cta: '✏️ Envía tu propio dibujo', viewer_hint: 'Crea una cuenta gratis y empieza a dibujar. ¡Es rápido!', viewer_loading: 'Cargando dibujo... ✏️', viewer_expired: '⏳ Este dibujo expiró o no existe.',
+    viewer_drawing_by: 'Dibujo de', viewer_tagline: 'Cada mensaje es un dibujo ✏️', viewer_cta: '✏️ Envía tu propio dibujo', viewer_hint: 'Crea una cuenta gratis y empieza a dibujar. ¡Es rápido!', viewer_loading: 'Cargando dibujo... ✏️', viewer_expired: '⏳ Este dibujo expiró o no existe.',
   },
   en: {
     welcome: 'Welcome', welcome_sub: 'Enter your name and email to get started',
@@ -1438,7 +1449,7 @@ const I18N = {
     photo_too_large: '⚠️ Image must be under 5 MB',
     downloading_img: '🖼️ Downloading image...',
     anonymous: 'Anonymous',
-    viewer_drawing_by: 'Drawing by', viewer_tagline: 'In SketchSend, every message is a drawing ✏️', viewer_cta: '✏️ Send your own drawing', viewer_hint: 'Create a free account and start drawing. It\'s quick!', viewer_loading: 'Loading drawing... ✏️', viewer_expired: '⏳ This drawing has expired or doesn\'t exist.',
+    viewer_drawing_by: 'Drawing by', viewer_tagline: 'Every message is a drawing ✏️', viewer_cta: '✏️ Send your own drawing', viewer_hint: 'Create a free account and start drawing. It\'s quick!', viewer_loading: 'Loading drawing... ✏️', viewer_expired: '⏳ This drawing has expired or doesn\'t exist.',
   }
 };
 
@@ -2234,7 +2245,8 @@ window.addEventListener('resize', () => {
 ══════════════════════════════════════════════════════ */
 let lastDrawTime = 0;
 let lastDrawX = 0, lastDrawY = 0;
-let tienePresionReal = false; /* se detecta al primer trazo */
+let tienePresionReal = false;
+let _pressureSamples = [];
 
 function coords(e) {
   const r = cv.getBoundingClientRect();
@@ -2246,8 +2258,17 @@ function coords(e) {
     x = e.clientX - r.left; y = e.clientY - r.top;
     p = (e.pressure !== undefined && e.pressure > 0) ? e.pressure : 0;
   }
-  /* Detectar si el dispositivo tiene presión real */
-  if (p > 0 && p !== 0.5) tienePresionReal = true;
+  /* Detect real pressure: collect samples and check if pressure actually varies.
+     Many Android devices report constant force (e.g. 1.0) which isn't real pressure. */
+  if (p > 0 && p !== 0.5 && !tienePresionReal) {
+    _pressureSamples.push(p);
+    if (_pressureSamples.length >= 10) {
+      const min = Math.min(..._pressureSamples);
+      const max = Math.max(..._pressureSamples);
+      tienePresionReal = (max - min) > 0.05;
+      if (!tienePresionReal) _pressureSamples = [];
+    }
+  }
   return { x, y, p };
 }
 
@@ -3051,11 +3072,19 @@ function dibujarFirma(targetCtx, w, h, animated) {
     targetCtx.fillRect(fx - 1, fy - 1, firmW + 2, firmH + 2);
   }
 
-  /* Fondo semi-transparente */
-  targetCtx.fillStyle = esDark() ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.65)';
+  /* Fondo semi-transparente + shadow for contrast */
+  if (!esDark()) {
+    targetCtx.shadowColor = 'rgba(0,0,0,0.15)';
+    targetCtx.shadowBlur = 8;
+    targetCtx.shadowOffsetX = 0;
+    targetCtx.shadowOffsetY = 2;
+  }
+  targetCtx.fillStyle = esDark() ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.85)';
   targetCtx.beginPath();
   targetCtx.roundRect(fx, fy, firmW, firmH, 8);
   targetCtx.fill();
+  targetCtx.shadowColor = 'transparent';
+  targetCtx.shadowBlur = 0;
 
   /* ══ LOGO RAINBOW con emoji coloreado + DPR nítido ══ */
   const logoText = 'SketchSend ✏️';
@@ -3141,7 +3170,10 @@ function dibujarFirma(targetCtx, w, h, animated) {
 }
 
 /* ── PNG ── */
+let _downloading = false;
 pngBtn.addEventListener('click', () => {
+  if (_downloading) { toast('⏳ ' + (lang === 'es' ? 'Espera a que termine la descarga actual' : 'Wait for the current download to finish')); return; }
+  _downloading = true;
   const tmp = document.createElement('canvas');
   tmp.width = cv.width; tmp.height = cv.height;
   const tc = tmp.getContext('2d');
@@ -3150,16 +3182,19 @@ pngBtn.addEventListener('click', () => {
   dibujarFirma(tc, tmp.width, tmp.height, false);
   descargarDataURL(tmp.toDataURL('image/png'), `sketchsend_${Date.now()}.png`);
   modalEl.classList.remove('open'); toast(t('downloading_img'));
+  setTimeout(() => { _downloading = false; }, 1000);
 });
 
 /* ── VIDEO — tiempo real con compresión de gaps + progreso ── */
 vidBtn.addEventListener('click', async () => {
+  if (_downloading) { toast('⏳ ' + (lang === 'es' ? 'Espera a que termine la descarga actual' : 'Wait for the current download to finish')); return; }
   /* Bug 6: verificar soporte */
   if (typeof MediaRecorder === 'undefined' || !HTMLCanvasElement.prototype.captureStream) {
     toast(t('no_video_support'));
     modalEl.classList.remove('open'); return;
   }
   if (!trazos.length) { toast(t('draw_first')); return; }
+  _downloading = true;
   modalEl.classList.remove('open');
 
   const segs = trazos.filter(s => s.tipo === 'seg' && s.t !== undefined);
@@ -3208,6 +3243,7 @@ vidBtn.addEventListener('click', async () => {
       const blob = new Blob(chunks, { type: 'video/webm' });
       descargar(blob, `sketchsend_${Date.now()}.webm`);
       toast('🎬 Video descargado');
+      _downloading = false;
       resolve();
     };
 
@@ -3237,6 +3273,7 @@ vidBtn.addEventListener('click', async () => {
   } catch (err) {
     console.error('Video export error:', err);
     toast(lang === 'en' ? '⚠️ Error recording video — try again' : '⚠️ Error al grabar video — intenta de nuevo');
+    _downloading = false;
   }
 });
 
@@ -3856,8 +3893,7 @@ replayToggle.addEventListener('change', () => {
   localStorage.setItem('ss_replay_self', replayToggle.checked ? 'true' : 'false');
   syncReplayToggle();
 });
-replayKnob.addEventListener('click', () => { replayToggle.checked = !replayToggle.checked; replayToggle.dispatchEvent(new Event('change')); });
-replayKnob.parentElement.previousElementSibling.addEventListener('click', () => { replayToggle.checked = !replayToggle.checked; replayToggle.dispatchEvent(new Event('change')); });
+document.getElementById('replay-toggle-row').addEventListener('click', () => { replayToggle.checked = !replayToggle.checked; replayToggle.dispatchEvent(new Event('change')); });
 
 settingsLogout.addEventListener('click', () => {
   cerrarSettings();

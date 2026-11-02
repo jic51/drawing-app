@@ -11,7 +11,7 @@
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #0e0e14;
@@ -22,7 +22,7 @@
   --text: #e8e8f0;
   --muted: #8888a8;
   --border: #2a2a40;
-  --rainbow: linear-gradient(90deg, #ff6b6b, #ffa500, #ffd700, #4ecdc4, #45b7d1, #7c3aed);
+  --rainbow: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #9400d3, #ff0000);
   --glow: rgba(124,58,237,0.3);
   --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
@@ -102,17 +102,19 @@ section {
   pointer-events: none;
 }
 .hero-logo {
+  font-family: 'Syne', sans-serif;
   font-size: clamp(2.8rem, 8vw, 5rem);
   font-weight: 900;
-  letter-spacing: -0.03em;
+  white-space: nowrap;
   background: var(--rainbow);
-  background-size: 200% 100%;
+  background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: rainbowShift 4s linear infinite;
+  animation: mover 2.5s linear infinite;
   margin-bottom: 8px;
 }
+@keyframes mover { from{background-position:0% center} to{background-position:200% center} }
 @keyframes rainbowShift {
   0% { background-position: 0% 50%; }
   100% { background-position: 200% 50%; }
@@ -302,14 +304,16 @@ footer {
   font-size: 0.82rem;
 }
 footer .footer-logo {
+  font-family: 'Syne', sans-serif;
   font-size: 1.3rem;
-  font-weight: 800;
+  font-weight: 900;
+  white-space: nowrap;
   background: var(--rainbow);
-  background-size: 200% 100%;
+  background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: rainbowShift 4s linear infinite;
+  animation: mover 2.5s linear infinite;
   margin-bottom: 8px;
 }
 footer p { margin: 4px 0; }
@@ -382,6 +386,37 @@ footer a { color: var(--accent2); }
 .gallery-empty {
   color: var(--muted); font-size: 0.9rem; padding: 40px;
   border: 2px dashed var(--border); border-radius: 16px;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  section { padding: 50px 16px; }
+  .hero { padding: 80px 16px 40px; min-height: 90vh; }
+  .hero-tagline { font-size: 1rem; }
+  .hero-subtitle { font-size: 0.85rem; margin-bottom: 20px; }
+  .cta-btn { padding: 14px 32px; font-size: 1rem; }
+  .hero-note { font-size: 0.75rem; }
+  .section-title { font-size: 1.4rem; margin-bottom: 30px; }
+  .step-card { padding: 24px 18px; }
+  .step-icon { font-size: 2rem; }
+  .step-title { font-size: 1.05rem; }
+  .step-desc { font-size: 0.82rem; }
+  .feature-card { padding: 22px 18px; }
+  .feature-icon { font-size: 1.6rem; }
+  .feature-title { font-size: 1rem; }
+  .feature-desc { font-size: 0.82rem; }
+  .counter-wrap { padding: 22px 30px; }
+  .counter-number { font-size: 2.2rem; }
+  .counter-label { font-size: 0.85rem; }
+  .testimonials-section { padding: 40px 16px; }
+  .testimonials-grid { grid-template-columns: 1fr; }
+  .testimonial-card { padding: 18px; }
+  .testimonial-text { font-size: 0.88rem; }
+  .gallery-section { padding: 40px 16px; }
+  .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .try-controls { flex-wrap: wrap; gap: 8px; }
+  .try-controls button { padding: 6px 14px; font-size: 0.8rem; }
+  footer { padding: 36px 16px; }
 }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
