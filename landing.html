@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SketchSend — Every message is a drawing</title>
+<meta name="description" content="Draw, send, and watch your messages come alive. SketchSend turns every message into a hand-drawn animated creation.">
+<meta property="og:title" content="SketchSend — Every message is a drawing ✏️">
+<meta property="og:description" content="Draw, send, and watch your messages come alive.">
+<meta property="og:image" content="https://jic51.github.io/drawing-app/og-preview.png">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0e14;
+  --surface: #1a1a2e;
+  --surface2: #22223a;
+  --accent: #7c3aed;
+  --accent2: #a78bfa;
+  --text: #e8e8f0;
+  --muted: #8888a8;
+  --border: #2a2a40;
+  --rainbow: linear-gradient(90deg, #ff6b6b, #ffa500, #ffd700, #4ecdc4, #45b7d1, #7c3aed);
+  --glow: rgba(124,58,237,0.3);
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent2); text-decoration: none; }
+
+/* Language toggle */
+.lang-toggle {
+  position: fixed; top: 16px; right: 16px; z-index: 100;
+  display: flex; gap: 0; border-radius: 20px; overflow: hidden;
+  border: 1px solid var(--border); background: var(--surface);
+  font-size: 0.75rem; font-weight: 600;
+}
+.lang-toggle button {
+  padding: 6px 14px; border: none; cursor: pointer;
+  background: transparent; color: var(--muted);
+  font-family: var(--sans); font-size: 0.75rem; font-weight: 600;
+  transition: all 0.2s;
+}
+.lang-toggle button.active {
+  background: var(--accent); color: #fff;
+}
+
+/* Sections */
+section {
+  padding: 80px 16px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.section-title {
+  text-align: center;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 800;
+  margin-bottom: 50px;
+  letter-spacing: -0.02em;
+}
+.section-title span {
+  background: var(--rainbow);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Fade-in animation */
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: 100px 16px 60px;
+  position: relative;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 30%, rgba(124,58,237,0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+.hero-logo {
+  font-size: clamp(2.8rem, 8vw, 5rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  background: var(--rainbow);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: rainbowShift 4s linear infinite;
+  margin-bottom: 8px;
+}
+@keyframes rainbowShift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+.hero-tagline {
+  font-size: clamp(1.1rem, 3vw, 1.6rem);
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.hero-subtitle {
+  font-size: clamp(0.9rem, 2vw, 1.1rem);
+  color: var(--muted);
+  margin-bottom: 30px;
+}
+.hero-canvas-wrap {
+  position: relative;
+  margin-bottom: 36px;
+}
+#hero-canvas {
+  border-radius: 16px;
+  box-shadow: 0 0 60px var(--glow), 0 20px 60px rgba(0,0,0,0.4);
+  background: #fff;
+  max-width: 90vw;
+}
+.cta-btn {
+  display: inline-block;
+  padding: 16px 40px;
+  border-radius: 50px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--sans);
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 0 30px var(--glow);
+  transition: transform 0.15s, box-shadow 0.15s;
+  animation: ctaPulse 3s ease infinite;
+  text-decoration: none;
+}
+.cta-btn:hover { transform: scale(1.05); box-shadow: 0 0 40px var(--glow); }
+@keyframes ctaPulse {
+  0%, 80%, 100% { transform: scale(1); }
+  90% { transform: scale(1.05); }
+}
+.hero-note {
+  margin-top: 14px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+/* ── HOW IT WORKS ── */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+@media (max-width: 700px) {
+  .steps { grid-template-columns: 1fr; }
+}
+.step-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px 24px;
+  text-align: center;
+  transition: transform 0.25s, border-color 0.25s;
+  position: relative;
+}
+.step-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--accent);
+}
+.step-num {
+  font-size: 0.7rem; font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+}
+.step-icon {
+  font-size: 2.4rem;
+  margin-bottom: 14px;
+  display: block;
+}
+.step-title {
+  font-size: 1.2rem; font-weight: 700;
+  margin-bottom: 8px;
+}
+.step-desc {
+  font-size: 0.9rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ── WHY SKETCHSEND ── */
+.features {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+@media (max-width: 700px) {
+  .features { grid-template-columns: 1fr; }
+}
+.feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 24px;
+  transition: transform 0.25s, border-color 0.25s;
+}
+.feature-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+}
+.feature-icon {
+  font-size: 2rem;
+  margin-bottom: 10px;
+  display: block;
+}
+.feature-title {
+  font-size: 1.1rem; font-weight: 700;
+  margin-bottom: 6px;
+}
+.feature-desc {
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* ── TRY IT ── */
+.try-section {
+  text-align: center;
+}
+.try-subtitle {
+  font-size: 1rem;
+  color: var(--muted);
+  margin-top: -36px;
+  margin-bottom: 30px;
+}
+.try-canvas-wrap {
+  display: inline-block;
+  position: relative;
+  margin-bottom: 16px;
+}
+#try-canvas {
+  border-radius: 14px;
+  border: 2px solid var(--border);
+  background: #fff;
+  cursor: crosshair;
+  touch-action: none;
+  max-width: 90vw;
+}
+.try-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.try-controls button {
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.try-controls button:hover { border-color: var(--accent); }
+.try-msg {
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin-bottom: 20px;
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+.try-msg.show { opacity: 1; }
+
+/* ── FOOTER ── */
+footer {
+  text-align: center;
+  padding: 50px 16px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+footer .footer-logo {
+  font-size: 1.3rem;
+  font-weight: 800;
+  background: var(--rainbow);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: rainbowShift 4s linear infinite;
+  margin-bottom: 8px;
+}
+footer p { margin: 4px 0; }
+footer a { color: var(--accent2); }
+</style>
+</head>
+<body>
+
+<!-- Language toggle -->
+<div class="lang-toggle">
+  <button id="btn-en" class="active" onclick="setLang('en')">EN</button>
+  <button id="btn-es" onclick="setLang('es')">ES</button>
+</div>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+  <div class="hero-logo">SketchSend ✏️</div>
+  <div class="hero-tagline" data-i18n="hero_tagline">Every message is a drawing</div>
+  <div class="hero-subtitle" data-i18n="hero_subtitle">Draw. Send. Watch it come alive.</div>
+  <div class="hero-canvas-wrap">
+    <canvas id="hero-canvas" width="400" height="300"></canvas>
+  </div>
+  <a href="./" class="cta-btn" data-i18n="hero_cta">Start Drawing — It's Free</a>
+  <div class="hero-note" data-i18n="hero_note">No download needed. Works in your browser.</div>
+</section>
+
+<!-- ══ HOW IT WORKS ══ -->
+<section class="reveal">
+  <div class="section-title"><span data-i18n="how_title">How it works</span></div>
+  <div class="steps">
+    <div class="step-card reveal">
+      <div class="step-num">01</div>
+      <span class="step-icon">🎨</span>
+      <div class="step-title" data-i18n="step1_title">Draw</div>
+      <div class="step-desc" data-i18n="step1_desc">Use brushes, rainbow colors, and your creativity</div>
+    </div>
+    <div class="step-card reveal">
+      <div class="step-num">02</div>
+      <span class="step-icon">✉️</span>
+      <div class="step-title" data-i18n="step2_title">Send</div>
+      <div class="step-desc" data-i18n="step2_desc">Pick a friend and send your masterpiece</div>
+    </div>
+    <div class="step-card reveal">
+      <div class="step-num">03</div>
+      <span class="step-icon">🎬</span>
+      <div class="step-title" data-i18n="step3_title">They watch it come alive</div>
+      <div class="step-desc" data-i18n="step3_desc">Your drawing replays stroke by stroke</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ WHY SKETCHSEND ══ -->
+<section class="reveal">
+  <div class="section-title"><span data-i18n="why_title">Why SketchSend?</span></div>
+  <div class="features">
+    <div class="feature-card reveal">
+      <span class="feature-icon">✏️</span>
+      <div class="feature-title" data-i18n="f1_title">No text. Just drawings.</div>
+      <div class="feature-desc" data-i18n="f1_desc">Every message is a hand-drawn creation. Express what words can't.</div>
+    </div>
+    <div class="feature-card reveal">
+      <span class="feature-icon">🌈</span>
+      <div class="feature-title" data-i18n="f2_title">Rainbow brushes</div>
+      <div class="feature-desc" data-i18n="f2_desc">Draw with colors that flow and shift. Your strokes become art.</div>
+    </div>
+    <div class="feature-card reveal">
+      <span class="feature-icon">⏳</span>
+      <div class="feature-title" data-i18n="f3_title">Disappears in 24h</div>
+      <div class="feature-desc" data-i18n="f3_desc">Like a real sketch on paper. Here today, gone tomorrow.</div>
+    </div>
+    <div class="feature-card reveal">
+      <span class="feature-icon">🎬</span>
+      <div class="feature-title" data-i18n="f4_title">Animated replay</div>
+      <div class="feature-desc" data-i18n="f4_desc">Watch every stroke appear just as it was drawn. Pure magic.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ TRY IT ══ -->
+<section class="try-section reveal">
+  <div class="section-title"><span data-i18n="try_title">Try it yourself</span></div>
+  <div class="try-subtitle" data-i18n="try_subtitle">Go ahead, draw something!</div>
+  <div class="try-canvas-wrap">
+    <canvas id="try-canvas" width="400" height="300"></canvas>
+  </div>
+  <div class="try-controls">
+    <button onclick="clearTryCanvas()" data-i18n="try_clear">Clear</button>
+  </div>
+  <div class="try-msg" id="try-msg" data-i18n="try_msg">Imagine sending this to a friend ✨</div>
+  <div><a href="./" class="cta-btn" style="font-size:1rem;padding:14px 34px;" data-i18n="try_cta">Create your account</a></div>
+</section>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <div class="footer-logo">SketchSend ✏️</div>
+  <p data-i18n="footer_made">Made with ✏️ and ❤️</p>
+  <p>© 2026 SketchSend</p>
+  <p><a href="./" data-i18n="footer_open">Open SketchSend →</a></p>
+</footer>
+
+<script>
+/* ── i18n ── */
+const I18N = {
+  en: {
+    hero_tagline: 'Every message is a drawing',
+    hero_subtitle: 'Draw. Send. Watch it come alive.',
+    hero_cta: 'Start Drawing — It\'s Free',
+    hero_note: 'No download needed. Works in your browser.',
+    how_title: 'How it works',
+    step1_title: 'Draw', step1_desc: 'Use brushes, rainbow colors, and your creativity',
+    step2_title: 'Send', step2_desc: 'Pick a friend and send your masterpiece',
+    step3_title: 'They watch it come alive', step3_desc: 'Your drawing replays stroke by stroke',
+    why_title: 'Why SketchSend?',
+    f1_title: 'No text. Just drawings.', f1_desc: 'Every message is a hand-drawn creation. Express what words can\'t.',
+    f2_title: 'Rainbow brushes', f2_desc: 'Draw with colors that flow and shift. Your strokes become art.',
+    f3_title: 'Disappears in 24h', f3_desc: 'Like a real sketch on paper. Here today, gone tomorrow.',
+    f4_title: 'Animated replay', f4_desc: 'Watch every stroke appear just as it was drawn. Pure magic.',
+    try_title: 'Try it yourself', try_subtitle: 'Go ahead, draw something!',
+    try_clear: 'Clear', try_msg: 'Imagine sending this to a friend ✨',
+    try_cta: 'Create your account',
+    footer_made: 'Made with ✏️ and ❤️', footer_open: 'Open SketchSend →'
+  },
+  es: {
+    hero_tagline: 'Cada mensaje es un dibujo',
+    hero_subtitle: 'Dibuja. Envía. Míralo cobrar vida.',
+    hero_cta: 'Empieza a Dibujar — Es Gratis',
+    hero_note: 'Sin descargas. Funciona en tu navegador.',
+    how_title: 'Cómo funciona',
+    step1_title: 'Dibuja', step1_desc: 'Usa pinceles, colores arcoíris y tu creatividad',
+    step2_title: 'Envía', step2_desc: 'Elige un amigo y envía tu obra maestra',
+    step3_title: 'Lo ven cobrar vida', step3_desc: 'Tu dibujo se reproduce trazo a trazo',
+    why_title: '¿Por qué SketchSend?',
+    f1_title: 'Sin texto. Solo dibujos.', f1_desc: 'Cada mensaje es una creación a mano. Expresa lo que las palabras no pueden.',
+    f2_title: 'Pinceles arcoíris', f2_desc: 'Dibuja con colores que fluyen y cambian. Tus trazos se vuelven arte.',
+    f3_title: 'Desaparece en 24h', f3_desc: 'Como un dibujo real en papel. Hoy está, mañana no.',
+    f4_title: 'Replay animado', f4_desc: 'Mira cada trazo aparecer tal como fue dibujado. Pura magia.',
+    try_title: 'Pruébalo tú mismo', try_subtitle: '¡Adelante, dibuja algo!',
+    try_clear: 'Limpiar', try_msg: 'Imagina enviar esto a un amigo ✨',
+    try_cta: 'Crea tu cuenta',
+    footer_made: 'Hecho con ✏️ y ❤️', footer_open: 'Abrir SketchSend →'
+  }
+};
+
+let lang = 'en';
+function setLang(l) {
+  lang = l;
+  try { localStorage.setItem('ss_landing_lang', l); } catch(e) {}
+  document.getElementById('btn-en').classList.toggle('active', l === 'en');
+  document.getElementById('btn-es').classList.toggle('active', l === 'es');
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (I18N[l][key]) el.textContent = I18N[l][key];
+  });
+}
+(function initLang() {
+  let saved = null;
+  try { saved = localStorage.getItem('ss_landing_lang'); } catch(e) {}
+  if (saved) { setLang(saved); return; }
+  const nav = (navigator.language || '').toLowerCase();
+  setLang(nav.startsWith('es') ? 'es' : 'en');
+})();
+
+/* ── Scroll reveal ── */
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+}, { threshold: 0.15 });
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+/* ── Hero canvas — animated sun drawing ── */
+(function() {
+  const cv = document.getElementById('hero-canvas');
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const W = 400, H = 300;
+  cv.width = W * DPR; cv.height = H * DPR;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.scale(DPR, DPR);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  const COLORS = ['#ff6b6b','#ffa500','#ffd700','#4ecdc4','#45b7d1','#7c3aed','#ff6b9d'];
+  const cx = W / 2, cy = H / 2;
+
+  // Define strokes: each is {points:[[x,y],...], color, width}
+  const strokes = [];
+
+  // Circle (sun body)
+  const circPts = [];
+  for (let a = 0; a <= Math.PI * 2 + 0.1; a += 0.12) {
+    circPts.push([cx + Math.cos(a) * 40, cy + Math.sin(a) * 40]);
+  }
+  strokes.push({ points: circPts, color: '#ffd700', width: 5 });
+
+  // Rays
+  for (let i = 0; i < 12; i++) {
+    const a = (Math.PI * 2 / 12) * i;
+    const pts = [];
+    for (let r = 55; r <= 90; r += 4) {
+      pts.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+    }
+    strokes.push({ points: pts, color: COLORS[i % COLORS.length], width: 3.5 });
+  }
+
+  // Smiley eyes
+  const eyeL = [], eyeR = [];
+  for (let a = 0; a <= Math.PI * 2 + 0.1; a += 0.3) {
+    eyeL.push([cx - 14 + Math.cos(a) * 5, cy - 10 + Math.sin(a) * 5]);
+    eyeR.push([cx + 14 + Math.cos(a) * 5, cy - 10 + Math.sin(a) * 5]);
+  }
+  strokes.push({ points: eyeL, color: '#1a1a2e', width: 3 });
+  strokes.push({ points: eyeR, color: '#1a1a2e', width: 3 });
+
+  // Smile arc
+  const smilePts = [];
+  for (let a = 0.3; a <= Math.PI - 0.3; a += 0.12) {
+    smilePts.push([cx + Math.cos(a) * 20, cy + 4 + Math.sin(a) * 14]);
+  }
+  strokes.push({ points: smilePts, color: '#ff6b6b', width: 3 });
+
+  // Small hearts / stars around
+  function starPoints(sx, sy, size) {
+    const pts = [];
+    for (let a = -Math.PI/2; a <= Math.PI * 1.6; a += 0.15) {
+      const r = size * (1 + 0.4 * Math.cos(a * 5));
+      pts.push([sx + Math.cos(a) * r, sy + Math.sin(a) * r]);
+    }
+    return pts;
+  }
+  strokes.push({ points: starPoints(cx - 120, cy - 80, 12), color: '#4ecdc4', width: 2.5 });
+  strokes.push({ points: starPoints(cx + 130, cy - 60, 10), color: '#ff6b9d', width: 2.5 });
+  strokes.push({ points: starPoints(cx + 100, cy + 90, 14), color: '#ffa500', width: 2.5 });
+  strokes.push({ points: starPoints(cx - 110, cy + 70, 11), color: '#45b7d1', width: 2.5 });
+
+  // Animation state
+  let strokeIdx = 0, ptIdx = 0, frame = 0;
+  const SPEED = 3; // points per frame
+  const PAUSE = 120; // frames to pause after done
+  let pauseCount = 0;
+
+  function animate() {
+    if (strokeIdx >= strokes.length) {
+      pauseCount++;
+      if (pauseCount > PAUSE) {
+        ctx.clearRect(0, 0, W, H);
+        strokeIdx = 0; ptIdx = 0; pauseCount = 0;
+      }
+      requestAnimationFrame(animate);
+      return;
+    }
+
+    const s = strokes[strokeIdx];
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = s.width;
+    ctx.fillStyle = s.color;
+
+    for (let i = 0; i < SPEED && ptIdx < s.points.length; i++, ptIdx++) {
+      if (ptIdx === 0) { ctx.beginPath(); ctx.moveTo(s.points[0][0], s.points[0][1]); }
+      else {
+        ctx.beginPath();
+        ctx.moveTo(s.points[ptIdx - 1][0], s.points[ptIdx - 1][1]);
+        ctx.lineTo(s.points[ptIdx][0], s.points[ptIdx][1]);
+        ctx.stroke();
+      }
+    }
+
+    if (ptIdx >= s.points.length) {
+      strokeIdx++; ptIdx = 0;
+    }
+
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+/* ── Try-it canvas — interactive rainbow drawing ── */
+(function() {
+  const cv = document.getElementById('try-canvas');
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const W = 400, H = 300;
+  cv.width = W * DPR; cv.height = H * DPR;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.scale(DPR, DPR);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 4;
+
+  let drawing = false;
+  let hue = 0, lastX, lastY;
+  let hasDrawn = false;
+  const msg = document.getElementById('try-msg');
+
+  function pos(e) {
+    const r = cv.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return [(t.clientX - r.left) * (W / r.width), (t.clientY - r.top) * (H / r.height)];
+  }
+
+  function start(e) {
+    e.preventDefault();
+    drawing = true;
+    [lastX, lastY] = pos(e);
+  }
+  function move(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    const [x, y] = pos(e);
+    ctx.strokeStyle = `hsl(${hue}, 90%, 55%)`;
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
+    hue = (hue + 2) % 360;
+    lastX = x; lastY = y;
+    if (!hasDrawn) { hasDrawn = true; msg.classList.add('show'); }
+  }
+  function end() { drawing = false; }
+
+  cv.addEventListener('mousedown', start);
+  cv.addEventListener('mousemove', move);
+  cv.addEventListener('mouseup', end);
+  cv.addEventListener('mouseleave', end);
+  cv.addEventListener('touchstart', start, { passive: false });
+  cv.addEventListener('touchmove', move, { passive: false });
+  cv.addEventListener('touchend', end);
+
+  window.clearTryCanvas = function() {
+    ctx.clearRect(0, 0, W, H);
+    hasDrawn = false;
+    msg.classList.remove('show');
+  };
+})();
+</script>
+</body>
+</html>
