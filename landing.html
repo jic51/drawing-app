@@ -101,9 +101,11 @@ section {
   background: radial-gradient(ellipse at 50% 30%, rgba(124,58,237,0.15) 0%, transparent 60%);
   pointer-events: none;
 }
-.hero-logo {
+/* ══ LOGO CANÓNICO — idéntico al .titulo de la app ══
+   NO modificar sin actualizar .titulo en sketchsendv14.html.
+   Todo lugar que muestre "SketchSend ✏️" debe usar .ss-logo. */
+.ss-logo {
   font-family: 'Syne', sans-serif;
-  font-size: clamp(2.8rem, 8vw, 5rem);
   font-weight: 900;
   white-space: nowrap;
   background: var(--rainbow);
@@ -112,12 +114,12 @@ section {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: mover 2.5s linear infinite;
-  margin-bottom: 8px;
 }
 @keyframes mover { from{background-position:0% center} to{background-position:200% center} }
-@keyframes rainbowShift {
-  0% { background-position: 0% 50%; }
-  100% { background-position: 200% 50%; }
+
+.hero-logo {
+  font-size: clamp(2.8rem, 8vw, 5rem);
+  margin-bottom: 8px;
 }
 .hero-tagline {
   font-size: clamp(1.1rem, 3vw, 1.6rem);
@@ -304,16 +306,7 @@ footer {
   font-size: 0.82rem;
 }
 footer .footer-logo {
-  font-family: 'Syne', sans-serif;
   font-size: 1.3rem;
-  font-weight: 900;
-  white-space: nowrap;
-  background: var(--rainbow);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: mover 2.5s linear infinite;
   margin-bottom: 8px;
 }
 footer p { margin: 4px 0; }
@@ -333,7 +326,7 @@ footer a { color: var(--accent2); }
   font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 900;
   background: var(--rainbow); background-size: 200% 100%;
   -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text; animation: rainbowShift 4s linear infinite;
+  background-clip: text; animation: mover 2.5s linear infinite;
   font-variant-numeric: tabular-nums;
 }
 .counter-label {
@@ -426,9 +419,7 @@ footer a { color: var(--accent2); }
 
 <!-- ══ SPLASH ══ -->
 <div id="landing-splash" style="position:fixed;inset:0;z-index:9999;background:#0e0e14;display:flex;align-items:center;justify-content:center;transition:opacity 0.5s;">
-  <div id="landing-splash-logo" style="font-size:clamp(2.8rem,8vw,5rem);font-weight:900;font-family:var(--sans);letter-spacing:-0.03em;">
-    <span style="background:var(--rainbow);background-size:200% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:rainbowShift 4s linear infinite;">SketchSend</span> ✏️
-  </div>
+  <div id="landing-splash-logo" class="ss-logo" style="font-size:clamp(2.8rem,8vw,5rem);">SketchSend ✏️</div>
 </div>
 
 <!-- Language toggle -->
@@ -439,7 +430,7 @@ footer a { color: var(--accent2); }
 
 <!-- ══ HERO ══ -->
 <section class="hero">
-  <div class="hero-logo" style="visibility:hidden;">SketchSend ✏️</div>
+  <div class="ss-logo hero-logo" style="visibility:hidden;">SketchSend ✏️</div>
   <div class="hero-tagline" data-i18n="hero_tagline">Every message is a drawing</div>
   <div class="hero-subtitle" data-i18n="hero_subtitle">Draw. Send. Watch it come alive.</div>
   <div class="hero-canvas-wrap">
@@ -543,7 +534,7 @@ footer a { color: var(--accent2); }
 
 <!-- ══ FOOTER ══ -->
 <footer>
-  <div class="footer-logo">SketchSend ✏️</div>
+  <div class="ss-logo footer-logo">SketchSend ✏️</div>
   <p data-i18n="footer_made">Made with ✏️ and ❤️</p>
   <p>© 2026 SketchSend</p>
   <p><a href="./" target="_blank" data-i18n="footer_open">Open SketchSend →</a></p>
@@ -896,7 +887,8 @@ function createGalleryCard(strokes, author) {
     const to = heroLogo.getBoundingClientRect();
     if (from.width === 0 || to.width === 0) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 500); return; }
     const clone = splashLogo.cloneNode(true);
-    clone.style.cssText = 'position:fixed;z-index:10000;left:' + from.left + 'px;top:' + from.top + 'px;width:' + from.width + 'px;font-size:' + getComputedStyle(splashLogo).fontSize + ';font-weight:900;font-family:var(--sans);letter-spacing:-0.03em;transition:all 0.7s cubic-bezier(0.4,0,0.2,1);pointer-events:none;';
+    /* No fijar font-family ni letter-spacing aquí: .ss-logo los gobierna. */
+    clone.style.cssText = 'position:fixed;z-index:10000;left:' + from.left + 'px;top:' + from.top + 'px;width:' + from.width + 'px;font-size:' + getComputedStyle(splashLogo).fontSize + ';transition:left 0.7s cubic-bezier(0.4,0,0.2,1),top 0.7s cubic-bezier(0.4,0,0.2,1),font-size 0.7s cubic-bezier(0.4,0,0.2,1),width 0.7s cubic-bezier(0.4,0,0.2,1);pointer-events:none;';
     document.body.appendChild(clone);
     splashLogo.style.visibility = 'hidden';
     splash.style.opacity = '0';

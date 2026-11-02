@@ -213,9 +213,10 @@
       padding-top:4px; border-top:1px solid var(--border); margin-top:2px;
     }
     .hdr-logo {
-      font-family:var(--display); font-size:1.2rem; font-weight:800; white-space:nowrap; flex-shrink:0;
+      font-family:var(--display); font-size:1.2rem; font-weight:900; white-space:nowrap; flex-shrink:0;
       background:linear-gradient(90deg,#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000);
       background-size:200% auto; -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+      animation:mover 2.5s linear infinite;
     }
     .hdr-sep { width:1px; height:22px; background:var(--border); margin:0 2px; }
     .hdr-space { flex:1; }
@@ -823,25 +824,41 @@
     @keyframes ssmSlideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
 
     /* ── VIEWER PÚBLICO (?view=ID) ── */
+    /* Viewer: logo arriba, canvas centrado en el espacio libre, CTA abajo.
+       El canvas se encoge para caber en cualquier pantalla sin recortarse. */
     #viewer-screen {
       display:none; position:fixed; inset:0; z-index:9000;
-      background:var(--bg); flex-direction:column; align-items:center; justify-content:flex-start;
+      background:var(--bg); flex-direction:column; align-items:center;
+      padding:14px 16px calc(14px + env(safe-area-inset-bottom));
+      gap:12px; overflow:hidden;
     }
     #viewer-screen.activo { display:flex; animation:aparecer 0.35s ease; }
-    #viewer-header {
-      width:100%;
-      padding:14px 18px; display:flex; align-items:center; justify-content:space-between;
+    #viewer-header { width:100%; flex-shrink:0; }
+    #viewer-context { font-size:0.72rem; color:var(--muted); margin-top:2px; }
+    /* Zona central: ocupa el alto sobrante y centra su contenido. */
+    #viewer-main {
+      flex:1; min-height:0; width:100%;
+      display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
     }
+    /* Avatar + nombre pegados justo encima del canvas. */
     #viewer-sender {
+      display:flex; align-items:center; gap:8px; flex-shrink:0;
       font-size:0.95rem; font-weight:600; color:var(--text);
     }
-    #viewer-sender span { color:var(--accent2); }
+    #viewer-avatar {
+      width:28px; height:28px; border-radius:50%;
+      border:2px solid var(--accent); object-fit:cover;
+    }
+    #viewer-drawing-by { color:var(--muted); font-weight:500; }
+    #viewer-from { color:var(--accent2); font-weight:700; }
     #viewer-canvas {
       border-radius:14px; box-shadow:0 0 60px var(--glow);
-      max-width:min(98vw,900px); max-height:min(75vh,900px);
+      max-width:100%; max-height:100%;
+      min-height:0; object-fit:contain;
     }
     #viewer-cta {
-      margin-top:20px; display:flex; flex-direction:column; align-items:center; gap:10px;
+      flex-shrink:0; width:100%; max-width:420px;
+      display:flex; flex-direction:column; align-items:center; gap:8px;
     }
     #viewer-reply-btn {
       padding:13px 34px; border-radius:50px; border:none; cursor:pointer;
@@ -855,14 +872,14 @@
     #viewer-expired { color:var(--danger); font-size:0.95rem; text-align:center; }
 
     @media (max-width:600px) {
-      #viewer-header { padding:10px 12px; flex-wrap:wrap; gap:6px; }
+      #viewer-screen { padding:10px 12px calc(12px + env(safe-area-inset-bottom)); gap:10px; }
       #viewer-header .titulo { font-size:1rem; }
-      #viewer-header #viewer-context { font-size:0.65rem; }
+      #viewer-context { font-size:0.65rem; }
       #viewer-sender { font-size:0.8rem; }
-      #viewer-canvas { max-width:96vw; max-height:60vh; border-radius:10px; }
-      #viewer-cta { margin-top:14px; padding:0 16px; width:100%; }
+      #viewer-avatar { width:24px; height:24px; }
+      #viewer-canvas { border-radius:10px; }
       #viewer-reply-btn { width:100%; padding:14px 20px; font-size:0.95rem; }
-      #viewer-hint { font-size:0.72rem; max-width:90vw; }
+      #viewer-hint { font-size:0.72rem; }
     }
 
   </style>
@@ -873,20 +890,20 @@
 <!-- ── VIEWER PÚBLICO — se muestra cuando llegan con ?view=SKETCHID ── -->
 <div id="viewer-screen">
   <div id="viewer-header">
-    <div>
-      <div class="titulo" style="font-size:1.3rem;">SketchSend ✏️</div>
-      <div id="viewer-context" style="font-size:0.72rem;color:var(--muted);margin-top:2px;">Every message is a drawing ✏️</div>
-    </div>
-    <div id="viewer-sender" style="display:flex;align-items:center;gap:8px;">
-      <img id="viewer-avatar" style="width:28px;height:28px;border-radius:50%;border:2px solid var(--accent);object-fit:cover;" src="" alt="">
-      <span id="viewer-drawing-by" style="color:#666;">Drawing by </span><span id="viewer-from" style="color:var(--accent);font-weight:700;">...</span>
-    </div>
+    <div class="titulo" style="font-size:1.3rem;">SketchSend ✏️</div>
+    <div id="viewer-context">Every message is a drawing</div>
   </div>
-  <div id="viewer-loading">Loading drawing... ✏️</div>
-  <canvas id="viewer-canvas" style="display:none;"></canvas>
-  <div id="viewer-expired" style="display:none;">
-    ⏳ This drawing has expired or doesn't exist.<br>
-    <a href="./" style="color:var(--accent2);margin-top:8px;display:inline-block;">Go to SketchSend →</a>
+  <div id="viewer-main">
+    <div id="viewer-sender" style="display:none;">
+      <img id="viewer-avatar" src="" alt="">
+      <span id="viewer-drawing-by">Drawing by </span><span id="viewer-from">...</span>
+    </div>
+    <div id="viewer-loading">Loading drawing... ✏️</div>
+    <canvas id="viewer-canvas" style="display:none;"></canvas>
+    <div id="viewer-expired" style="display:none;">
+      ⏳ This drawing has expired or doesn't exist.<br>
+      <a href="./" style="color:var(--accent2);margin-top:8px;display:inline-block;">Go to SketchSend →</a>
+    </div>
   </div>
   <div id="viewer-cta" style="display:none;">
     <button id="viewer-reply-btn" style="animation:viewerPulse 4s ease infinite;">✏️ Send your own drawing</button>
@@ -897,14 +914,14 @@
 <div id="splash-screen" style="position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;transition:opacity 0.6s ease;">
 <script>window._splashStart = Date.now();</script>
   <div class="titulo" id="splash-titulo" style="font-size:clamp(1.4rem, 6vw, 2.4rem);">SketchSend ✏️</div>
-  <p style="color:var(--muted);font-size:0.95rem;animation:aparecer 1s ease 0.3s both;">Where every message is a drawing</p>
+  <p style="color:var(--muted);font-size:0.95rem;animation:aparecer 1s ease 0.3s both;">Every message is a drawing</p>
   <div style="width:40px;height:3px;background:var(--accent);border-radius:2px;margin-top:8px;animation:pulse 1.5s infinite;"></div>
 </div>
 
 <!-- ══ PANTALLA DE LOGIN ══ -->
 <div id="auth-screen">
   <div class="titulo" id="titulo-fantasma">SketchSend ✏️</div>
-  <p class="tagline" id="lbl-tagline">Donde cada mensaje es un dibujo</p>
+  <p class="tagline" id="lbl-tagline">Cada mensaje es un dibujo</p>
   <div class="card" style="gap:14px;">
     <h2 style="text-align:center;" id="lbl-welcome">Bienvenido</h2>
     <p style="color:var(--muted);font-size:0.85rem;text-align:center;" id="lbl-welcome-sub">Escribe tu nombre y correo para empezar</p>
@@ -932,7 +949,7 @@
 
 <!-- ══ PANTALLA: REVISA TU CORREO (magic link) ══ -->
 <div id="verify-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
-  <p class="tagline">Donde cada mensaje es un dibujo</p>
+  <p class="tagline">Cada mensaje es un dibujo</p>
   <div class="card" style="text-align:center;gap:16px;">
     <div style="font-size:2.5rem;">📬</div>
     <h2 id="lbl-verify-title">Revisa tu correo</h2>
@@ -944,7 +961,7 @@
 
 <!-- ══ PANTALLA DE @USERNAME (primera vez) ══ -->
 <div id="username-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
-  <p class="tagline">Donde cada mensaje es un dibujo</p>
+  <p class="tagline">Cada mensaje es un dibujo</p>
   <div class="card" style="gap:12px;">
     <h2 id="lbl-choose-username">Elige tu @usuario</h2>
     <div id="username-screen-displayname" style="font-size:0.82rem;color:var(--muted);"></div>
@@ -1367,7 +1384,7 @@ const I18N = {
     photo_too_large: '⚠️ La imagen debe pesar menos de 5 MB',
     downloading_img: '🖼️ Descargando imagen...',
     anonymous: 'Anónimo',
-    viewer_drawing_by: 'Dibujo de', viewer_tagline: 'Cada mensaje es un dibujo ✏️', viewer_cta: '✏️ Envía tu propio dibujo', viewer_hint: 'Crea una cuenta gratis y empieza a dibujar. ¡Es rápido!', viewer_loading: 'Cargando dibujo... ✏️', viewer_expired: '⏳ Este dibujo expiró o no existe.',
+    viewer_drawing_by: 'Dibujo de', viewer_tagline: 'Cada mensaje es un dibujo', viewer_cta: '✏️ Envía tu propio dibujo', viewer_hint: 'Crea una cuenta gratis y empieza a dibujar. ¡Es rápido!', viewer_loading: 'Cargando dibujo... ✏️', viewer_expired: '⏳ Este dibujo expiró o no existe.',
   },
   en: {
     welcome: 'Welcome', welcome_sub: 'Enter your name and email to get started',
@@ -1449,7 +1466,7 @@ const I18N = {
     photo_too_large: '⚠️ Image must be under 5 MB',
     downloading_img: '🖼️ Downloading image...',
     anonymous: 'Anonymous',
-    viewer_drawing_by: 'Drawing by', viewer_tagline: 'Every message is a drawing ✏️', viewer_cta: '✏️ Send your own drawing', viewer_hint: 'Create a free account and start drawing. It\'s quick!', viewer_loading: 'Loading drawing... ✏️', viewer_expired: '⏳ This drawing has expired or doesn\'t exist.',
+    viewer_drawing_by: 'Drawing by', viewer_tagline: 'Every message is a drawing', viewer_cta: '✏️ Send your own drawing', viewer_hint: 'Create a free account and start drawing. It\'s quick!', viewer_loading: 'Loading drawing... ✏️', viewer_expired: '⏳ This drawing has expired or doesn\'t exist.',
   }
 };
 
@@ -4037,12 +4054,18 @@ if ('serviceWorker' in navigator) {
       loadingEl.style.display = 'none';
       canvasEl.style.display  = 'block';
       ctaEl.style.display     = 'flex';
+      document.getElementById('viewer-sender').style.display = 'flex';
 
-      /* Ajustar canvas al viewport — usa proporciones del dibujo original si existen */
+      /* Ajustar canvas al espacio REAL que queda entre el nombre y el CTA,
+         no a un porcentaje fijo del viewport: así encaja en cualquier pantalla. */
       const meta0 = (d.strokes || []).find(s => s.tipo === 'inicio' && s.origW);
       const origAspect = meta0 ? (meta0.origW / meta0.origH) : 1;
-      const maxW = Math.min(window.innerWidth * 0.98, 900);
-      const maxH = Math.min(window.innerHeight * 0.75, 900);
+      const mainEl   = document.getElementById('viewer-main');
+      const senderEl = document.getElementById('viewer-sender');
+      const mainRect = mainEl.getBoundingClientRect();
+      const senderH  = senderEl.offsetHeight + 10; /* +gap */
+      const maxW = Math.min(mainRect.width, 900);
+      const maxH = Math.min(mainRect.height - senderH, 900);
       let cssW, cssH;
       if (origAspect >= 1) {
         cssW = Math.min(maxW, maxH * origAspect);
