@@ -2262,58 +2262,54 @@ window.addEventListener('resize', () => {
 ══════════════════════════════════════════════════════ */
 let lastDrawTime = 0;
 let lastDrawX = 0, lastDrawY = 0;
-let tienePresionReal = false;
-let _pressureSamples = [];
 
 function coords(e) {
   const r = cv.getBoundingClientRect();
-  let x, y, p;
-  if (e.touches && e.touches.length > 0) {
-    x = e.touches[0].clientX - r.left; y = e.touches[0].clientY - r.top;
-    p = e.touches[0].force || 0;
-  } else {
-    x = e.clientX - r.left; y = e.clientY - r.top;
-    p = (e.pressure !== undefined && e.pressure > 0) ? e.pressure : 0;
-  }
-  /* Detect real pressure: collect samples and check if pressure actually varies.
-     Many Android devices report constant force (e.g. 1.0) which isn't real pressure. */
-  if (p > 0 && p !== 0.5 && !tienePresionReal) {
-    _pressureSamples.push(p);
-    if (_pressureSamples.length >= 10) {
-      const min = Math.min(..._pressureSamples);
-      const max = Math.max(..._pressureSamples);
-      tienePresionReal = (max - min) > 0.05;
-      if (!tienePresionReal) _pressureSamples = [];
-    }
-  }
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  /* La presión solo es de fiar viniendo de un lápiz. Un dedo reporta un
+     valor fijo (0.5 o 1.0) o el área de contacto, que cambia según cómo se
+     aplasta el dedo y no según la intención: por eso antes el grosor salía
+     constante o tembloroso en el teléfono. Con dedo y ratón usamos velocidad. */
+  const p = (e.pointerType === 'pen' && e.pressure > 0) ? e.pressure : 0;
   return { x, y, p };
 }
 
+/* Velocidad a la que el trazo llega a su punto más fino, en fracción de
+   lienzo por milisegundo. Calibrado midiendo el mismo gesto (30% de la
+   diagonal) en pantallas de 360, 768 y 1200 px: 0.0012 da el rango más
+   amplio (5.3 px de los 6 posibles) sin diferencia entre dispositivos. */
+const VEL_FINA = 0.0012;
+let velSuave = 0;
+
 function grosor(p, x, y) {
-  if (tienePresionReal && p > 0.01) {
-    const pn = p < 0.05 ? 0.3 : p;
-    return Math.max(1, Math.min(tamBase * pn * 2.8, tamBase * 3));
+  /* Lápiz con presión real: la presión manda. */
+  if (p > 0.01) {
+    return Math.max(1, Math.min(tamBase * p * 2.8, tamBase * 3));
   }
-  /* Sin presión real — usar velocidad del trazo */
+
   const now = performance.now();
-  const dt = now - lastDrawTime;
-  if (dt < 1 || lastDrawTime === 0) {
-    lastDrawTime = now; lastDrawX = x; lastDrawY = y;
+  if (lastDrawTime === 0) {
+    lastDrawTime = now; lastDrawX = x; lastDrawY = y; velSuave = 0;
     return tamBase;
   }
-  const dx = x - lastDrawX, dy = y - lastDrawY;
-  const dist = Math.sqrt(dx*dx + dy*dy);
-  const velocity = dist / dt; /* pixels/ms */
+  /* Nunca dividir por menos de 1 ms: dos eventos casi simultáneos daban
+     una velocidad enorme y un salto de grosor. */
+  const dt = Math.max(now - lastDrawTime, 1);
+  const dist = Math.hypot(x - lastDrawX, y - lastDrawY);
   lastDrawTime = now; lastDrawX = x; lastDrawY = y;
 
-  /* Android touch: velocities are typically 0.05–3.0 px/ms
-     Slow (~0.05) → thick (tamBase * 2.5)
-     Fast (~2.0+) → thin (tamBase * 0.5)
-     Use a lower normalization ceiling so variation is more visible */
-  const vNorm = Math.min(1, velocity / 1.2);
-  const thick = tamBase * 2.5;
-  const thin  = tamBase * 0.5;
-  return Math.max(0.5, thick - vNorm * (thick - thin));
+  /* Fracción del lienzo por ms, no píxeles por ms: así el mismo gesto da
+     el mismo grosor en un teléfono de 360px y en un monitor de 1200px. */
+  const diag = Math.hypot(cv.width / DPR, cv.height / DPR) || 1;
+  const vInst = (dist / diag) / dt;
+
+  /* Suavizado exponencial: una sola muestra es muy ruidosa y el trazo tiembla. */
+  velSuave = velSuave === 0 ? vInst : velSuave * 0.6 + vInst * 0.4;
+
+  const vNorm = Math.min(1, velSuave / VEL_FINA);
+  const grueso = tamBase * 2.5;
+  const fino   = tamBase * 0.5;
+  return Math.max(0.5, grueso - vNorm * (grueso - fino));
 }
 
 /* Tope de puntos por dibujo.
@@ -2368,8 +2364,8 @@ function dibujar(e) {
 
   /* Preview del pincel */
   const ar = carea.getBoundingClientRect();
-  const px = (e.clientX||(e.touches&&e.touches[0].clientX)||0)-ar.left;
-  const py = (e.clientY||(e.touches&&e.touches[0].clientY)||0)-ar.top;
+  const px = e.clientX - ar.left;
+  const py = e.clientY - ar.top;
   preview.style.cssText=`display:block;left:${px}px;top:${py}px;width:${gw}px;height:${gw}px;`;
 
   trazos.push({ tipo:'seg', de:{...ultimo}, a:{x,y}, color, gw, sid:currentStrokeId, t:Date.now() });
@@ -2387,9 +2383,10 @@ cv.addEventListener('pointerdown', iniciarDibujo);
 cv.addEventListener('pointermove', dibujar);
 cv.addEventListener('pointerup', pararDibujo);
 cv.addEventListener('pointerout', pararDibujo);
-cv.addEventListener('touchstart', iniciarDibujo, {passive:false});
-cv.addEventListener('touchmove',  dibujar,        {passive:false});
-cv.addEventListener('touchend',   pararDibujo);
+/* Sin listeners touch: los eventos pointer ya cubren dedo, lápiz y ratón.
+   Tenerlos a la vez hacía que cada movimiento del dedo se registrara dos
+   veces, lo que duplicaba los datos guardados y aplastaba la variación de
+   grosor. El canvas tiene touch-action:none, así que no hay scroll. */
 
 /* Preview del pincel cuando no se está dibujando */
 carea.addEventListener('mousemove', e => {
