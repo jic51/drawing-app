@@ -2802,6 +2802,99 @@ enviarBtn.addEventListener('click', async () => {
   selCount.textContent = '';
 });
 
+/* ══════════════════════════════════════════════════════
+   COMPRESIÓN DE TRAZOS — solo en la frontera con Firestore
+   ────────────────────────────────────────────────────
+   El formato en memoria NO cambia: dibujo, replay, deshacer,
+   bandeja, viewer y descargas siguen viendo la forma de siempre.
+   Solo comprimimos al escribir y descomprimimos al leer.
+
+   Qué se quita por punto (~147 B → ~30 B):
+   · "de" — es reconstruible: cada trazo trae su propio "inicio"
+     que re-ancla la cadena, así que el salto entre trazos no la
+     rompe. Deshacer/rehacer mueven el trazo entero (todas las
+     entradas con el mismo sid), por lo que el ancla siempre
+     viaja con sus segmentos.
+   · decimales invisibles — coords a 1 decimal, grosor a 2.
+   · "t" absoluto (13 dígitos) → delta respecto al punto anterior.
+   · el color arcoíris → solo el número de matiz.
+   · "sid" en seg/fin → se hereda del "inicio" del trazo.
+
+   Lo que se pierde es solo precisión invisible: coords a ±0.05 px
+   y matiz a ±0.05°. La estructura se reconstruye exacta.
+
+   Va como string JSON porque Firestore no admite arrays anidados,
+   y además un string cuesta bytes+1 mientras que cada número
+   cuesta 8 bytes fijos.
+══════════════════════════════════════════════════════ */
+const TRAZOS_V = 2;
+
+function _encColor(c) {
+  /* 'hsl(214.8,100%,55%)' → 214.8 · cualquier otro color va literal */
+  if (typeof c !== 'string') return c;
+  const m = c.match(/^hsl\(([\d.]+),100%,55%\)$/);
+  return m ? Math.round(parseFloat(m[1]) * 10) / 10 : c;
+}
+function _decColor(c) {
+  return typeof c === 'number' ? 'hsl(' + c + ',100%,55%)' : c;
+}
+
+function comprimirTrazos(trazos) {
+  if (!Array.isArray(trazos)) return { v: TRAZOS_V, n: 0, d: '[]' };
+  const r1 = n => Math.round((n || 0) * 10) / 10;
+  const r2 = n => Math.round((n || 0) * 100) / 100;
+  const out = [];
+  let tPrev = null;
+  for (const e of trazos) {
+    const t = e.t || 0;
+    const dt = tPrev === null ? t : t - tPrev;
+    tPrev = t;
+    if (e.tipo === 'inicio') {
+      out.push([0, r1(e.x), r1(e.y), e.h || '', dt, e.sid, e.origW, e.origH]);
+    } else if (e.tipo === 'seg') {
+      out.push([1, r1(e.a.x), r1(e.a.y), _encColor(e.color), r2(e.gw), dt]);
+    } else if (e.tipo === 'fin') {
+      out.push([2, dt]);
+    }
+  }
+  return { v: TRAZOS_V, n: trazos.length, d: JSON.stringify(out) };
+}
+
+function descomprimirTrazos(payload) {
+  /* Los sketches viejos son un array plano: pasan tal cual. */
+  if (Array.isArray(payload)) return payload;
+  if (!payload || payload.v !== TRAZOS_V || typeof payload.d !== 'string') {
+    return Array.isArray(payload) ? payload : [];
+  }
+  let arr;
+  try { arr = JSON.parse(payload.d); } catch (e) { return []; }
+  if (!Array.isArray(arr)) return [];
+
+  const out = [];
+  let ancla = null;  /* último punto dibujado, da el "de" del siguiente seg */
+  let sid = 0;       /* heredado del "inicio" del trazo en curso */
+  let t = 0;
+  for (const e of arr) {
+    if (!Array.isArray(e)) continue;
+    if (e[0] === 0) {
+      t += e[4];
+      sid = e[5];
+      ancla = { x: e[1], y: e[2] };
+      out.push({ tipo:'inicio', x:e[1], y:e[2], h:e[3], sid, t, origW:e[6], origH:e[7] });
+    } else if (e[0] === 1) {
+      t += e[5];
+      const a = { x: e[1], y: e[2] };
+      out.push({ tipo:'seg', de: ancla ? {...ancla} : {...a}, a, color:_decColor(e[3]), gw:e[4], sid, t });
+      ancla = { x: a.x, y: a.y };
+    } else if (e[0] === 2) {
+      t += e[1];
+      out.push({ tipo:'fin', sid, t });
+      ancla = null;
+    }
+  }
+  return out;
+}
+
 async function enviarSketchFirestore(toUid) {
   const uid = auth.currentUser.uid;
   /* fromName: usar @usuario, si no está disponible usar displayName, si no el email */
@@ -2814,7 +2907,7 @@ async function enviarSketchFirestore(toUid) {
       from: uid,
       fromName: senderName,
       to: toUid,
-      strokes: trazos,
+      strokes: comprimirTrazos(trazos),
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       expiresAt: new Date(Date.now() + 24*3600*1000),
       viewed: false
@@ -2889,7 +2982,7 @@ function cargarBandeja() {
             id: doc.id,
             sender: d.fromName,
             senderId: d.from,
-            strokes: d.strokes,
+            strokes: descomprimirTrazos(d.strokes),
             receivedAt: d.createdAt?.toMillis() || Date.now(),
             expiresAt: d.expiresAt?.toMillis() || (Date.now() + 24*3600*1000),
             viewed: d.viewed || false,
@@ -4094,6 +4187,7 @@ if ('serviceWorker' in navigator) {
     db.collection('sketches').doc(viewId).get().then(doc => {
       if (!doc.exists) { showExpired(); return; }
       const d = doc.data();
+      d.strokes = descomprimirTrazos(d.strokes);
       const now = Date.now();
       const expires = d.expiresAt?.toMillis ? d.expiresAt.toMillis() : (d.expiresAt || 0);
       if (expires < now) { showExpired(); return; }
