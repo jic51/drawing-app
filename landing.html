@@ -318,6 +318,13 @@ footer a { color: var(--accent2); }
 </head>
 <body>
 
+<!-- ══ SPLASH ══ -->
+<div id="landing-splash" style="position:fixed;inset:0;z-index:9999;background:#0e0e14;display:flex;align-items:center;justify-content:center;transition:opacity 0.5s;">
+  <div id="landing-splash-logo" style="font-size:clamp(2.8rem,8vw,5rem);font-weight:900;font-family:var(--sans);letter-spacing:-0.03em;">
+    <span style="background:var(--rainbow);background-size:200% 100%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:rainbowShift 4s linear infinite;">SketchSend</span> ✏️
+  </div>
+</div>
+
 <!-- Language toggle -->
 <div class="lang-toggle">
   <button id="btn-en" class="active" onclick="setLang('en')">EN</button>
@@ -332,7 +339,7 @@ footer a { color: var(--accent2); }
   <div class="hero-canvas-wrap">
     <canvas id="hero-canvas" width="400" height="300"></canvas>
   </div>
-  <a href="./" class="cta-btn" data-i18n="hero_cta">Start Drawing — It's Free</a>
+  <a href="./" target="_blank" class="cta-btn" data-i18n="hero_cta">Start Drawing — It's Free</a>
   <div class="hero-note" data-i18n="hero_note">No download needed. Works in your browser.</div>
 </section>
 
@@ -399,7 +406,7 @@ footer a { color: var(--accent2); }
     <button onclick="clearTryCanvas()" data-i18n="try_clear">Clear</button>
   </div>
   <div class="try-msg" id="try-msg" data-i18n="try_msg">Imagine sending this to a friend ✨</div>
-  <div><a href="./" class="cta-btn" style="font-size:1rem;padding:14px 34px;" data-i18n="try_cta">Create your account</a></div>
+  <div><a href="./" target="_blank" class="cta-btn" style="font-size:1rem;padding:14px 34px;" data-i18n="try_cta">Create your account</a></div>
 </section>
 
 <!-- ══ FOOTER ══ -->
@@ -407,7 +414,7 @@ footer a { color: var(--accent2); }
   <div class="footer-logo">SketchSend ✏️</div>
   <p data-i18n="footer_made">Made with ✏️ and ❤️</p>
   <p>© 2026 SketchSend</p>
-  <p><a href="./" data-i18n="footer_open">Open SketchSend →</a></p>
+  <p><a href="./" target="_blank" data-i18n="footer_open">Open SketchSend →</a></p>
 </footer>
 
 <script>
@@ -617,6 +624,34 @@ document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
     hasDrawn = false;
     msg.classList.remove('show');
   };
+})();
+
+/* ══ LANDING SPLASH — fly logo to hero ══ */
+(function() {
+  const splash = document.getElementById('landing-splash');
+  if (!splash) return;
+  setTimeout(() => {
+    const heroLogo = document.querySelector('.hero-logo');
+    const splashLogo = document.getElementById('landing-splash-logo');
+    if (!heroLogo || !splashLogo) { splash.remove(); return; }
+    const from = splashLogo.getBoundingClientRect();
+    const to = heroLogo.getBoundingClientRect();
+    if (from.width === 0 || to.width === 0) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 500); return; }
+    const clone = splashLogo.cloneNode(true);
+    clone.style.cssText = 'position:fixed;z-index:10000;left:' + from.left + 'px;top:' + from.top + 'px;width:' + from.width + 'px;font-size:' + getComputedStyle(splashLogo).fontSize + ';font-weight:900;font-family:var(--sans);letter-spacing:-0.03em;transition:all 0.7s cubic-bezier(0.4,0,0.2,1);pointer-events:none;';
+    document.body.appendChild(clone);
+    splashLogo.style.visibility = 'hidden';
+    splash.style.opacity = '0';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        clone.style.left = to.left + 'px';
+        clone.style.top = to.top + 'px';
+        clone.style.fontSize = getComputedStyle(heroLogo).fontSize;
+        clone.style.width = to.width + 'px';
+      });
+    });
+    setTimeout(() => { clone.remove(); splash.remove(); }, 1200);
+  }, 2000);
 })();
 </script>
 </body>

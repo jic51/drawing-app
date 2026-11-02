@@ -347,7 +347,11 @@
     }
     #brush-popup.hidden { display:none; }
     #brush-popup-label { font-size:0.75rem; color:var(--muted); text-align:center; }
-    #brush-size-slider { width:100%; accent-color:var(--accent2); cursor:pointer; }
+    #brush-size-slider { width:100%; cursor:pointer; -webkit-appearance:none; appearance:none; background:transparent; }
+    #brush-size-slider::-webkit-slider-runnable-track { height:4px; background:var(--border); border-radius:2px; }
+    #brush-size-slider::-webkit-slider-thumb { -webkit-appearance:none; width:var(--thumb-size,16px); height:var(--thumb-size,16px); border-radius:50%; background:var(--accent2); margin-top:calc(var(--thumb-size,16px) / -2 + 2px); transition:width 0.15s,height 0.15s,margin-top 0.15s; }
+    #brush-size-slider::-moz-range-track { height:4px; background:var(--border); border-radius:2px; }
+    #brush-size-slider::-moz-range-thumb { width:var(--thumb-size,16px); height:var(--thumb-size,16px); border-radius:50%; background:var(--accent2); border:none; }
     #brush-size-val { font-size:0.85rem; font-weight:600; text-align:center; color:var(--text); }
     /* En mobile toolbar la paleta va horizontal */
     .mob-toolbar .color-picker { flex-direction:row; padding:0; gap:5px; }
@@ -1150,6 +1154,11 @@
         <div class="share-content" id="share-content-qr" style="text-align:center;">
           <canvas id="share-qr-canvas" width="200" height="200" style="border-radius:10px;max-width:200px;"></canvas>
           <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;" id="lbl-qr-hint">Escanea para agregar automáticamente</div>
+          <div id="shortcode-display" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;">
+            <span style="font-size:0.78rem;color:var(--muted);" id="lbl-your-code">Your code:</span>
+            <span id="shortcode-value" style="font-size:1rem;font-weight:700;color:var(--text);letter-spacing:2px;font-family:monospace;">——</span>
+            <button id="shortcode-copy-btn" style="padding:4px 8px;font-size:0.85rem;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;color:var(--text);">📋</button>
+          </div>
         </div>
         <div class="share-content" id="share-content-link" style="display:none;">
           <div style="display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 10px;">
@@ -1303,7 +1312,7 @@ const I18N = {
     copy_code: 'Copiar código',
     invite_friends: 'Invitar amigos', invite_friends_sub: 'Comparte tu QR o link para que te agreguen',
     invite_btn: 'Compartir link 🔗',
-    qr_hint: 'Escanea para agregar automáticamente', link_hint: 'El link agrega automáticamente a quien lo abra',
+    qr_hint: 'Escanea para agregar automáticamente', link_hint: 'El link agrega automáticamente a quien lo abra', your_code: 'Tu código:',
     store_colors: 'Colores premium', store_colors_sub: 'Paleta completa con selector libre',
     store_brushes: '🖌️ Pinceles especiales', store_brushes_sub: 'Acuarela, neón, caligrafía, pixel',
     store_themes: '🌈 Temas de temporada', store_themes_sub: 'Halloween, Navidad, San Valentín',
@@ -1385,7 +1394,7 @@ const I18N = {
     copy_code: 'Copy code',
     invite_friends: 'Invite friends', invite_friends_sub: 'Share your QR or link to get added',
     invite_btn: 'Share link 🔗',
-    qr_hint: 'Scan to add automatically', link_hint: 'Whoever opens the link gets added automatically',
+    qr_hint: 'Scan to add automatically', link_hint: 'Whoever opens the link gets added automatically', your_code: 'Your code:',
     store_colors: 'Premium colors', store_colors_sub: 'Full palette with free selector',
     store_brushes: '🖌️ Special brushes', store_brushes_sub: 'Watercolor, neon, calligraphy, pixel',
     store_themes: '🌈 Seasonal themes', store_themes_sub: "Halloween, Christmas, Valentine's",
@@ -1548,7 +1557,7 @@ function applyLang() {
   const soonText = lang === 'es' ? 'Pronto' : 'Coming soon';
   document.querySelectorAll('.store-soon').forEach(btn => { btn.textContent = soonText; });
   // Share hints
-  set('lbl-qr-hint', 'qr_hint'); set('lbl-link-hint', 'link_hint');
+  set('lbl-qr-hint', 'qr_hint'); set('lbl-link-hint', 'link_hint'); set('lbl-your-code', 'your_code');
 
   // Toolbar tool labels
   /* rainbow tool labels removed — colors are now separate dots */
@@ -2340,6 +2349,7 @@ function actualizarBotones() {
     popup.classList.remove('hidden');
     slider.value = tamBase;
     valLbl.textContent = tamBase.toFixed(1) + ' px';
+    updateThumbSize();
     /* Position above/beside the button */
     const pw = 180, ph = 80;
     let left = rect.left + rect.width / 2 - pw / 2;
@@ -2350,9 +2360,16 @@ function actualizarBotones() {
     popup.style.top  = top + 'px';
   }
 
+  function updateThumbSize() {
+    const min = parseFloat(slider.min), max = parseFloat(slider.max);
+    const ratio = (parseFloat(slider.value) - min) / (max - min);
+    slider.style.setProperty('--thumb-size', (12 + ratio * 28) + 'px');
+  }
+  updateThumbSize();
   slider.addEventListener('input', () => {
     tamBase = parseFloat(slider.value);
     valLbl.textContent = tamBase.toFixed(1) + ' px';
+    updateThumbSize();
   });
 
   document.addEventListener('pointerdown', e => {
@@ -3558,6 +3575,7 @@ function abrirSettings() {
           await db.collection('users').doc(auth.currentUser.uid).update({ shortCode: code }).catch(() => {});
         }
         document.getElementById('user-shortcode').textContent = code;
+        document.getElementById('shortcode-value').textContent = code;
         document.getElementById('settings-email').textContent = auth.currentUser.email || '';
         document.getElementById('settings-name').textContent = d.displayName || usuario;
         document.getElementById('settings-username-display').textContent = d.username ? '@' + d.username : '';
@@ -3712,6 +3730,11 @@ settingsInvite.addEventListener('click', () => {
   const shareData = { title:'SketchSend', text:t('share_together'), url:inviteUrl };
   if (navigator.share) { navigator.share(shareData).catch(()=>{}); }
   else { navigator.clipboard.writeText(inviteUrl).then(()=>toast('🔗 ' + (lang === 'es' ? 'Link copiado' : 'Link copied'))).catch(()=>toast(inviteUrl)); }
+});
+
+document.getElementById('shortcode-copy-btn').addEventListener('click', () => {
+  const code = document.getElementById('shortcode-value').textContent;
+  if (code && code !== '——') navigator.clipboard.writeText(code).then(() => toast('📋 ' + (lang === 'es' ? 'Código copiado' : 'Code copied'))).catch(() => toast(code));
 });
 
 document.getElementById('invite-copy-btn').addEventListener('click', () => {
