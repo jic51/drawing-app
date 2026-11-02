@@ -2731,6 +2731,7 @@ async function enviarSketchFirestore(toUid) {
       expiresAt: new Date(Date.now() + 24*3600*1000),
       viewed: false
     });
+    db.collection('stats').doc('global').set({ sketchesSent: firebase.firestore.FieldValue.increment(1) }, { merge: true }).catch(() => {});
     if (window.posthog) posthog.capture('sketch_sent', { strokeCount: trazos.length });
   } catch(e) {
     logRemoteError('enviarSketch', e);
