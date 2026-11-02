@@ -2316,7 +2316,35 @@ function grosor(p, x, y) {
   return Math.max(0.5, thick - vNorm * (thick - thin));
 }
 
+/* Tope de puntos por dibujo.
+   Firestore corta el documento en 1 MB, que al formato actual (~147 B por
+   punto) son ~7.100 puntos: pasado eso el envío falla y el usuario pierde
+   el dibujo sin entender por qué. 6.000 deja margen bajo ese techo y sigue
+   siendo 3x el dibujo detallado más pesado (~1.800 puntos, 30 s de trazo).
+   Avisamos al 80% para que nadie llegue al corte por sorpresa. */
+const MAX_PUNTOS = 6000;
+const AVISO_PUNTOS = Math.floor(MAX_PUNTOS * 0.8);
+let avisoLimiteMostrado = false;
+
+function limiteAlcanzado() {
+  if (trazos.length >= MAX_PUNTOS) {
+    if (dibujando) pararDibujo();
+    toast('⚠️ ' + (lang === 'es'
+      ? 'Dibujo lleno — envíalo o limpia para seguir'
+      : 'Drawing is full — send it or clear to keep going'));
+    return true;
+  }
+  if (!avisoLimiteMostrado && trazos.length >= AVISO_PUNTOS) {
+    avisoLimiteMostrado = true;
+    toast(lang === 'es'
+      ? 'Te queda poco espacio en este dibujo'
+      : 'Running low on space in this drawing');
+  }
+  return false;
+}
+
 function iniciarDibujo(e) {
+  if (limiteAlcanzado()) return;
   e.preventDefault(); dibujando = true; pilaRedo = [];
   currentStrokeId++;
   lastDrawTime = 0; /* reset velocity tracking */
@@ -2328,6 +2356,7 @@ function iniciarDibujo(e) {
 
 function dibujar(e) {
   if (!dibujando) return; e.preventDefault();
+  if (limiteAlcanzado()) return;
   const { x, y, p } = coords(e); const gw = grosor(p, x, y);
   let color;
   if (herramienta==='borrador') { color=canvasBg(); }
@@ -2575,7 +2604,7 @@ limpiarBtn.addEventListener('click', limpiarCanvas);
 limpiarBtnMob.addEventListener('click', limpiarCanvas);
 function limpiarCanvas() {
   if (!trazos.length) { toast(t('canvas_clean')); return; }
-  pilaRedo = []; trazos = []; currentStrokeId = 0;
+  pilaRedo = []; trazos = []; currentStrokeId = 0; avisoLimiteMostrado = false;
   const w = cv.width/DPR, h = cv.height/DPR;
   ctx.clearRect(0, 0, w, h); fondoCanvas(ctx, w, h);
   actualizarBotones(); toast(t('canvas_cleared'));
@@ -2720,8 +2749,29 @@ async function buildCarousel() {
 /* ══════════════════════════════════════════════════════
    ENVIAR → replay automático del propio dibujo
 ══════════════════════════════════════════════════════ */
+/* Rate limit local: frena el bucle accidental y el clic nervioso.
+   No es una defensa real (se salta editando el cliente) — las reglas de
+   Firestore son las que cuentan. Esto evita gastar cuota por error. */
+const ENVIOS_POR_HORA = 60;
+function dentroDelLimiteDeEnvio() {
+  const ahora = Date.now();
+  let envios = [];
+  try { envios = JSON.parse(localStorage.getItem('ss_envios') || '[]'); } catch(e) {}
+  envios = envios.filter(t => ahora - t < 3600000);
+  if (envios.length >= ENVIOS_POR_HORA) {
+    toast('⚠️ ' + (lang === 'es'
+      ? 'Demasiados envíos seguidos — espera un momento'
+      : 'Too many sends in a row — wait a moment'));
+    return false;
+  }
+  envios.push(ahora);
+  try { localStorage.setItem('ss_envios', JSON.stringify(envios)); } catch(e) {}
+  return true;
+}
+
 enviarBtn.addEventListener('click', async () => {
   if (!trazos.length) { toast(t('draw_first')); return; }
+  if (!dentroDelLimiteDeEnvio()) return;
 
   /* Instant feedback — show toast and capture snapshot BEFORE network */
   const snap = JSON.parse(JSON.stringify(trazos));
@@ -2971,7 +3021,7 @@ function iniciarReplayInbox(msg) {
 
   function onTouch() {
     cerrarReplay();
-    pilaRedo=[]; trazos=[]; currentStrokeId=0;
+    pilaRedo=[]; trazos=[]; currentStrokeId=0; avisoLimiteMostrado=false;
     const w=cv.width/DPR, h=cv.height/DPR;
     ctx.clearRect(0,0,w,h); fondoCanvas(ctx,w,h);
     actualizarBotones();
