@@ -314,7 +314,78 @@ footer .footer-logo {
 }
 footer p { margin: 4px 0; }
 footer a { color: var(--accent2); }
+
+/* Counter */
+.counter-section {
+  padding: 40px 20px;
+  text-align: center;
+}
+.counter-wrap {
+  display: inline-flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 30px 50px; border-radius: 20px;
+  background: var(--surface); border: 1px solid var(--border);
+}
+.counter-number {
+  font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 900;
+  background: var(--rainbow); background-size: 200% 100%;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text; animation: rainbowShift 4s linear infinite;
+  font-variant-numeric: tabular-nums;
+}
+.counter-label {
+  font-size: 1rem; color: var(--muted); font-weight: 500;
+}
+
+/* Testimonials */
+.testimonials-section { padding: 60px 20px; max-width: 900px; margin: 0 auto; }
+.testimonials-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px; margin-top: 30px;
+}
+.testimonial-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  padding: 24px; text-align: left;
+}
+.testimonial-text {
+  font-size: 0.95rem; color: var(--text); line-height: 1.6;
+  margin-bottom: 16px; font-style: italic;
+}
+.testimonial-author {
+  display: flex; align-items: center; gap: 10px;
+}
+.testimonial-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--accent); display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 0.85rem; color: #fff; flex-shrink: 0;
+}
+.testimonial-name { font-size: 0.82rem; color: var(--muted); }
+
+/* Gallery */
+.gallery-section { padding: 60px 20px; max-width: 1000px; margin: 0 auto; text-align: center; }
+.gallery-subtitle { color: var(--muted); margin-bottom: 30px; font-size: 0.9rem; }
+.gallery-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+}
+.gallery-card {
+  background: #fff; border-radius: 14px; overflow: hidden;
+  aspect-ratio: 4/3; position: relative; cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.gallery-card:hover { transform: scale(1.03); box-shadow: 0 0 30px var(--glow); }
+.gallery-card canvas { width: 100%; height: 100%; display: block; }
+.gallery-card .gallery-author {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  padding: 6px 10px; background: rgba(0,0,0,0.6);
+  color: #fff; font-size: 0.72rem; text-align: left;
+}
+.gallery-empty {
+  color: var(--muted); font-size: 0.9rem; padding: 40px;
+  border: 2px dashed var(--border); border-radius: 16px;
+}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -333,7 +404,7 @@ footer a { color: var(--accent2); }
 
 <!-- ══ HERO ══ -->
 <section class="hero">
-  <div class="hero-logo">SketchSend ✏️</div>
+  <div class="hero-logo" style="visibility:hidden;">SketchSend ✏️</div>
   <div class="hero-tagline" data-i18n="hero_tagline">Every message is a drawing</div>
   <div class="hero-subtitle" data-i18n="hero_subtitle">Draw. Send. Watch it come alive.</div>
   <div class="hero-canvas-wrap">
@@ -341,6 +412,14 @@ footer a { color: var(--accent2); }
   </div>
   <a href="./" target="_blank" class="cta-btn" data-i18n="hero_cta">Start Drawing — It's Free</a>
   <div class="hero-note" data-i18n="hero_note">No download needed. Works in your browser.</div>
+</section>
+
+<!-- ══ COUNTER ══ -->
+<section class="counter-section reveal">
+  <div class="counter-wrap">
+    <div class="counter-number" id="drawings-counter">0</div>
+    <div class="counter-label" data-i18n="counter_label">drawings sent and counting</div>
+  </div>
 </section>
 
 <!-- ══ HOW IT WORKS ══ -->
@@ -395,6 +474,14 @@ footer a { color: var(--accent2); }
   </div>
 </section>
 
+<!-- ══ TESTIMONIALS ══ -->
+<section class="testimonials-section reveal">
+  <div class="section-title"><span data-i18n="testimonials_title">What people say</span></div>
+  <div class="testimonials-grid" id="testimonials-grid">
+    <!-- Filled by JS from Firestore, fallback hardcoded -->
+  </div>
+</section>
+
 <!-- ══ TRY IT ══ -->
 <section class="try-section reveal">
   <div class="section-title"><span data-i18n="try_title">Try it yourself</span></div>
@@ -407,6 +494,16 @@ footer a { color: var(--accent2); }
   </div>
   <div class="try-msg" id="try-msg" data-i18n="try_msg">Imagine sending this to a friend ✨</div>
   <div><a href="./" target="_blank" class="cta-btn" style="font-size:1rem;padding:14px 34px;" data-i18n="try_cta">Create your account</a></div>
+</section>
+
+<!-- ══ GALLERY ══ -->
+<section class="gallery-section reveal">
+  <div class="section-title"><span data-i18n="gallery_title">Community drawings</span></div>
+  <div class="gallery-subtitle" data-i18n="gallery_subtitle">Shared by our artists</div>
+  <div class="gallery-grid" id="gallery-grid">
+    <!-- Filled by JS — replay canvases from Firestore public sketches -->
+  </div>
+  <div class="gallery-empty" id="gallery-empty" data-i18n="gallery_empty">Be the first to share your drawing!</div>
 </section>
 
 <!-- ══ FOOTER ══ -->
@@ -437,7 +534,12 @@ const I18N = {
     try_title: 'Try it yourself', try_subtitle: 'Go ahead, draw something!',
     try_clear: 'Clear', try_msg: 'Imagine sending this to a friend ✨',
     try_cta: 'Create your account',
-    footer_made: 'Made with ✏️ and ❤️', footer_open: 'Open SketchSend →'
+    footer_made: 'Made with ✏️ and ❤️', footer_open: 'Open SketchSend →',
+    counter_label: 'drawings sent and counting',
+    testimonials_title: 'What people say',
+    gallery_title: 'Community drawings',
+    gallery_subtitle: 'Shared by our artists',
+    gallery_empty: 'Be the first to share your drawing!'
   },
   es: {
     hero_tagline: 'Cada mensaje es un dibujo',
@@ -456,7 +558,12 @@ const I18N = {
     try_title: 'Pruébalo tú mismo', try_subtitle: '¡Adelante, dibuja algo!',
     try_clear: 'Limpiar', try_msg: 'Imagina enviar esto a un amigo ✨',
     try_cta: 'Crea tu cuenta',
-    footer_made: 'Hecho con ✏️ y ❤️', footer_open: 'Abrir SketchSend →'
+    footer_made: 'Hecho con ✏️ y ❤️', footer_open: 'Abrir SketchSend →',
+    counter_label: 'dibujos enviados y contando',
+    testimonials_title: 'Lo que dicen las personas',
+    gallery_title: 'Dibujos de la comunidad',
+    gallery_subtitle: 'Compartidos por nuestros artistas',
+    gallery_empty: '¡Sé el primero en compartir tu dibujo!'
   }
 };
 
@@ -626,6 +733,122 @@ document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
   };
 })();
 
+/* ══ FIREBASE — read-only for counter, testimonials, gallery ══ */
+(function() {
+  const firebaseConfig = {
+    apiKey: 'AIzaSyBwsOO3je4iK63tid5KDDgYWeVHs0OanIc',
+    authDomain: 'sketchsend-d1976.firebaseapp.com',
+    projectId: 'sketchsend-d1976',
+    storageBucket: 'sketchsend-d1976.appspot.com',
+    messagingSenderId: '445386471766',
+    appId: '1:445386471766:web:sketchsend'
+  };
+
+  try {
+    const app = firebase.initializeApp(firebaseConfig, 'landing');
+    const db = firebase.firestore(app);
+
+    // Counter — read from stats/global document
+    db.collection('stats').doc('global').onSnapshot(doc => {
+      const data = doc.data();
+      if (data && data.sketchesSent != null) {
+        const el = document.getElementById('drawings-counter');
+        if (el) animateCounter(el, data.sketchesSent);
+      }
+    }, () => {});
+
+    // Testimonials — read from landing_testimonials collection
+    db.collection('landing_testimonials').orderBy('createdAt', 'desc').limit(6).get().then(snap => {
+      if (snap.empty) { loadFallbackTestimonials(); return; }
+      const grid = document.getElementById('testimonials-grid');
+      snap.forEach(doc => {
+        const d = doc.data();
+        grid.appendChild(createTestimonialCard(d.text, d.author, d.initial));
+      });
+    }).catch(() => loadFallbackTestimonials());
+
+    // Gallery — read from landing_gallery collection (public sketches)
+    db.collection('landing_gallery').orderBy('sharedAt', 'desc').limit(8).get().then(snap => {
+      const grid = document.getElementById('gallery-grid');
+      const empty = document.getElementById('gallery-empty');
+      if (snap.empty) { if (empty) empty.style.display = 'block'; return; }
+      if (empty) empty.style.display = 'none';
+      snap.forEach(doc => {
+        const d = doc.data();
+        if (d.strokes) grid.appendChild(createGalleryCard(d.strokes, d.author));
+      });
+    }).catch(() => {});
+
+  } catch(e) {
+    loadFallbackTestimonials();
+  }
+})();
+
+function animateCounter(el, target) {
+  const duration = 1500;
+  const start = parseInt(el.textContent) || 0;
+  if (start === target) return;
+  const startTime = performance.now();
+  function tick(now) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(start + (target - start) * eased).toLocaleString();
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function createTestimonialCard(text, author, initial) {
+  const card = document.createElement('div');
+  card.className = 'testimonial-card reveal';
+  card.innerHTML = `
+    <div class="testimonial-text">"${text}"</div>
+    <div class="testimonial-author">
+      <div class="testimonial-avatar">${initial || author.charAt(0).toUpperCase()}</div>
+      <div class="testimonial-name">@${author}</div>
+    </div>`;
+  return card;
+}
+
+function loadFallbackTestimonials() {
+  const grid = document.getElementById('testimonials-grid');
+  if (!grid || grid.children.length > 0) return;
+  const fallback = [
+    { text: lang === 'es' ? 'Es como enviar notas de papel pero animadas. ¡Me encanta!' : 'It\'s like sending paper notes but animated. Love it!', author: 'artlover', initial: 'A' },
+    { text: lang === 'es' ? 'Mi hija y yo nos enviamos dibujos todo el día. La mejor app.' : 'My daughter and I send drawings to each other all day. Best app ever.', author: 'creativemom', initial: 'C' },
+    { text: lang === 'es' ? 'El pincel arcoíris es adictivo. No puedo dejar de dibujar.' : 'The rainbow brush is addictive. I can\'t stop drawing.', author: 'doodler99', initial: 'D' },
+  ];
+  fallback.forEach(t => grid.appendChild(createTestimonialCard(t.text, t.author, t.initial)));
+}
+
+function createGalleryCard(strokes, author) {
+  const card = document.createElement('div');
+  card.className = 'gallery-card';
+  const canvas = document.createElement('canvas');
+  canvas.width = 400; canvas.height = 300;
+  card.appendChild(canvas);
+  if (author) {
+    const label = document.createElement('div');
+    label.className = 'gallery-author';
+    label.textContent = '@' + author;
+    card.appendChild(label);
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  strokes.forEach(stroke => {
+    if (!stroke.pts || stroke.pts.length < 2) return;
+    ctx.strokeStyle = stroke.color || '#333';
+    ctx.lineWidth = (stroke.size || 3) * (400 / (stroke.canvasW || 400));
+    ctx.beginPath();
+    ctx.moveTo(stroke.pts[0].x * 400 / (stroke.canvasW || 400), stroke.pts[0].y * 300 / (stroke.canvasH || 300));
+    for (let i = 1; i < stroke.pts.length; i++) {
+      ctx.lineTo(stroke.pts[i].x * 400 / (stroke.canvasW || 400), stroke.pts[i].y * 300 / (stroke.canvasH || 300));
+    }
+    ctx.stroke();
+  });
+  return card;
+}
+
 /* ══ LANDING SPLASH — fly logo to hero ══ */
 (function() {
   const splash = document.getElementById('landing-splash');
@@ -650,7 +873,7 @@ document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
         clone.style.width = to.width + 'px';
       });
     });
-    setTimeout(() => { clone.remove(); splash.remove(); }, 1200);
+    setTimeout(() => { heroLogo.style.visibility = 'visible'; clone.remove(); splash.remove(); }, 1200);
   }, 2000);
 })();
 </script>
