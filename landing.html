@@ -25,9 +25,10 @@
   --rainbow: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #9400d3, #ff0000);
   --glow: rgba(124,58,237,0.3);
   --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --nav-h: 60px;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 16px); }
 body {
   font-family: var(--sans);
   background: var(--bg);
@@ -37,70 +38,8 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 a { color: var(--accent2); text-decoration: none; }
+img { max-width: 100%; height: auto; display: block; }
 
-/* Language toggle */
-.lang-toggle {
-  position: fixed; top: 16px; right: 16px; z-index: 100;
-  display: flex; gap: 0; border-radius: 20px; overflow: hidden;
-  border: 1px solid var(--border); background: var(--surface);
-  font-size: 0.75rem; font-weight: 600;
-}
-.lang-toggle button {
-  padding: 6px 14px; border: none; cursor: pointer;
-  background: transparent; color: var(--muted);
-  font-family: var(--sans); font-size: 0.75rem; font-weight: 600;
-  transition: all 0.2s;
-}
-.lang-toggle button.active {
-  background: var(--accent); color: #fff;
-}
-
-/* Sections */
-section {
-  padding: 80px 16px;
-  max-width: 1100px;
-  margin: 0 auto;
-}
-.section-title {
-  text-align: center;
-  font-size: clamp(1.6rem, 4vw, 2.4rem);
-  font-weight: 800;
-  margin-bottom: 50px;
-  letter-spacing: -0.02em;
-}
-.section-title span {
-  background: var(--rainbow);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* Fade-in animation */
-.reveal {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
-}
-.reveal.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* ── HERO ── */
-.hero {
-  min-height: 100vh;
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  text-align: center;
-  padding: 100px 16px 60px;
-  position: relative;
-}
-.hero::before {
-  content: '';
-  position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 50% 30%, rgba(124,58,237,0.15) 0%, transparent 60%);
-  pointer-events: none;
-}
 /* ══ LOGO CANÓNICO — idéntico al .titulo de la app ══
    NO modificar sin actualizar .titulo en sketchsendv14.html.
    Todo lugar que muestre "SketchSend ✏️" debe usar .ss-logo. */
@@ -122,27 +61,100 @@ section {
 }
 @keyframes mover { from{background-position:0% center} to{background-position:200% center} }
 
+/* ══ NAV FIJO ══ */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+  height: var(--nav-h);
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 clamp(16px, 4vw, 40px);
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background 0.3s ease, border-color 0.3s ease, backdrop-filter 0.3s ease;
+}
+.nav.scrolled {
+  background: rgba(14,14,20,0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom-color: var(--border);
+}
+/* El logo del nav es un item flex: anular el centrado automático de .ss-logo */
+.nav-logo { font-size: 1.1rem; margin-inline: 0; flex-shrink: 0; }
+.nav-spacer { flex: 1; }
+.nav-cta {
+  padding: 8px 18px; border-radius: 50px;
+  background: var(--accent); color: #fff;
+  font-size: 0.85rem; font-weight: 700; white-space: nowrap;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.nav-cta:hover { transform: scale(1.04); box-shadow: 0 0 20px var(--glow); }
+
+/* Selector de idioma, ahora dentro del nav */
+.lang-toggle {
+  display: flex; border-radius: 20px; overflow: hidden;
+  border: 1px solid var(--border); background: rgba(26,26,46,0.6);
+  flex-shrink: 0;
+}
+.lang-toggle button {
+  padding: 5px 12px; border: none; cursor: pointer;
+  background: transparent; color: var(--muted);
+  font-family: var(--sans); font-size: 0.72rem; font-weight: 600;
+  transition: all 0.2s;
+}
+.lang-toggle button.active { background: var(--accent); color: #fff; }
+
+/* ══ SECCIONES ══ */
+section {
+  padding: 90px 16px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+.section-head { text-align: center; margin-bottom: 54px; }
+.section-title {
+  font-size: clamp(1.6rem, 4vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+/* El arcoíris queda reservado al logo, al contador y a los dibujos.
+   Los encabezados sólo llevan una barra de acento debajo. */
+.section-rule {
+  width: 56px; height: 4px; border-radius: 2px;
+  margin: 14px auto 0;
+  background: var(--rainbow); background-size: 200% auto;
+  animation: mover 2.5s linear infinite;
+}
+.section-sub { color: var(--muted); font-size: 0.95rem; margin-top: 12px; }
+
+/* Aparición al hacer scroll */
+.reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ══ HERO ══ */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: calc(var(--nav-h) + 40px) 16px 60px;
+  position: relative;
+  max-width: none;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 30%, rgba(124,58,237,0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+.hero > * { position: relative; }
 .hero-logo {
   /* El minimo manda en pantallas angostas: 2.8rem desbordaba
      en 360px y cortaba la S y el lapiz. */
   font-size: clamp(1.5rem, 7.5vw, 5rem);
   margin-bottom: 8px;
 }
-.hero-tagline {
-  font-size: clamp(1.1rem, 3vw, 1.6rem);
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 6px;
-}
-.hero-subtitle {
-  font-size: clamp(0.9rem, 2vw, 1.1rem);
-  color: var(--muted);
-  margin-bottom: 30px;
-}
-.hero-canvas-wrap {
-  position: relative;
-  margin-bottom: 36px;
-}
+.hero-tagline { font-size: clamp(1.1rem, 3vw, 1.6rem); font-weight: 600; margin-bottom: 6px; }
+.hero-subtitle { font-size: clamp(0.9rem, 2vw, 1.1rem); color: var(--muted); margin-bottom: 30px; }
+.hero-canvas-wrap { position: relative; margin-bottom: 36px; }
 #hero-canvas {
   border-radius: 16px;
   box-shadow: 0 0 60px var(--glow), 0 20px 60px rgba(0,0,0,0.4);
@@ -151,229 +163,122 @@ section {
 }
 .cta-btn {
   display: inline-block;
-  padding: 16px 40px;
-  border-radius: 50px;
-  border: none;
-  background: var(--accent);
-  color: #fff;
-  font-family: var(--sans);
-  font-size: 1.1rem;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 0 30px var(--glow);
+  padding: 16px 40px; border-radius: 50px; border: none;
+  background: var(--accent); color: #fff;
+  font-family: var(--sans); font-size: 1.1rem; font-weight: 700;
+  cursor: pointer; box-shadow: 0 0 30px var(--glow);
   transition: transform 0.15s, box-shadow 0.15s;
   animation: ctaPulse 3s ease infinite;
-  text-decoration: none;
 }
 .cta-btn:hover { transform: scale(1.05); box-shadow: 0 0 40px var(--glow); }
-@keyframes ctaPulse {
-  0%, 80%, 100% { transform: scale(1); }
-  90% { transform: scale(1.05); }
-}
-.hero-note {
-  margin-top: 14px;
-  font-size: 0.82rem;
-  color: var(--muted);
-}
+@keyframes ctaPulse { 0%, 80%, 100% { transform: scale(1); } 90% { transform: scale(1.05); } }
+.hero-note { margin-top: 14px; font-size: 0.82rem; color: var(--muted); }
 
-/* ── HOW IT WORKS ── */
-.steps {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
+/* ══ CONTADOR (odómetro) ══
+   Oculto hasta que Firestore entregue un número: un "0" mientras carga
+   se lee como "nadie usa esto". */
+.counter-section { padding: 30px 16px 60px; text-align: center; display: none; }
+.counter-section.ready { display: block; }
+.counter-wrap {
+  display: inline-flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 30px 54px; border-radius: 20px;
+  background: var(--surface); border: 1px solid var(--border);
 }
-@media (max-width: 700px) {
-  .steps { grid-template-columns: 1fr; }
+.odometer {
+  display: flex; justify-content: center;
+  font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
+.od-digit { height: 1em; overflow: hidden; display: inline-block; }
+/* El degradado va en cada tira, no en el contenedor: un hijo con
+   overflow:hidden corta el background-clip:text del padre y el número
+   sale en blanco. El desfase por dígito hace que el color siga
+   recorriendo el número de izquierda a derecha. */
+.od-strip, .od-sep {
+  background: var(--rainbow); background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: mover 2.5s linear infinite;
+}
+.od-strip {
+  display: flex; flex-direction: column;
+  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.od-strip span { height: 1em; line-height: 1em; display: block; text-align: center; }
+.od-sep { padding: 0 0.04em; }
+.counter-label { font-size: 1rem; color: var(--muted); font-weight: 500; }
+
+/* ══ CÓMO FUNCIONA ══ */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: stretch; }
 .step-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 32px 24px;
-  text-align: center;
-  transition: transform 0.25s, border-color 0.25s;
-  position: relative;
-}
-.step-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--accent);
-}
-.step-num {
-  font-size: 0.7rem; font-weight: 800;
-  color: var(--accent);
-  letter-spacing: 0.1em;
-  margin-bottom: 12px;
-}
-.step-icon {
-  font-size: 2.4rem;
-  margin-bottom: 14px;
-  display: block;
-}
-.step-title {
-  font-size: 1.2rem; font-weight: 700;
-  margin-bottom: 8px;
-}
-.step-desc {
-  font-size: 0.9rem;
-  color: var(--muted);
-  line-height: 1.5;
-}
-
-/* ── WHY SKETCHSEND ── */
-.features {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 24px;
-}
-@media (max-width: 700px) {
-  .features { grid-template-columns: 1fr; }
-}
-.feature-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 28px 24px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 34px 26px; text-align: center;
+  display: flex; flex-direction: column;
   transition: transform 0.25s, border-color 0.25s;
 }
-.feature-card:hover {
-  transform: translateY(-3px);
-  border-color: var(--accent);
-}
-.feature-icon {
-  font-size: 2rem;
-  margin-bottom: 10px;
-  display: block;
-}
-.feature-title {
-  font-size: 1.1rem; font-weight: 700;
-  margin-bottom: 6px;
-}
-.feature-desc {
-  font-size: 0.88rem;
-  color: var(--muted);
-  line-height: 1.5;
-}
+.step-card:hover { transform: translateY(-4px); border-color: var(--accent); }
+.step-num { font-size: 0.7rem; font-weight: 800; color: var(--accent); letter-spacing: 0.1em; margin-bottom: 12px; }
+.step-icon { font-size: 2.4rem; margin-bottom: 14px; display: block; }
+.step-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+.step-desc { font-size: 0.9rem; color: var(--muted); line-height: 1.5; }
 
-/* ── TRY IT ── */
-.try-section {
-  text-align: center;
+/* ══ FILAS DE DOS COLUMNAS CON CAPTURAS ══ */
+.frow {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: clamp(32px, 6vw, 80px); align-items: center;
+  margin-bottom: 90px;
 }
-.try-subtitle {
-  font-size: 1rem;
-  color: var(--muted);
-  margin-top: -36px;
-  margin-bottom: 30px;
+.frow:last-child { margin-bottom: 0; }
+/* Alternar el lado de la captura fila por fila */
+.frow.flip .frow-media { order: -1; }
+.frow-title { font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 14px; }
+.frow-desc { font-size: 1rem; color: var(--muted); line-height: 1.65; margin-bottom: 20px; }
+.frow-points { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.frow-points li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.92rem; color: var(--text); }
+.frow-points li .pt-icon { flex-shrink: 0; font-size: 1.1rem; line-height: 1.4; }
+.frow-points li span:last-child { color: var(--muted); }
+.frow-points strong { color: var(--text); font-weight: 600; }
+
+/* Marco de teléfono */
+.phone {
+  width: min(292px, 78vw);
+  margin: 0 auto;
+  background: #07070b;
+  border: 1px solid #2c2c3e;
+  border-radius: 38px;
+  padding: 10px;
+  box-shadow: 0 30px 70px rgba(0,0,0,0.55), 0 0 60px rgba(124,58,237,0.18);
 }
-.try-canvas-wrap {
-  display: inline-block;
-  position: relative;
-  margin-bottom: 16px;
-}
+.phone img { border-radius: 28px; }
+
+/* ══ PRUÉBALO ══ */
+.try-section { text-align: center; }
+.try-canvas-wrap { display: inline-block; position: relative; margin-bottom: 16px; }
 #try-canvas {
-  border-radius: 14px;
-  border: 2px solid var(--border);
-  background: #fff;
-  cursor: crosshair;
-  touch-action: none;
-  max-width: 90vw;
+  border-radius: 14px; border: 2px solid var(--border);
+  background: #fff; cursor: crosshair; touch-action: none; max-width: 90vw;
 }
-.try-controls {
-  display: flex;
-  justify-content: center;
-  gap: 12px;
-  margin-bottom: 14px;
-}
+.try-controls { display: flex; justify-content: center; gap: 12px; margin-bottom: 14px; }
 .try-controls button {
-  padding: 8px 20px;
-  border-radius: 8px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  font-family: var(--sans);
-  font-size: 0.85rem;
-  cursor: pointer;
+  padding: 8px 20px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text);
+  font-family: var(--sans); font-size: 0.85rem; cursor: pointer;
   transition: border-color 0.2s;
 }
 .try-controls button:hover { border-color: var(--accent); }
-.try-msg {
-  font-size: 0.95rem;
-  color: var(--muted);
-  margin-bottom: 20px;
-  opacity: 0;
-  transition: opacity 0.5s;
-}
+.try-msg { font-size: 0.95rem; color: var(--muted); margin-bottom: 20px; opacity: 0; transition: opacity 0.5s; }
 .try-msg.show { opacity: 1; }
 
-/* ── FOOTER ── */
-footer {
-  text-align: center;
-  padding: 50px 16px;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-footer .footer-logo {
-  font-size: 1.3rem;
-  margin-bottom: 8px;
-}
-footer p { margin: 4px 0; }
-footer a { color: var(--accent2); }
-
-/* Counter */
-.counter-section {
-  padding: 40px 20px;
-  text-align: center;
-}
-.counter-wrap {
-  display: inline-flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 30px 50px; border-radius: 20px;
-  background: var(--surface); border: 1px solid var(--border);
-}
-.counter-number {
-  font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 900;
-  background: var(--rainbow); background-size: 200% 100%;
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text; animation: mover 2.5s linear infinite;
-  font-variant-numeric: tabular-nums;
-}
-.counter-label {
-  font-size: 1rem; color: var(--muted); font-weight: 500;
-}
-
-/* Testimonials */
-.testimonials-section { padding: 60px 20px; max-width: 900px; margin: 0 auto; }
-.testimonials-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px; margin-top: 30px;
-}
-.testimonial-card {
-  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
-  padding: 24px; text-align: left;
-}
-.testimonial-text {
-  font-size: 0.95rem; color: var(--text); line-height: 1.6;
-  margin-bottom: 16px; font-style: italic;
-}
-.testimonial-author {
-  display: flex; align-items: center; gap: 10px;
-}
-.testimonial-avatar {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: var(--accent); display: flex; align-items: center; justify-content: center;
-  font-weight: 700; font-size: 0.85rem; color: #fff; flex-shrink: 0;
-}
-.testimonial-name { font-size: 0.82rem; color: var(--muted); }
-
-/* Gallery */
-.gallery-section { padding: 60px 20px; max-width: 1000px; margin: 0 auto; text-align: center; }
-.gallery-subtitle { color: var(--muted); margin-bottom: 30px; font-size: 0.9rem; }
-.gallery-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
-}
+/* ══ GALERÍA ══
+   Oculta mientras no haya dibujos: una sección vacía se lee como
+   obra en construcción. */
+.gallery-section { text-align: center; display: none; }
+.gallery-section.ready { display: block; }
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
 .gallery-card {
   background: #fff; border-radius: 14px; overflow: hidden;
-  aspect-ratio: 4/3; position: relative; cursor: pointer;
+  aspect-ratio: 4/3; position: relative;
   transition: transform 0.2s, box-shadow 0.2s;
 }
 .gallery-card:hover { transform: scale(1.03); box-shadow: 0 0 30px var(--glow); }
@@ -383,40 +288,96 @@ footer a { color: var(--accent2); }
   padding: 6px 10px; background: rgba(0,0,0,0.6);
   color: #fff; font-size: 0.72rem; text-align: left;
 }
-.gallery-empty {
-  color: var(--muted); font-size: 0.9rem; padding: 40px;
-  border: 2px dashed var(--border); border-radius: 16px;
+
+/* ══ PREGUNTAS FRECUENTES ══ */
+.faq-list { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+details.faq {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden;
+  transition: border-color 0.2s;
+}
+details.faq[open] { border-color: var(--accent); }
+details.faq summary {
+  list-style: none; cursor: pointer;
+  padding: 20px 56px 20px 22px; position: relative;
+  font-size: 1rem; font-weight: 600; color: var(--text);
+}
+details.faq summary::-webkit-details-marker { display: none; }
+details.faq summary::after {
+  content: '+'; position: absolute; right: 22px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.4rem; font-weight: 400; color: var(--accent2); line-height: 1;
+}
+details.faq[open] summary::after { content: '−'; }
+details.faq .faq-a {
+  padding: 0 22px 20px; font-size: 0.93rem; color: var(--muted); line-height: 1.65;
 }
 
-/* ── RESPONSIVE ── */
+/* ══ PIE ══ */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 56px clamp(16px, 4vw, 40px) 36px;
+  color: var(--muted); font-size: 0.86rem;
+}
+.foot-grid {
+  max-width: 1180px; margin: 0 auto;
+  display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 40px;
+}
+.footer-logo { font-size: 1.3rem; margin-inline: 0; margin-bottom: 10px; }
+.foot-tagline { max-width: 320px; line-height: 1.6; }
+.foot-col h4 {
+  font-size: 0.78rem; font-weight: 700; color: var(--text);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px;
+}
+.foot-col ul { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+.foot-col a { color: var(--muted); transition: color 0.2s; }
+.foot-col a:hover { color: var(--accent2); }
+.foot-bottom {
+  max-width: 1180px; margin: 40px auto 0;
+  padding-top: 22px; border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  font-size: 0.8rem;
+}
+
+/* ══ RESPONSIVE ══ */
+@media (max-width: 900px) {
+  .frow { grid-template-columns: 1fr; gap: 32px; margin-bottom: 64px; }
+  .frow.flip .frow-media { order: 0; }
+  .frow-text { text-align: center; }
+  .frow-points li { text-align: left; }
+  .frow-points { max-width: 420px; margin: 0 auto; }
+}
+@media (max-width: 700px) {
+  .steps { grid-template-columns: 1fr; }
+  .foot-grid { grid-template-columns: 1fr; gap: 30px; text-align: center; }
+  .foot-tagline { margin-inline: auto; }
+  .foot-col ul { align-items: center; }
+  .foot-bottom { justify-content: center; text-align: center; }
+}
 @media (max-width: 600px) {
-  section { padding: 50px 16px; }
-  .hero { padding: 80px 16px 40px; min-height: 90vh; }
+  :root { --nav-h: 54px; }
+  section { padding: 56px 16px; }
+  .hero { padding: calc(var(--nav-h) + 24px) 16px 40px; min-height: 92vh; }
   .hero-tagline { font-size: 1rem; }
   .hero-subtitle { font-size: 0.85rem; margin-bottom: 20px; }
   .cta-btn { padding: 14px 32px; font-size: 1rem; }
   .hero-note { font-size: 0.75rem; }
-  .section-title { font-size: 1.4rem; margin-bottom: 30px; }
+  .section-head { margin-bottom: 34px; }
+  .nav { gap: 8px; padding: 0 16px; }
+  .nav-logo { font-size: 0.95rem; }
+  .nav-cta { padding: 7px 13px; font-size: 0.75rem; }
+  .lang-toggle button { padding: 5px 9px; font-size: 0.68rem; }
   .step-card { padding: 24px 18px; }
   .step-icon { font-size: 2rem; }
   .step-title { font-size: 1.05rem; }
   .step-desc { font-size: 0.82rem; }
-  .feature-card { padding: 22px 18px; }
-  .feature-icon { font-size: 1.6rem; }
-  .feature-title { font-size: 1rem; }
-  .feature-desc { font-size: 0.82rem; }
   .counter-wrap { padding: 22px 30px; }
-  .counter-number { font-size: 2.2rem; }
   .counter-label { font-size: 0.85rem; }
-  .testimonials-section { padding: 40px 16px; }
-  .testimonials-grid { grid-template-columns: 1fr; }
-  .testimonial-card { padding: 18px; }
-  .testimonial-text { font-size: 0.88rem; }
-  .gallery-section { padding: 40px 16px; }
   .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
   .try-controls { flex-wrap: wrap; gap: 8px; }
   .try-controls button { padding: 6px 14px; font-size: 0.8rem; }
-  footer { padding: 36px 16px; }
+  details.faq summary { padding: 16px 48px 16px 18px; font-size: 0.93rem; }
+  details.faq .faq-a { padding: 0 18px 16px; font-size: 0.87rem; }
 }
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -429,14 +390,19 @@ footer a { color: var(--accent2); }
   <div id="landing-splash-logo" class="ss-logo" style="font-size:clamp(1.5rem,7.5vw,5rem);">SketchSend ✏️</div>
 </div>
 
-<!-- Language toggle -->
-<div class="lang-toggle">
-  <button id="btn-en" class="active" onclick="setLang('en')">EN</button>
-  <button id="btn-es" onclick="setLang('es')">ES</button>
-</div>
+<!-- ══ NAV FIJO ══ -->
+<nav class="nav" id="nav">
+  <a href="#top" class="ss-logo nav-logo">SketchSend ✏️</a>
+  <div class="nav-spacer"></div>
+  <div class="lang-toggle">
+    <button id="btn-en" class="active" onclick="setLang('en')">EN</button>
+    <button id="btn-es" onclick="setLang('es')">ES</button>
+  </div>
+  <a href="./" target="_blank" class="nav-cta" data-i18n="nav_cta">Start Drawing</a>
+</nav>
 
 <!-- ══ HERO ══ -->
-<section class="hero">
+<section class="hero" id="top">
   <div class="ss-logo hero-logo" style="visibility:hidden;">SketchSend ✏️</div>
   <div class="hero-tagline" data-i18n="hero_tagline">Every message is a drawing</div>
   <div class="hero-subtitle" data-i18n="hero_subtitle">Draw. Send. Watch it come alive.</div>
@@ -447,17 +413,20 @@ footer a { color: var(--accent2); }
   <div class="hero-note" data-i18n="hero_note">No download needed. Works in your browser.</div>
 </section>
 
-<!-- ══ COUNTER ══ -->
-<section class="counter-section reveal">
+<!-- ══ CONTADOR ══ -->
+<section class="counter-section" id="counter-section">
   <div class="counter-wrap">
-    <div class="counter-number" id="drawings-counter">0</div>
+    <div class="odometer" id="drawings-counter"></div>
     <div class="counter-label" data-i18n="counter_label">drawings sent and counting</div>
   </div>
 </section>
 
-<!-- ══ HOW IT WORKS ══ -->
-<section class="reveal">
-  <div class="section-title"><span data-i18n="how_title">How it works</span></div>
+<!-- ══ CÓMO FUNCIONA ══ -->
+<section class="reveal" id="how">
+  <div class="section-head">
+    <h2 class="section-title" data-i18n="how_title">How it works</h2>
+    <div class="section-rule"></div>
+  </div>
   <div class="steps">
     <div class="step-card reveal">
       <div class="step-num">01</div>
@@ -480,45 +449,49 @@ footer a { color: var(--accent2); }
   </div>
 </section>
 
-<!-- ══ WHY SKETCHSEND ══ -->
-<section class="reveal">
-  <div class="section-title"><span data-i18n="why_title">Why SketchSend?</span></div>
-  <div class="features">
-    <div class="feature-card reveal">
-      <span class="feature-icon">✏️</span>
-      <div class="feature-title" data-i18n="f1_title">No text. Just drawings.</div>
-      <div class="feature-desc" data-i18n="f1_desc">Every message is a hand-drawn creation. Express what words can't.</div>
+<!-- ══ POR QUÉ SKETCHSEND — filas de dos columnas ══ -->
+<section id="why">
+  <div class="section-head reveal">
+    <h2 class="section-title" data-i18n="why_title">Why SketchSend?</h2>
+    <div class="section-rule"></div>
+  </div>
+
+  <div class="frow reveal">
+    <div class="frow-text">
+      <h3 class="frow-title" data-i18n="r1_title">No text. Just drawings.</h3>
+      <p class="frow-desc" data-i18n="r1_desc">Every message is made by hand, stroke by stroke. Say the things words get wrong.</p>
+      <ul class="frow-points">
+        <li><span class="pt-icon">🌈</span><span><strong data-i18n="r1_p1_t">Rainbow brush.</strong> <span data-i18n="r1_p1_d">Colors shift as you draw, so every line comes out different.</span></span></li>
+        <li><span class="pt-icon">✏️</span><span><strong data-i18n="r1_p2_t">Nothing to learn.</strong> <span data-i18n="r1_p2_d">Open it, draw with your finger, pick a friend, send.</span></span></li>
+      </ul>
     </div>
-    <div class="feature-card reveal">
-      <span class="feature-icon">🌈</span>
-      <div class="feature-title" data-i18n="f2_title">Rainbow brush</div>
-      <div class="feature-desc" data-i18n="f2_desc">Draw with colors that flow and shift. Your strokes become art.</div>
+    <div class="frow-media">
+      <div class="phone"><img src="img/app-drawing.png" data-i18n-alt="alt_drawing" alt="Drawing a cat with the rainbow brush in SketchSend" width="585" height="1266"></div>
     </div>
-    <div class="feature-card reveal">
-      <span class="feature-icon">⏳</span>
-      <div class="feature-title" data-i18n="f3_title">Disappears in 24h</div>
-      <div class="feature-desc" data-i18n="f3_desc">Like a real sketch on paper. Here today, gone tomorrow.</div>
+  </div>
+
+  <div class="frow flip reveal">
+    <div class="frow-text">
+      <h3 class="frow-title" data-i18n="r2_title">They watch it being drawn</h3>
+      <p class="frow-desc" data-i18n="r2_desc">Your friend doesn't get a flat picture. The drawing replays in front of them, line by line, exactly the way you made it.</p>
+      <ul class="frow-points">
+        <li><span class="pt-icon">🎬</span><span><strong data-i18n="r2_p1_t">Animated replay.</strong> <span data-i18n="r2_p1_d">Every stroke reappears at the speed you drew it.</span></span></li>
+        <li><span class="pt-icon">⏳</span><span><strong data-i18n="r2_p2_t">Gone in 24 hours.</strong> <span data-i18n="r2_p2_d">Like a sketch on paper. Here today, gone tomorrow.</span></span></li>
+      </ul>
     </div>
-    <div class="feature-card reveal">
-      <span class="feature-icon">🎬</span>
-      <div class="feature-title" data-i18n="f4_title">Animated replay</div>
-      <div class="feature-desc" data-i18n="f4_desc">Watch every stroke appear just as it was drawn. Pure magic.</div>
+    <div class="frow-media">
+      <div class="phone"><img src="img/app-replay.png" data-i18n-alt="alt_replay" alt="A drawing replaying stroke by stroke in SketchSend" width="585" height="1266"></div>
     </div>
   </div>
 </section>
 
-<!-- ══ TESTIMONIALS ══ -->
-<section class="testimonials-section reveal">
-  <div class="section-title"><span data-i18n="testimonials_title">What people say</span></div>
-  <div class="testimonials-grid" id="testimonials-grid">
-    <!-- Filled by JS from Firestore, fallback hardcoded -->
-  </div>
-</section>
-
-<!-- ══ TRY IT ══ -->
+<!-- ══ PRUÉBALO ══ -->
 <section class="try-section reveal">
-  <div class="section-title"><span data-i18n="try_title">Try it yourself</span></div>
-  <div class="try-subtitle" data-i18n="try_subtitle">Go ahead, draw something!</div>
+  <div class="section-head">
+    <h2 class="section-title" data-i18n="try_title">Try it yourself</h2>
+    <div class="section-rule"></div>
+    <p class="section-sub" data-i18n="try_subtitle">Go ahead, draw something!</p>
+  </div>
   <div class="try-canvas-wrap">
     <canvas id="try-canvas" width="400" height="300"></canvas>
   </div>
@@ -529,74 +502,158 @@ footer a { color: var(--accent2); }
   <div><a href="./" target="_blank" class="cta-btn" style="font-size:1rem;padding:14px 34px;" data-i18n="try_cta">Create your account</a></div>
 </section>
 
-<!-- ══ GALLERY ══ -->
-<section class="gallery-section reveal">
-  <div class="section-title"><span data-i18n="gallery_title">Community drawings</span></div>
-  <div class="gallery-subtitle" data-i18n="gallery_subtitle">Shared by our artists</div>
-  <div class="gallery-grid" id="gallery-grid">
-    <!-- Filled by JS — replay canvases from Firestore public sketches -->
+<!-- ══ GALERÍA ══ -->
+<section class="gallery-section" id="gallery-section">
+  <div class="section-head">
+    <h2 class="section-title" data-i18n="gallery_title">Community drawings</h2>
+    <div class="section-rule"></div>
+    <p class="section-sub" data-i18n="gallery_subtitle">Shared by our artists</p>
   </div>
-  <div class="gallery-empty" id="gallery-empty" data-i18n="gallery_empty">Be the first to share your drawing!</div>
+  <div class="gallery-grid" id="gallery-grid">
+    <!-- Lo llena el JS con los sketches públicos de Firestore -->
+  </div>
 </section>
 
-<!-- ══ FOOTER ══ -->
+<!-- ══ PREGUNTAS FRECUENTES ══ -->
+<section class="reveal" id="faq">
+  <div class="section-head">
+    <h2 class="section-title" data-i18n="faq_title">Common questions</h2>
+    <div class="section-rule"></div>
+  </div>
+  <div class="faq-list">
+    <details class="faq">
+      <summary data-i18n="faq_q1">Is it free?</summary>
+      <div class="faq-a" data-i18n="faq_a1">Completely. There's no cost to create an account and no ads while you draw.</div>
+    </details>
+    <details class="faq">
+      <summary data-i18n="faq_q2">Do drawings really disappear?</summary>
+      <div class="faq-a" data-i18n="faq_a2">Yes. Twenty-four hours after you send one, it's deleted. That's the point — a sketch is a moment, not an archive.</div>
+    </details>
+    <details class="faq">
+      <summary data-i18n="faq_q3">Do I need to install anything?</summary>
+      <div class="faq-a" data-i18n="faq_a3">No. SketchSend runs in your browser. If you'd rather have it as an icon, you can add it to your home screen in a couple of taps.</div>
+    </details>
+    <details class="faq">
+      <summary data-i18n="faq_q4">Who can see my drawings?</summary>
+      <div class="faq-a" data-i18n="faq_a4">Only the friends you send them to. Anyone who receives a drawing can share its link, so whoever holds that link can open it too.</div>
+    </details>
+  </div>
+</section>
+
+<!-- ══ PIE ══ -->
 <footer>
-  <div class="ss-logo footer-logo">SketchSend ✏️</div>
-  <p data-i18n="footer_made">Made with ✏️ and ❤️</p>
-  <p>© 2026 SketchSend</p>
-  <p><a href="./" target="_blank" data-i18n="footer_open">Open SketchSend →</a></p>
+  <div class="foot-grid">
+    <div>
+      <div class="ss-logo footer-logo">SketchSend ✏️</div>
+      <p class="foot-tagline" data-i18n="foot_tagline">A messaging app where every message is a drawing. Made with ✏️ and ❤️</p>
+    </div>
+    <div class="foot-col">
+      <h4 data-i18n="foot_product">Product</h4>
+      <ul>
+        <li><a href="./" target="_blank" data-i18n="foot_open">Open the app</a></li>
+        <li><a href="#how" data-i18n="foot_how">How it works</a></li>
+        <li><a href="#faq" data-i18n="foot_faq">Questions</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <h4 data-i18n="foot_legal">Legal</h4>
+      <!-- TODO antes del lanzamiento: estos enlaces necesitan páginas reales.
+           Privacy Policy y Terms of Service son obligatorios para Google Play,
+           App Store y GDPR. Ver F13 y F14 en BACKLOG.md. -->
+      <ul>
+        <li><a href="#" data-i18n="foot_privacy">Privacy Policy</a></li>
+        <li><a href="#" data-i18n="foot_terms">Terms of Service</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <span>© 2026 SketchSend</span>
+    <span data-i18n="foot_built">Built for people who'd rather draw it.</span>
+  </div>
 </footer>
 
 <script>
 /* ── i18n ── */
 const I18N = {
   en: {
+    nav_cta: 'Start Drawing',
     hero_tagline: 'Every message is a drawing',
     hero_subtitle: 'Draw. Send. Watch it come alive.',
     hero_cta: 'Start Drawing — It\'s Free',
     hero_note: 'No download needed. Works in your browser.',
+    counter_label: 'drawings sent and counting',
     how_title: 'How it works',
     step1_title: 'Draw', step1_desc: 'Use the rainbow brush and your creativity',
     step2_title: 'Send', step2_desc: 'Pick a friend and send your masterpiece',
     step3_title: 'They watch it come alive', step3_desc: 'Your drawing replays stroke by stroke',
     why_title: 'Why SketchSend?',
-    f1_title: 'No text. Just drawings.', f1_desc: 'Every message is a hand-drawn creation. Express what words can\'t.',
-    f2_title: 'Rainbow brush', f2_desc: 'Draw with colors that flow and shift. Your strokes become art.',
-    f3_title: 'Disappears in 24h', f3_desc: 'Like a real sketch on paper. Here today, gone tomorrow.',
-    f4_title: 'Animated replay', f4_desc: 'Watch every stroke appear just as it was drawn. Pure magic.',
+    r1_title: 'No text. Just drawings.',
+    r1_desc: 'Every message is made by hand, stroke by stroke. Say the things words get wrong.',
+    r1_p1_t: 'Rainbow brush.', r1_p1_d: 'Colors shift as you draw, so every line comes out different.',
+    r1_p2_t: 'Nothing to learn.', r1_p2_d: 'Open it, draw with your finger, pick a friend, send.',
+    r2_title: 'They watch it being drawn',
+    r2_desc: 'Your friend doesn\'t get a flat picture. The drawing replays in front of them, line by line, exactly the way you made it.',
+    r2_p1_t: 'Animated replay.', r2_p1_d: 'Every stroke reappears at the speed you drew it.',
+    r2_p2_t: 'Gone in 24 hours.', r2_p2_d: 'Like a sketch on paper. Here today, gone tomorrow.',
+    alt_drawing: 'Drawing a cat with the rainbow brush in SketchSend',
+    alt_replay: 'A drawing replaying stroke by stroke in SketchSend',
     try_title: 'Try it yourself', try_subtitle: 'Go ahead, draw something!',
     try_clear: 'Clear', try_msg: 'Imagine sending this to a friend ✨',
     try_cta: 'Create your account',
-    footer_made: 'Made with ✏️ and ❤️', footer_open: 'Open SketchSend →',
-    counter_label: 'drawings sent and counting',
-    testimonials_title: 'What people say',
-    gallery_title: 'Community drawings',
-    gallery_subtitle: 'Shared by our artists',
-    gallery_empty: 'Be the first to share your drawing!'
+    gallery_title: 'Community drawings', gallery_subtitle: 'Shared by our artists',
+    faq_title: 'Common questions',
+    faq_q1: 'Is it free?',
+    faq_a1: 'Completely. There\'s no cost to create an account and no ads while you draw.',
+    faq_q2: 'Do drawings really disappear?',
+    faq_a2: 'Yes. Twenty-four hours after you send one, it\'s deleted. That\'s the point — a sketch is a moment, not an archive.',
+    faq_q3: 'Do I need to install anything?',
+    faq_a3: 'No. SketchSend runs in your browser. If you\'d rather have it as an icon, you can add it to your home screen in a couple of taps.',
+    faq_q4: 'Who can see my drawings?',
+    faq_a4: 'Only the friends you send them to. Anyone who receives a drawing can share its link, so whoever holds that link can open it too.',
+    foot_tagline: 'A messaging app where every message is a drawing. Made with ✏️ and ❤️',
+    foot_product: 'Product', foot_open: 'Open the app', foot_how: 'How it works', foot_faq: 'Questions',
+    foot_legal: 'Legal', foot_privacy: 'Privacy Policy', foot_terms: 'Terms of Service',
+    foot_built: 'Built for people who\'d rather draw it.'
   },
   es: {
+    nav_cta: 'Dibujar',
     hero_tagline: 'Cada mensaje es un dibujo',
     hero_subtitle: 'Dibuja. Envía. Míralo cobrar vida.',
     hero_cta: 'Empieza a Dibujar — Es Gratis',
     hero_note: 'Sin descargas. Funciona en tu navegador.',
+    counter_label: 'dibujos enviados y contando',
     how_title: 'Cómo funciona',
     step1_title: 'Dibuja', step1_desc: 'Usa el pincel arcoíris y tu creatividad',
     step2_title: 'Envía', step2_desc: 'Elige un amigo y envía tu obra maestra',
     step3_title: 'Lo ven cobrar vida', step3_desc: 'Tu dibujo se reproduce trazo a trazo',
     why_title: '¿Por qué SketchSend?',
-    f1_title: 'Sin texto. Solo dibujos.', f1_desc: 'Cada mensaje es una creación a mano. Expresa lo que las palabras no pueden.',
-    f2_title: 'Pincel arcoíris', f2_desc: 'Dibuja con colores que fluyen y cambian. Tus trazos se vuelven arte.',
-    f3_title: 'Desaparece en 24h', f3_desc: 'Como un dibujo real en papel. Hoy está, mañana no.',
-    f4_title: 'Replay animado', f4_desc: 'Mira cada trazo aparecer tal como fue dibujado. Pura magia.',
+    r1_title: 'Sin texto. Solo dibujos.',
+    r1_desc: 'Cada mensaje se hace a mano, trazo a trazo. Di eso que con palabras nunca sale igual.',
+    r1_p1_t: 'Pincel arcoíris.', r1_p1_d: 'Los colores cambian mientras dibujas, así que ninguna línea sale igual a otra.',
+    r1_p2_t: 'No hay que aprender nada.', r1_p2_d: 'Abres, dibujas con el dedo, eliges a quién y envías.',
+    r2_title: 'Lo ven dibujarse',
+    r2_desc: 'A tu amigo no le llega una imagen quieta. El dibujo se reproduce frente a él, línea por línea, tal como lo hiciste.',
+    r2_p1_t: 'Replay animado.', r2_p1_d: 'Cada trazo reaparece a la velocidad con que lo dibujaste.',
+    r2_p2_t: 'Desaparece en 24 horas.', r2_p2_d: 'Como un dibujo en papel. Hoy está, mañana no.',
+    alt_drawing: 'Dibujando un gato con el pincel arcoíris en SketchSend',
+    alt_replay: 'Un dibujo reproduciéndose trazo a trazo en SketchSend',
     try_title: 'Pruébalo tú mismo', try_subtitle: '¡Adelante, dibuja algo!',
     try_clear: 'Limpiar', try_msg: 'Imagina enviar esto a un amigo ✨',
     try_cta: 'Crea tu cuenta',
-    footer_made: 'Hecho con ✏️ y ❤️', footer_open: 'Abrir SketchSend →',
-    counter_label: 'dibujos enviados y contando',
-    testimonials_title: 'Lo que dicen las personas',
-    gallery_title: 'Dibujos de la comunidad',
-    gallery_subtitle: 'Compartidos por nuestros artistas',
-    gallery_empty: '¡Sé el primero en compartir tu dibujo!'
+    gallery_title: 'Dibujos de la comunidad', gallery_subtitle: 'Compartidos por nuestros artistas',
+    faq_title: 'Preguntas frecuentes',
+    faq_q1: '¿Es gratis?',
+    faq_a1: 'Del todo. Crear la cuenta no cuesta nada y no hay anuncios mientras dibujas.',
+    faq_q2: '¿De verdad se borran los dibujos?',
+    faq_a2: 'Sí. A las veinticuatro horas de enviarlo se elimina. De eso se trata: un dibujo es un momento, no un archivo.',
+    faq_q3: '¿Tengo que instalar algo?',
+    faq_a3: 'No. SketchSend funciona en el navegador. Si prefieres tenerlo como ícono, puedes añadirlo a tu pantalla de inicio en dos toques.',
+    faq_q4: '¿Quién puede ver mis dibujos?',
+    faq_a4: 'Solo los amigos a quienes se los envías. Quien recibe un dibujo puede compartir su enlace, así que quien tenga ese enlace también podrá abrirlo.',
+    foot_tagline: 'Una app de mensajes donde cada mensaje es un dibujo. Hecha con ✏️ y ❤️',
+    foot_product: 'Producto', foot_open: 'Abrir la app', foot_how: 'Cómo funciona', foot_faq: 'Preguntas',
+    foot_legal: 'Legal', foot_privacy: 'Política de Privacidad', foot_terms: 'Términos del Servicio',
+    foot_built: 'Hecha para quien prefiere dibujarlo.'
   }
 };
 
@@ -606,9 +663,14 @@ function setLang(l) {
   try { localStorage.setItem('ss_landing_lang', l); } catch(e) {}
   document.getElementById('btn-en').classList.toggle('active', l === 'en');
   document.getElementById('btn-es').classList.toggle('active', l === 'es');
+  document.documentElement.lang = l;
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (I18N[l][key]) el.textContent = I18N[l][key];
+  });
+  document.querySelectorAll('[data-i18n-alt]').forEach(el => {
+    const key = el.getAttribute('data-i18n-alt');
+    if (I18N[l][key]) el.alt = I18N[l][key];
   });
 }
 (function initLang() {
@@ -619,13 +681,25 @@ function setLang(l) {
   setLang(nav.startsWith('es') ? 'es' : 'en');
 })();
 
-/* ── Scroll reveal ── */
+/* ── Aparición al hacer scroll ──
+   observar() se usa también para los elementos creados después de cargar:
+   antes sólo se registraban los que existían al arrancar, así que cualquier
+   tarjeta añadida por JS se quedaba en opacity:0 para siempre. */
 const obs = new IntersectionObserver((entries) => {
   entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
 }, { threshold: 0.15 });
+function observar(el) { el.classList.add('reveal'); obs.observe(el); }
 document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
 
-/* ── Hero canvas — animated sun drawing ── */
+/* ── Nav: fondo sólido al bajar ── */
+(function() {
+  const nav = document.getElementById('nav');
+  const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 80);
+  addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+
+/* ── Hero canvas — dibujo animado ── */
 (function() {
   const cv = document.getElementById('hero-canvas');
   const DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -637,30 +711,21 @@ document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
 
   const cx = W / 2, cy = H / 2;
+  function hslColor(t) { return `hsl(${(t * 360) % 360}, 90%, 55%)`; }
 
-  // Rainbow color cycling — matches the real app's rainbow brush
-  function hslColor(t) {
-    return `hsl(${(t * 360) % 360}, 90%, 55%)`;
-  }
-
-  // Build a continuous path for a nice drawing — a flower with stem
   const allPoints = [];
   let colorOffset = 0;
 
-  // Stem (bottom to center)
   for (let y = H - 30; y >= cy + 40; y -= 3) {
     const wobble = Math.sin(y * 0.05) * 8;
     allPoints.push([cx + wobble, y]);
   }
-  // Left leaf
   for (let a = 0; a <= Math.PI; a += 0.1) {
     allPoints.push([cx - 10 - Math.sin(a) * 25, cy + 60 - Math.cos(a) * 12]);
   }
-  // Right leaf
   for (let a = Math.PI; a >= 0; a -= 0.1) {
     allPoints.push([cx + 10 + Math.sin(a) * 25, cy + 45 - Math.cos(a) * 12]);
   }
-  // Flower petals (5 petals as loops)
   for (let p = 0; p < 5; p++) {
     const pa = (Math.PI * 2 / 5) * p - Math.PI / 2;
     const pcx = cx + Math.cos(pa) * 35;
@@ -669,20 +734,16 @@ document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
       allPoints.push([pcx + Math.cos(a) * 20, pcy + Math.sin(a) * 18]);
     }
   }
-  // Center circle
   for (let a = 0; a <= Math.PI * 2 + 0.2; a += 0.12) {
     allPoints.push([cx + Math.cos(a) * 14, cy - 5 + Math.sin(a) * 14]);
   }
-  // Spiral inside center
   for (let a = 0; a <= Math.PI * 4; a += 0.2) {
     const r = 2 + a * 1.2;
     allPoints.push([cx + Math.cos(a) * Math.min(r, 12), cy - 5 + Math.sin(a) * Math.min(r, 12)]);
   }
 
-  // Animation state
   let ptIdx = 0;
-  const SPEED = 3;
-  const PAUSE = 120;
+  const SPEED = 3, PAUSE = 120;
   let pauseCount = 0;
   const totalPts = allPoints.length;
 
@@ -696,7 +757,6 @@ document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
       requestAnimationFrame(animate);
       return;
     }
-
     for (let i = 0; i < SPEED && ptIdx < totalPts; i++, ptIdx++) {
       if (ptIdx === 0) continue;
       ctx.beginPath();
@@ -706,13 +766,12 @@ document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
       ctx.lineWidth = 4;
       ctx.stroke();
     }
-
     requestAnimationFrame(animate);
   }
   animate();
 })();
 
-/* ── Try-it canvas — interactive rainbow drawing ── */
+/* ── Canvas interactivo ── */
 (function() {
   const cv = document.getElementById('try-canvas');
   const DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -723,9 +782,7 @@ document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
   ctx.scale(DPR, DPR);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 4;
 
-  let drawing = false;
-  let hue = 0, lastX, lastY;
-  let hasDrawn = false;
+  let drawing = false, hue = 0, lastX, lastY, hasDrawn = false;
   const msg = document.getElementById('try-msg');
 
   function pos(e) {
@@ -733,12 +790,7 @@ document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
     const t = e.touches ? e.touches[0] : e;
     return [(t.clientX - r.left) * (W / r.width), (t.clientY - r.top) * (H / r.height)];
   }
-
-  function start(e) {
-    e.preventDefault();
-    drawing = true;
-    [lastX, lastY] = pos(e);
-  }
+  function start(e) { e.preventDefault(); drawing = true; [lastX, lastY] = pos(e); }
   function move(e) {
     if (!drawing) return;
     e.preventDefault();
@@ -766,94 +818,67 @@ document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
   };
 })();
 
-/* ══ FIREBASE — read-only for counter, testimonials, gallery ══ */
-(function() {
-  const firebaseConfig = {
-    apiKey: 'AIzaSyBwsOO3je4iK63tid5KDDgYWeVHs0OanIc',
-    authDomain: 'sketchsend-d1976.firebaseapp.com',
-    projectId: 'sketchsend-d1976',
-    storageBucket: 'sketchsend-d1976.appspot.com',
-    messagingSenderId: '445386471766',
-    appId: '1:445386471766:web:6f8c0681a676d5a5b67ef7'
-  };
-
-  try {
-    const app = firebase.initializeApp(firebaseConfig, 'landing');
-    const db = firebase.firestore(app);
-
-    // Counter — read from stats/global document
-    db.collection('stats').doc('global').onSnapshot(doc => {
-      const data = doc.data();
-      if (data && data.sketchesSent != null) {
-        const el = document.getElementById('drawings-counter');
-        if (el) animateCounter(el, data.sketchesSent);
+/* ══ CONTADOR ODÓMETRO ══
+   Cada dígito es una tira vertical de 0-9 que se desliza hasta su cifra.
+   Las tiras arrancan escalonadas para que el número se asiente de
+   izquierda a derecha en vez de saltar de golpe. */
+let odValor = null;
+function renderOdometro(el, valor) {
+  const texto = valor.toLocaleString('en-US');
+  const reconstruir = el.dataset.largo !== String(texto.length);
+  if (reconstruir) {
+    el.dataset.largo = String(texto.length);
+    el.innerHTML = '';
+    let iDigito = 0;
+    for (const ch of texto) {
+      if (ch < '0' || ch > '9') {
+        const sep = document.createElement('span');
+        sep.className = 'od-sep';
+        sep.textContent = ch;
+        el.appendChild(sep);
+        continue;
       }
-    }, () => {});
-
-    // Testimonials — read from landing_testimonials collection
-    db.collection('landing_testimonials').orderBy('createdAt', 'desc').limit(6).get().then(snap => {
-      if (snap.empty) { loadFallbackTestimonials(); return; }
-      const grid = document.getElementById('testimonials-grid');
-      snap.forEach(doc => {
-        const d = doc.data();
-        grid.appendChild(createTestimonialCard(d.text, d.author, d.initial));
-      });
-    }).catch(() => loadFallbackTestimonials());
-
-    // Gallery — read from landing_gallery collection (public sketches)
-    db.collection('landing_gallery').orderBy('sharedAt', 'desc').limit(8).get().then(snap => {
-      const grid = document.getElementById('gallery-grid');
-      const empty = document.getElementById('gallery-empty');
-      if (snap.empty) { if (empty) empty.style.display = 'block'; return; }
-      if (empty) empty.style.display = 'none';
-      snap.forEach(doc => {
-        const d = doc.data();
-        if (d.strokes) grid.appendChild(createGalleryCard(d.strokes, d.author));
-      });
-    }).catch(() => {});
-
-  } catch(e) {
-    loadFallbackTestimonials();
+      const hueco = document.createElement('span');
+      hueco.className = 'od-digit';
+      const tira = document.createElement('span');
+      tira.className = 'od-strip';
+      tira.style.transitionDelay = (iDigito * 70) + 'ms';
+      /* Desfasar el arcoíris por dígito para que el color recorra el
+         número entero en vez de repetirse igual en cada cifra. */
+      tira.style.animationDelay = (-iDigito * 0.18) + 's';
+      for (let n = 0; n <= 9; n++) {
+        const s = document.createElement('span');
+        s.textContent = String(n);
+        tira.appendChild(s);
+      }
+      hueco.appendChild(tira);
+      el.appendChild(hueco);
+      iDigito++;
+    }
   }
-})();
-
-function animateCounter(el, target) {
-  const duration = 1500;
-  const start = parseInt(el.textContent) || 0;
-  if (start === target) return;
-  const startTime = performance.now();
-  function tick(now) {
-    const progress = Math.min((now - startTime) / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    el.textContent = Math.round(start + (target - start) * eased).toLocaleString();
-    if (progress < 1) requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
+  /* Dejar que el layout se asiente antes de animar, si no la primera
+     transición no se ve. */
+  requestAnimationFrame(() => {
+    const tiras = el.querySelectorAll('.od-strip');
+    let i = 0;
+    for (const ch of texto) {
+      if (ch < '0' || ch > '9') continue;
+      const tira = tiras[i++];
+      if (tira) tira.style.transform = `translateY(-${Number(ch) * 10}%)`;
+    }
+  });
+}
+function actualizarContador(valor) {
+  if (!(valor > 0) || valor === odValor) return;
+  odValor = valor;
+  const el = document.getElementById('drawings-counter');
+  const sec = document.getElementById('counter-section');
+  if (!el || !sec) return;
+  sec.classList.add('ready');
+  renderOdometro(el, valor);
 }
 
-function createTestimonialCard(text, author, initial) {
-  const card = document.createElement('div');
-  card.className = 'testimonial-card reveal';
-  card.innerHTML = `
-    <div class="testimonial-text">"${text}"</div>
-    <div class="testimonial-author">
-      <div class="testimonial-avatar">${initial || author.charAt(0).toUpperCase()}</div>
-      <div class="testimonial-name">@${author}</div>
-    </div>`;
-  return card;
-}
-
-function loadFallbackTestimonials() {
-  const grid = document.getElementById('testimonials-grid');
-  if (!grid || grid.children.length > 0) return;
-  const fallback = [
-    { text: lang === 'es' ? 'Es como enviar notas de papel pero animadas. ¡Me encanta!' : 'It\'s like sending paper notes but animated. Love it!', author: 'artlover', initial: 'A' },
-    { text: lang === 'es' ? 'Mi hija y yo nos enviamos dibujos todo el día. La mejor app.' : 'My daughter and I send drawings to each other all day. Best app ever.', author: 'creativemom', initial: 'C' },
-    { text: lang === 'es' ? 'El pincel arcoíris es adictivo. No puedo dejar de dibujar.' : 'The rainbow brush is addictive. I can\'t stop drawing.', author: 'doodler99', initial: 'D' },
-  ];
-  fallback.forEach(t => grid.appendChild(createTestimonialCard(t.text, t.author, t.initial)));
-}
-
+/* ══ GALERÍA ══ */
 function createGalleryCard(strokes, author) {
   const card = document.createElement('div');
   card.className = 'gallery-card';
@@ -882,7 +907,46 @@ function createGalleryCard(strokes, author) {
   return card;
 }
 
-/* ══ LANDING SPLASH — fly logo to hero ══ */
+/* ══ FIREBASE — sólo lectura, para el contador y la galería ══ */
+(function() {
+  const firebaseConfig = {
+    apiKey: 'AIzaSyBwsOO3je4iK63tid5KDDgYWeVHs0OanIc',
+    authDomain: 'sketchsend-d1976.firebaseapp.com',
+    projectId: 'sketchsend-d1976',
+    storageBucket: 'sketchsend-d1976.appspot.com',
+    messagingSenderId: '445386471766',
+    appId: '1:445386471766:web:6f8c0681a676d5a5b67ef7'
+  };
+
+  try {
+    const app = firebase.initializeApp(firebaseConfig, 'landing');
+    const db = firebase.firestore(app);
+
+    db.collection('stats').doc('global').onSnapshot(doc => {
+      const data = doc.data();
+      if (data && data.sketchesSent != null) actualizarContador(data.sketchesSent);
+    }, () => {});
+
+    db.collection('landing_gallery').orderBy('sharedAt', 'desc').limit(8).get().then(snap => {
+      if (snap.empty) return;              /* la sección sigue oculta */
+      const grid = document.getElementById('gallery-grid');
+      const sec = document.getElementById('gallery-section');
+      let puestas = 0;
+      snap.forEach(doc => {
+        const d = doc.data();
+        if (!d.strokes) return;
+        const card = createGalleryCard(d.strokes, d.author);
+        grid.appendChild(card);
+        observar(card);
+        puestas++;
+      });
+      if (puestas) sec.classList.add('ready');
+    }).catch(() => {});
+
+  } catch(e) { /* sin Firebase el contador y la galería quedan ocultos */ }
+})();
+
+/* ══ SPLASH — el logo vuela al hero ══ */
 (function() {
   const splash = document.getElementById('landing-splash');
   if (!splash) return;
