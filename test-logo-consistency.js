@@ -19,7 +19,7 @@ const LANDING = path.join(__dirname, 'landing.html');
 /* El gradiente canónico, tal como está en .titulo de la app. */
 const GRADIENT = '#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000';
 const FONT = 'Syne';
-const WEIGHT = '900';
+const WEIGHT = '800';
 const ANIMATION = 'mover 2.5s linear infinite';
 const BG_SIZE = '200% auto';
 
