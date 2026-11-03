@@ -114,6 +114,11 @@ section {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: mover 2.5s linear infinite;
+  /* El degradado se mide sobre la CAJA, no sobre el texto. En un padre de
+     bloque (como el footer) la caja se estira a todo el ancho y el texto
+     solo alcanza a mostrar un color: el arcoíris se pierde. */
+  width: fit-content;
+  margin-inline: auto;
 }
 @keyframes mover { from{background-position:0% center} to{background-position:200% center} }
 

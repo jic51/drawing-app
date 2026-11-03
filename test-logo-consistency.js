@@ -209,6 +209,25 @@ if (flyMatch) {
   );
 }
 
+/* ── 9b. La caja del logo debe ajustarse al texto ──
+   background-size:200% se mide sobre la caja. Si la caja se estira a todo
+   el ancho del padre, el texto solo cubre una fracción del degradado y se
+   ve de un solo color: el arcoíris desaparece sin que el CSS del color
+   cambie en nada. Pasó en el viewer y en el footer de la landing. */
+for (const [label, src, sel] of [
+  ['app .titulo', app, '\\.titulo'],
+  ['app .hdr-logo', app, '\\.hdr-logo'],
+  ['landing .ss-logo', landing, '\\.ss-logo'],
+]) {
+  const m = src.match(new RegExp(sel + '\\s*\\{([^}]*)\\}'));
+  check(
+    `${label} ajusta su caja al texto`,
+    m && /width:\s*fit-content/.test(squash(m[1])),
+    `${label} necesita "width:fit-content", si no el degradado se estira ` +
+      `con el padre y el logo se ve de un solo color`
+  );
+}
+
 /* ── 10. La landing carga la fuente Syne ── */
 check(
   'La landing carga Syne desde Google Fonts',
