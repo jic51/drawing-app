@@ -277,13 +277,46 @@ section {
    obra en construcción. */
 .gallery-section { text-align: center; display: none; }
 .gallery-section.ready { display: block; }
-.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
-.gallery-card {
-  background: #fff; border-radius: 14px; overflow: hidden;
-  aspect-ratio: 4/3; position: relative;
-  transition: transform 0.2s, box-shadow 0.2s;
+/* ══ OPINIONES ══ */
+.reviews-section { padding: 72px clamp(16px,4vw,40px); max-width: 1100px; margin: 0 auto; }
+.reviews-grid {
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 330px));
+  justify-content: center;
 }
-.gallery-card:hover { transform: scale(1.03); box-shadow: 0 0 30px var(--glow); }
+.review-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 22px 24px; text-align: left;
+}
+.review-text {
+  font-size: .95rem; color: var(--text); line-height: 1.6;
+  margin-bottom: 16px; font-style: italic;
+}
+.review-who { display: flex; align-items: center; gap: 10px; }
+.review-av {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  background: var(--accent); color: #fff; font-weight: 700; font-size: .82rem;
+  display: flex; align-items: center; justify-content: center;
+}
+.review-name { font-size: .82rem; color: var(--muted); }
+
+/* auto-fit + justify-content centra las tarjetas cuando no llenan la fila;
+   con auto-fill una sola quedaba pegada a la izquierda. */
+.gallery-grid {
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 230px));
+  justify-content: center;
+}
+.gallery-card {
+  background: #12121a; border-radius: 14px; overflow: hidden;
+  aspect-ratio: 4/3; position: relative;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+/* Al pasar por encima crece, para poder seguir el trazo de cerca. */
+.gallery-card:hover, .gallery-card:focus-visible {
+  transform: scale(1.35); z-index: 5;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.6), 0 0 40px var(--glow);
+}
 .gallery-card canvas { width: 100%; height: 100%; display: block; }
 .gallery-card .gallery-author {
   position: absolute; bottom: 0; left: 0; right: 0;
@@ -516,6 +549,19 @@ footer {
   </div>
 </section>
 
+<!-- ══ OPINIONES ══
+     Solo se muestran las que tienen approved:true en Firestore. Se leen
+     en vivo, así que aprobar una la publica al instante sin recargar.
+     Nunca inventar opiniones aquí: si no hay aprobadas, la sección no
+     existe para el visitante. -->
+<section class="reviews-section" id="reviews-section" style="display:none;">
+  <div class="section-head">
+    <h2 class="section-title" data-i18n="reviews_title">What people say</h2>
+    <div class="section-rule"></div>
+  </div>
+  <div class="reviews-grid" id="reviews-grid"></div>
+</section>
+
 <!-- ══ PREGUNTAS FRECUENTES ══ -->
 <section class="reveal" id="faq">
   <div class="section-head">
@@ -603,6 +649,7 @@ const I18N = {
     try_clear: 'Clear', try_msg: 'Imagine sending this to a friend ✨',
     try_cta: 'Create your account',
     gallery_title: 'Community drawings', gallery_subtitle: 'Shared by our artists',
+    reviews_title: 'What people say',
     faq_title: 'Common questions',
     faq_q1: 'Is it free?',
     faq_a1: 'Completely. There\'s no cost to create an account and no ads while you draw.',
@@ -643,6 +690,7 @@ const I18N = {
     try_clear: 'Limpiar', try_msg: 'Imagina enviar esto a un amigo ✨',
     try_cta: 'Crea tu cuenta',
     gallery_title: 'Dibujos de la comunidad', gallery_subtitle: 'Compartidos por nuestros artistas',
+    reviews_title: 'Lo que dicen las personas',
     faq_title: 'Preguntas frecuentes',
     faq_q1: '¿Es gratis?',
     faq_a1: 'Del todo. Crear la cuenta no cuesta nada y no hay anuncios mientras dibujas.',
@@ -916,15 +964,44 @@ function createGalleryCard(strokes, author) {
   const oy = (canvas.height - oh * k) / 2;
   const X = v => ox + v * k, Y = v => oy + v * k;
 
-  strokes.forEach(e => {
-    if (!e || e.tipo !== 'seg' || !e.de || !e.a) return;
-    ctx.strokeStyle = e.color || '#fff';
-    ctx.lineWidth = Math.max(0.5, (e.gw || 3) * k);
-    ctx.beginPath();
-    ctx.moveTo(X(e.de.x), Y(e.de.y));
-    ctx.lineTo(X(e.a.x),  Y(e.a.y));
-    ctx.stroke();
-  });
+  /* Solo los segmentos pintan; inicio y fin son marcadores. */
+  const segs = strokes.filter(e => e && e.tipo === 'seg' && e.de && e.a);
+  if (!segs.length) return card;
+
+  const fondo = () => { ctx.fillStyle = '#12121a'; ctx.fillRect(0, 0, canvas.width, canvas.height); };
+
+  /* El dibujo se rehace trazo a trazo, se queda completo unos segundos
+     y vuelve a empezar: enseñar CÓMO se dibujó es el punto de la app,
+     una imagen fija no lo cuenta. */
+  const ESPERA = 160;            /* ~2.7 s a 60fps con el dibujo entero */
+  const PASO = Math.max(1, Math.ceil(segs.length / 150));  /* ~2.5 s de trazado */
+  let i = 0, pausa = 0, raf = 0;
+
+  function cuadro() {
+    if (i >= segs.length) {
+      if (++pausa > ESPERA) { fondo(); i = 0; pausa = 0; }
+      raf = requestAnimationFrame(cuadro);
+      return;
+    }
+    for (let n = 0; n < PASO && i < segs.length; n++, i++) {
+      const e = segs[i];
+      ctx.strokeStyle = e.color || '#fff';
+      ctx.lineWidth = Math.max(0.5, (e.gw || 3) * k);
+      ctx.beginPath();
+      ctx.moveTo(X(e.de.x), Y(e.de.y));
+      ctx.lineTo(X(e.a.x),  Y(e.a.y));
+      ctx.stroke();
+    }
+    raf = requestAnimationFrame(cuadro);
+  }
+
+  /* Solo anima mientras se ve: varias tarjetas a la vez gastarían batería. */
+  let vivo = false;
+  new IntersectionObserver(es => es.forEach(en => {
+    if (en.isIntersecting && !vivo) { vivo = true; cuadro(); }
+    else if (!en.isIntersecting && vivo) { vivo = false; cancelAnimationFrame(raf); }
+  }), { threshold: 0.15 }).observe(card);
+
   return card;
 }
 
@@ -947,6 +1024,41 @@ function createGalleryCard(strokes, author) {
       const data = doc.data();
       if (data && data.sketchesSent != null) actualizarContador(data.sketchesSent);
     }, () => {});
+
+    /* Opiniones aprobadas, en vivo: marcar approved:true en la consola las
+       publica al instante. Sin orderBy a propósito — combinarlo con el
+       where exigiría un índice compuesto en Firestore; se ordena aquí. */
+    db.collection('landing_testimonials')
+      .where('approved', '==', true).limit(12)
+      .onSnapshot(snap => {
+        const grid = document.getElementById('reviews-grid');
+        const sec  = document.getElementById('reviews-section');
+        if (!grid || !sec) return;
+        const filas = [];
+        snap.forEach(d => { const x = d.data(); if (x && x.text) filas.push(x); });
+        if (!filas.length) { sec.style.display = 'none'; return; }
+        filas.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        grid.innerHTML = '';
+        filas.slice(0, 6).forEach(x => {
+          const autor = String(x.author || '');
+          const card = document.createElement('div');
+          card.className = 'review-card';
+          const txt = document.createElement('div');
+          txt.className = 'review-text';
+          txt.textContent = '“' + String(x.text).slice(0, 280) + '”';
+          const who = document.createElement('div');
+          who.className = 'review-who';
+          const av = document.createElement('div');
+          av.className = 'review-av';
+          av.textContent = (autor[0] || '?').toUpperCase();
+          const nm = document.createElement('div');
+          nm.className = 'review-name';
+          nm.textContent = '@' + autor;
+          who.append(av, nm); card.append(txt, who);
+          grid.appendChild(card);
+        });
+        sec.style.display = '';
+      }, () => {});
 
     db.collection('landing_gallery').orderBy('sharedAt', 'desc').limit(8).get().then(snap => {
       if (snap.empty) return;              /* la sección sigue oculta */
@@ -1109,6 +1221,9 @@ function createGalleryCard(strokes, author) {
     nav.style.opacity = '0';
     hero.style.opacity = '1';
     hero.style.position = 'fixed';
+    /* Por encima del nav (500): si no, a mitad de viaje se mete debajo de
+       la franja y desaparece justo antes de aterrizar. */
+    hero.style.zIndex = '600';
     hero.style.left = desde.x + 'px';
     /* Anclado a su posición inicial en pantalla, NO al scroll: si sigue al
        scroll se escapa por arriba antes de que la animación lo traiga al
