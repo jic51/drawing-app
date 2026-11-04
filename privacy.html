@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<!--
+  BORRADOR. Describe con exactitud lo que la app hace hoy, pero NO ha sido
+  revisado por nadie con formación legal. Antes del lanzamiento público y
+  antes de enviarlo a Google Play o la App Store, hay que someterlo a
+  revisión profesional. Ver F13 en BACKLOG.md.
+  Si cambias qué datos recoge la app, actualiza también este documento.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — SketchSend</title>
+<meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0e14;--surface:#1a1a2e;--text:#e8e8f0;--muted:#8888a8;--border:#2a2a40;
+  --accent:#7c3aed;--accent2:#a78bfa;
+  --rainbow:linear-gradient(90deg,#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000);
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.7;
+  -webkit-font-smoothing:antialiased}
+a{color:var(--accent2)}
+.ss-logo{font-family:'Syne',sans-serif;font-weight:800;white-space:nowrap;
+  background:var(--rainbow);background-size:200% auto;-webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;background-clip:text;animation:mover 2.5s linear infinite;
+  width:fit-content;margin-inline:auto}
+@keyframes mover{from{background-position:0% center}to{background-position:200% center}}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:16px clamp(16px,4vw,40px);border-bottom:1px solid var(--border)}
+.top .ss-logo{font-size:1.1rem;margin-inline:0}
+.lang{display:flex;border:1px solid var(--border);border-radius:20px;overflow:hidden;
+  font-size:.72rem;font-weight:600}
+.lang button{padding:5px 12px;border:none;cursor:pointer;background:transparent;color:var(--muted);
+  font-family:inherit;font-weight:inherit}
+.lang button.on{background:var(--accent);color:#fff}
+main{max-width:720px;margin:0 auto;padding:48px clamp(16px,4vw,24px) 80px}
+h1{font-size:clamp(1.6rem,5vw,2.2rem);font-weight:800;letter-spacing:-.02em;margin-bottom:8px}
+.sub{color:var(--muted);font-size:.9rem;margin-bottom:36px}
+h2{font-size:1.1rem;font-weight:700;margin:34px 0 10px}
+p,li{color:var(--muted);font-size:.95rem}
+p{margin-bottom:12px}
+ul{margin:0 0 12px 20px;display:flex;flex-direction:column;gap:7px}
+strong{color:var(--text);font-weight:600}
+table{width:100%;border-collapse:collapse;margin:14px 0 18px;font-size:.88rem}
+th,td{text-align:left;padding:10px 12px;border:1px solid var(--border);vertical-align:top}
+th{background:var(--surface);color:var(--text);font-weight:600}
+td{color:var(--muted)}
+.box{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:16px 18px;margin:18px 0}
+.box p:last-child{margin-bottom:0}
+footer{border-top:1px solid var(--border);padding:28px 16px;text-align:center;
+  color:var(--muted);font-size:.82rem}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <a href="landing.html" class="ss-logo">SketchSend ✏️</a>
+  <div class="lang">
+    <button id="b-en" class="on" onclick="setLang('en')">EN</button>
+    <button id="b-es" onclick="setLang('es')">ES</button>
+  </div>
+</div>
+
+<main>
+  <h1 data-i="title">Privacy Policy</h1>
+  <div class="sub"><span data-i="updated">Last updated</span>: 2026-11-04</div>
+
+  <p data-i="intro">SketchSend is a messaging app where every message is a drawing. This page explains what we store, why, and how long we keep it. We have tried to write it in plain language rather than legal boilerplate.</p>
+
+  <h2 data-i="h_what">What we store</h2>
+  <table>
+    <thead><tr><th data-i="t_data">Data</th><th data-i="t_why">Why</th><th data-i="t_how">How long</th></tr></thead>
+    <tbody>
+      <tr><td data-i="d1">Email address</td><td data-i="w1">To sign you in and recover your account</td><td data-i="k1">Until you delete your account</td></tr>
+      <tr><td data-i="d2">Display name, @username and invite code</td><td data-i="w2">So friends can find you and know who sent a drawing</td><td data-i="k2">Until you delete your account</td></tr>
+      <tr><td data-i="d3">Profile picture from Google</td><td data-i="w3">Shown next to your name, only if you sign in with Google</td><td data-i="k3">Until you delete your account</td></tr>
+      <tr><td data-i="d4">Your drawings</td><td data-i="w4">To deliver them to the friends you chose</td><td data-i="k4"><strong>24 hours</strong>, then deleted automatically</td></tr>
+      <tr><td data-i="d5">Your friend list</td><td data-i="w5">To show who you can send drawings to</td><td data-i="k5">Until you remove the friend or delete your account</td></tr>
+      <tr><td data-i="d6">Notification token</td><td data-i="w6">To tell your device a drawing arrived — only if you allow notifications</td><td data-i="k6">Until you turn notifications off</td></tr>
+      <tr><td data-i="d7">Anonymous usage events</td><td data-i="w7">To see which parts of the app work and which break</td><td data-i="k7">Aggregated, not tied to your drawings</td></tr>
+      <tr><td data-i="d8">Error reports</td><td data-i="w8">To find and fix bugs</td><td data-i="k8">Deleted periodically</td></tr>
+    </tbody>
+  </table>
+
+  <h2 data-i="h_not">What we do not collect</h2>
+  <ul>
+    <li data-i="n1">We do not ask for or store your location.</li>
+    <li data-i="n2">We do not read your phone's contacts.</li>
+    <li data-i="n3">We do not access your camera or photo library.</li>
+    <li data-i="n4">We do not sell your data, and we do not show advertising.</li>
+  </ul>
+
+  <h2 data-i="h_draw">Your drawings</h2>
+  <p data-i="p_draw1">A drawing you send is stored so the person you sent it to can open it. Twenty-four hours after you send it, it is deleted. That deletion is automatic and we cannot undo it.</p>
+  <p data-i="p_draw2">Anyone who has the link to a drawing can open it. Links are long and random, so they cannot be guessed, but a person who receives a drawing can pass its link to someone else. Treat a drawing as something that can be shared onward, like a photo you send in a chat.</p>
+
+  <h2 data-i="h_third">Services we rely on</h2>
+  <p data-i="p_third">We do not run our own servers. The app is built on these services, and your data passes through them:</p>
+  <ul>
+    <li data-i="s1"><strong>Google Firebase</strong> — sign-in, database and notifications.</li>
+    <li data-i="s2"><strong>PostHog</strong> — anonymous usage statistics.</li>
+    <li data-i="s3"><strong>GitHub Pages</strong> — serves the app itself.</li>
+  </ul>
+
+  <h2 data-i="h_rights">Your choices</h2>
+  <ul>
+    <li data-i="r1">You can change your name and @username at any time in Settings.</li>
+    <li data-i="r2">You can turn notifications off in Settings or in your browser.</li>
+    <li data-i="r3">You can ask us to delete your account and everything attached to it.</li>
+    <li data-i="r4">You can ask us for a copy of what we hold about you.</li>
+  </ul>
+  <div class="box">
+    <p data-i="p_contact">For any of the above, or any question about this page, write to <a href="mailto:hello@sketchsend.app">hello@sketchsend.app</a>.</p>
+  </div>
+
+  <h2 data-i="h_age">Age</h2>
+  <p data-i="p_age">SketchSend is not intended for children under 13. If you believe a child under 13 has created an account, write to us and we will remove it.</p>
+
+  <h2 data-i="h_changes">Changes to this page</h2>
+  <p data-i="p_changes">If we change what we collect, we will update this page and change the date at the top. Significant changes will be announced inside the app.</p>
+</main>
+
+<footer>
+  <p>© 2026 SketchSend · <a href="landing.html" data-i="back">Back to SketchSend</a> · <a href="terms.html" data-i="terms">Terms of Service</a></p>
+</footer>
+
+<script>
+const T = {
+ es: {
+  title:'Política de Privacidad', updated:'Última actualización',
+  intro:'SketchSend es una app de mensajes donde cada mensaje es un dibujo. Esta página explica qué guardamos, para qué y durante cuánto tiempo. Intentamos escribirla en lenguaje claro y no en jerga legal.',
+  h_what:'Qué guardamos', t_data:'Dato', t_why:'Para qué', t_how:'Cuánto tiempo',
+  d1:'Correo electrónico', w1:'Para iniciar sesión y recuperar tu cuenta', k1:'Hasta que borres tu cuenta',
+  d2:'Nombre, @usuario y código de invitación', w2:'Para que tus amigos te encuentren y sepan quién les envió un dibujo', k2:'Hasta que borres tu cuenta',
+  d3:'Foto de perfil de Google', w3:'Se muestra junto a tu nombre, solo si entras con Google', k3:'Hasta que borres tu cuenta',
+  d4:'Tus dibujos', w4:'Para entregarlos a los amigos que elegiste', k4:'<strong>24 horas</strong>, después se borran solos',
+  d5:'Tu lista de amigos', w5:'Para mostrarte a quién puedes enviar dibujos', k5:'Hasta que elimines al amigo o borres tu cuenta',
+  d6:'Token de notificaciones', w6:'Para avisar a tu teléfono que llegó un dibujo — solo si aceptas notificaciones', k6:'Hasta que desactives las notificaciones',
+  d7:'Eventos de uso anónimos', w7:'Para ver qué partes de la app funcionan y cuáles fallan', k7:'Agregados, sin vincularse a tus dibujos',
+  d8:'Reportes de error', w8:'Para encontrar y corregir fallos', k8:'Se borran periódicamente',
+  h_not:'Qué no recogemos',
+  n1:'No pedimos ni guardamos tu ubicación.',
+  n2:'No leemos los contactos de tu teléfono.',
+  n3:'No accedemos a tu cámara ni a tus fotos.',
+  n4:'No vendemos tus datos y no mostramos publicidad.',
+  h_draw:'Tus dibujos',
+  p_draw1:'Un dibujo que envías se guarda para que la persona a la que se lo mandaste pueda abrirlo. Veinticuatro horas después se borra. Ese borrado es automático y no podemos deshacerlo.',
+  p_draw2:'Cualquiera que tenga el enlace de un dibujo puede abrirlo. Los enlaces son largos y aleatorios, así que no se adivinan, pero quien recibe un dibujo puede pasarle el enlace a otra persona. Trata un dibujo como algo que puede reenviarse, igual que una foto que mandas por chat.',
+  h_third:'Servicios de los que dependemos',
+  p_third:'No tenemos servidores propios. La app está construida sobre estos servicios, y tus datos pasan por ellos:',
+  s1:'<strong>Google Firebase</strong> — inicio de sesión, base de datos y notificaciones.',
+  s2:'<strong>PostHog</strong> — estadísticas de uso anónimas.',
+  s3:'<strong>GitHub Pages</strong> — sirve la app.',
+  h_rights:'Tus opciones',
+  r1:'Puedes cambiar tu nombre y tu @usuario cuando quieras desde Ajustes.',
+  r2:'Puedes desactivar las notificaciones en Ajustes o en tu navegador.',
+  r3:'Puedes pedirnos que borremos tu cuenta y todo lo asociado a ella.',
+  r4:'Puedes pedirnos una copia de lo que tenemos sobre ti.',
+  p_contact:'Para cualquiera de esas cosas, o cualquier duda sobre esta página, escribe a <a href="mailto:hello@sketchsend.app">hello@sketchsend.app</a>.',
+  h_age:'Edad',
+  p_age:'SketchSend no está pensada para menores de 13 años. Si crees que un menor de 13 creó una cuenta, escríbenos y la eliminaremos.',
+  h_changes:'Cambios en esta página',
+  p_changes:'Si cambiamos lo que recogemos, actualizaremos esta página y la fecha de arriba. Los cambios importantes se anunciarán dentro de la app.',
+  back:'Volver a SketchSend', terms:'Términos del Servicio',
+ }
+};
+let lang='en';
+function setLang(l){
+  lang=l;
+  try{localStorage.setItem('ss_landing_lang',l);}catch(e){}
+  document.documentElement.lang=l;
+  document.getElementById('b-en').classList.toggle('on',l==='en');
+  document.getElementById('b-es').classList.toggle('on',l==='es');
+  if(l==='en'){location.reload();return;}
+  document.querySelectorAll('[data-i]').forEach(el=>{
+    const v=T.es[el.getAttribute('data-i')];
+    if(v) el.innerHTML=v;
+  });
+}
+(function(){
+  let s=null; try{s=localStorage.getItem('ss_landing_lang');}catch(e){}
+  const l = s || ((navigator.language||'').toLowerCase().startsWith('es')?'es':'en');
+  if(l==='es'){
+    document.documentElement.lang='es';
+    document.getElementById('b-en').classList.remove('on');
+    document.getElementById('b-es').classList.add('on');
+    document.querySelectorAll('[data-i]').forEach(el=>{
+      const v=T.es[el.getAttribute('data-i')];
+      if(v) el.innerHTML=v;
+    });
+    lang='es';
+  }
+})();
+</script>
+</body>
+</html>

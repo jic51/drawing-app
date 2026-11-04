@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<!--
+  BORRADOR. No ha sido revisado por nadie con formación legal. Antes del
+  lanzamiento público y antes de enviarlo a Google Play o la App Store,
+  hay que someterlo a revisión profesional. Ver F14 en BACKLOG.md.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terms of Service — SketchSend</title>
+<meta name="robots" content="index, follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e0e14;--surface:#1a1a2e;--text:#e8e8f0;--muted:#8888a8;--border:#2a2a40;
+  --accent:#7c3aed;--accent2:#a78bfa;
+  --rainbow:linear-gradient(90deg,#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000);
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,sans-serif}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);line-height:1.7;
+  -webkit-font-smoothing:antialiased}
+a{color:var(--accent2)}
+.ss-logo{font-family:'Syne',sans-serif;font-weight:800;white-space:nowrap;
+  background:var(--rainbow);background-size:200% auto;-webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;background-clip:text;animation:mover 2.5s linear infinite;
+  width:fit-content;margin-inline:auto}
+@keyframes mover{from{background-position:0% center}to{background-position:200% center}}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:16px clamp(16px,4vw,40px);border-bottom:1px solid var(--border)}
+.top .ss-logo{font-size:1.1rem;margin-inline:0}
+.lang{display:flex;border:1px solid var(--border);border-radius:20px;overflow:hidden;
+  font-size:.72rem;font-weight:600}
+.lang button{padding:5px 12px;border:none;cursor:pointer;background:transparent;color:var(--muted);
+  font-family:inherit;font-weight:inherit}
+.lang button.on{background:var(--accent);color:#fff}
+main{max-width:720px;margin:0 auto;padding:48px clamp(16px,4vw,24px) 80px}
+h1{font-size:clamp(1.6rem,5vw,2.2rem);font-weight:800;letter-spacing:-.02em;margin-bottom:8px}
+.sub{color:var(--muted);font-size:.9rem;margin-bottom:36px}
+h2{font-size:1.1rem;font-weight:700;margin:34px 0 10px}
+p,li{color:var(--muted);font-size:.95rem}
+p{margin-bottom:12px}
+ul{margin:0 0 12px 20px;display:flex;flex-direction:column;gap:7px}
+strong{color:var(--text);font-weight:600}
+.box{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  padding:16px 18px;margin:18px 0}
+.box p:last-child{margin-bottom:0}
+footer{border-top:1px solid var(--border);padding:28px 16px;text-align:center;
+  color:var(--muted);font-size:.82rem}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <a href="landing.html" class="ss-logo">SketchSend ✏️</a>
+  <div class="lang">
+    <button id="b-en" class="on" onclick="setLang('en')">EN</button>
+    <button id="b-es" onclick="setLang('es')">ES</button>
+  </div>
+</div>
+
+<main>
+  <h1 data-i="title">Terms of Service</h1>
+  <div class="sub"><span data-i="updated">Last updated</span>: 2026-11-04</div>
+
+  <p data-i="intro">These are the rules for using SketchSend. By creating an account you agree to them. We have kept them short and readable on purpose.</p>
+
+  <h2 data-i="h_what">What SketchSend is</h2>
+  <p data-i="p_what">SketchSend is a free app for sending hand-drawn messages. Drawings you send are deleted twenty-four hours later. The service is offered as it is, and we may change or discontinue features.</p>
+
+  <h2 data-i="h_acct">Your account</h2>
+  <ul>
+    <li data-i="a1">You must be at least 13 years old to create an account.</li>
+    <li data-i="a2">Use a real email address you control — it is how you recover access.</li>
+    <li data-i="a3">You are responsible for what is sent from your account.</li>
+    <li data-i="a4">One person, one account. Do not impersonate someone else.</li>
+  </ul>
+
+  <h2 data-i="h_rules">What you may not do</h2>
+  <p data-i="p_rules">Do not use SketchSend to send drawings that:</p>
+  <ul>
+    <li data-i="x1">harass, threaten or bully anyone;</li>
+    <li data-i="x2">are sexual content involving minors, or sexual content sent to someone who did not ask for it;</li>
+    <li data-i="x3">promote violence or hatred against people for who they are;</li>
+    <li data-i="x4">infringe someone else's copyright;</li>
+    <li data-i="x5">are illegal where you or the recipient live.</li>
+  </ul>
+  <p data-i="p_rules2">Do not attempt to break, overload or work around the limits of the service, and do not use automated tools to create accounts or send drawings in bulk.</p>
+
+  <h2 data-i="h_own">Who owns the drawings</h2>
+  <p data-i="p_own1">Your drawings are yours. We do not claim ownership of them.</p>
+  <p data-i="p_own2">By sending a drawing you give us permission to store and deliver it to the people you chose, for as long as it exists. That permission ends when the drawing is deleted.</p>
+  <p data-i="p_own3">We will not publish your drawing anywhere public without asking you first.</p>
+
+  <h2 data-i="h_share">Links are shareable</h2>
+  <p data-i="p_share">Each drawing has a link that works for anyone who has it. A person you send a drawing to can pass that link on. Do not send something you would mind being forwarded.</p>
+
+  <h2 data-i="h_end">Ending your account</h2>
+  <p data-i="p_end1">You can stop using SketchSend at any time, and you can ask us to delete your account along with everything attached to it.</p>
+  <p data-i="p_end2">We may suspend or close an account that breaks these rules, or that puts other people or the service at risk. Where we reasonably can, we will tell you why.</p>
+
+  <h2 data-i="h_live">Availability</h2>
+  <p data-i="p_live">SketchSend is free and provided without any guarantee that it will always be available or free of faults. Drawings are deleted after twenty-four hours by design — do not use the app as storage for anything you need to keep.</p>
+
+  <h2 data-i="h_liab">Liability</h2>
+  <p data-i="p_liab">To the extent the law allows, we are not liable for indirect or consequential loss arising from your use of SketchSend. Nothing here limits rights you have under consumer law where you live.</p>
+
+  <h2 data-i="h_changes">Changes</h2>
+  <p data-i="p_changes">If we change these terms we will update this page and the date above, and announce significant changes inside the app. Continuing to use SketchSend after a change means you accept it.</p>
+
+  <div class="box">
+    <p data-i="p_contact">Questions about these terms? Write to <a href="mailto:hello@sketchsend.app">hello@sketchsend.app</a>.</p>
+  </div>
+</main>
+
+<footer>
+  <p>© 2026 SketchSend · <a href="landing.html" data-i="back">Back to SketchSend</a> · <a href="privacy.html" data-i="privacy">Privacy Policy</a></p>
+</footer>
+
+<script>
+const T = {
+ es: {
+  title:'Términos del Servicio', updated:'Última actualización',
+  intro:'Estas son las reglas para usar SketchSend. Al crear una cuenta las aceptas. Las hemos dejado cortas y legibles a propósito.',
+  h_what:'Qué es SketchSend',
+  p_what:'SketchSend es una app gratuita para enviar mensajes dibujados a mano. Los dibujos que envías se borran veinticuatro horas después. El servicio se ofrece tal como está, y podemos cambiar o retirar funciones.',
+  h_acct:'Tu cuenta',
+  a1:'Debes tener al menos 13 años para crear una cuenta.',
+  a2:'Usa un correo real que controles: es como recuperas el acceso.',
+  a3:'Eres responsable de lo que se envíe desde tu cuenta.',
+  a4:'Una persona, una cuenta. No te hagas pasar por otra persona.',
+  h_rules:'Qué no puedes hacer',
+  p_rules:'No uses SketchSend para enviar dibujos que:',
+  x1:'acosen, amenacen o intimiden a alguien;',
+  x2:'sean contenido sexual con menores, o contenido sexual enviado a alguien que no lo pidió;',
+  x3:'promuevan violencia u odio contra personas por quienes son;',
+  x4:'infrinjan los derechos de autor de otra persona;',
+  x5:'sean ilegales donde tú o quien lo recibe vivan.',
+  p_rules2:'No intentes romper, sobrecargar o sortear los límites del servicio, y no uses herramientas automáticas para crear cuentas o enviar dibujos en masa.',
+  h_own:'De quién son los dibujos',
+  p_own1:'Tus dibujos son tuyos. No reclamamos su propiedad.',
+  p_own2:'Al enviar un dibujo nos das permiso para guardarlo y entregarlo a las personas que elegiste, mientras exista. Ese permiso termina cuando el dibujo se borra.',
+  p_own3:'No publicaremos tu dibujo en ningún sitio público sin preguntarte antes.',
+  h_share:'Los enlaces se pueden reenviar',
+  p_share:'Cada dibujo tiene un enlace que funciona para quien lo tenga. Una persona a la que le envías un dibujo puede pasar ese enlace. No envíes algo que te importaría que se reenviara.',
+  h_end:'Terminar tu cuenta',
+  p_end1:'Puedes dejar de usar SketchSend cuando quieras, y puedes pedirnos que borremos tu cuenta junto con todo lo asociado a ella.',
+  p_end2:'Podemos suspender o cerrar una cuenta que incumpla estas reglas, o que ponga en riesgo a otras personas o al servicio. Cuando razonablemente podamos, te diremos por qué.',
+  h_live:'Disponibilidad',
+  p_live:'SketchSend es gratis y se ofrece sin garantía de estar siempre disponible ni libre de fallos. Los dibujos se borran a las veinticuatro horas por diseño: no uses la app para guardar algo que necesites conservar.',
+  h_liab:'Responsabilidad',
+  p_liab:'En la medida en que la ley lo permita, no somos responsables de pérdidas indirectas derivadas del uso de SketchSend. Nada de aquí limita los derechos que te dé la ley de consumo donde vives.',
+  h_changes:'Cambios',
+  p_changes:'Si cambiamos estos términos actualizaremos esta página y la fecha de arriba, y anunciaremos los cambios importantes dentro de la app. Seguir usando SketchSend después de un cambio significa que lo aceptas.',
+  p_contact:'¿Dudas sobre estos términos? Escribe a <a href="mailto:hello@sketchsend.app">hello@sketchsend.app</a>.',
+  back:'Volver a SketchSend', privacy:'Política de Privacidad',
+ }
+};
+let lang='en';
+function setLang(l){
+  lang=l;
+  try{localStorage.setItem('ss_landing_lang',l);}catch(e){}
+  document.documentElement.lang=l;
+  document.getElementById('b-en').classList.toggle('on',l==='en');
+  document.getElementById('b-es').classList.toggle('on',l==='es');
+  if(l==='en'){location.reload();return;}
+  document.querySelectorAll('[data-i]').forEach(el=>{
+    const v=T.es[el.getAttribute('data-i')];
+    if(v) el.innerHTML=v;
+  });
+}
+(function(){
+  let s=null; try{s=localStorage.getItem('ss_landing_lang');}catch(e){}
+  const l = s || ((navigator.language||'').toLowerCase().startsWith('es')?'es':'en');
+  if(l==='es'){
+    document.documentElement.lang='es';
+    document.getElementById('b-en').classList.remove('on');
+    document.getElementById('b-es').classList.add('on');
+    document.querySelectorAll('[data-i]').forEach(el=>{
+      const v=T.es[el.getAttribute('data-i')];
+      if(v) el.innerHTML=v;
+    });
+    lang='es';
+  }
+})();
+</script>
+</body>
+</html>
