@@ -142,6 +142,8 @@
 | Posicionamiento: "cuaderno compartido entre 2 personas" en lugar de "mensajería masiva" | Análisis de mercado | Estrategia |
 | Lanzar en nicho específico (diseño, arte casual, parejas) antes de ir a todos | Lección de Draw Something / BeReal | Estrategia |
 | Estrategia de distribución: PWA → dominio propio → Play Store (TWA) → App Store (Capacitor) | Análisis de mercado | Estrategia — no entrar a tiendas hasta tener tracción. 90% del código se reutiliza. |
+| **🔵 PLATAFORMA: abrir las funciones a otros desarrolladores** | La idea fundacional del proyecto: que otras apps usen dibujar, replay, descarga de video/imagen, links públicos y amigos, y paguen por ello. Hoy es imposible porque toda la lógica vive dentro de un único HTML de 4.200 líneas acoplado a la UI y a Firebase. Camino realista: (1) extraer el motor de dibujo y replay a una librería sin UI ni Firebase, con su propia suite de pruebas; (2) publicarla como paquete npm gratuito para crear adopción; (3) encima de ella, un SDK embebible (`<script>` + un div) que cualquiera pega en su web; (4) solo entonces una API de pago con claves, cuotas y facturación, que exige backend propio — Firebase desde el cliente no sirve para esto. Lo que se vende no es el dibujo: es el replay animado y el link que se comparte. Ver nota de estrategia al final de este archivo. | Sesión 2026-11-04 | 🔵 Estratégico |
+| **Carrusel para galería y opiniones** | Cuando haya suficientes, convertirlos en carrusel que se detenga al pasar el cursor por encima. No antes: con 1-2 elementos un carrusel se ve peor que una rejilla. Umbral sugerido: 5+. | Sesión 2026-11-04 | 🟡 Cuando haya volumen |
 | **Testimonios: recoger los reales desde la app** | Los 3 testimonios que había eran inventados como relleno — eliminados. Para tener reales: botón "Deja tu opinión" en Ajustes que guarda en `landing_testimonials` con `approved:false`; la landing solo muestra las aprobadas; el dueño aprueba desde la consola de Firebase. Necesita reglas nuevas. | Sesión 2026-11-03 | Pendiente |
 | **Galería: botón "Compartir en la galería"** | Hoy no hay forma de que un dibujo llegue a `landing_gallery`. Agregar un botón al terminar un dibujo que lo copie ahí **con permiso explícito del autor**, nunca automático. La landing ya lee esa colección, pero `createGalleryCard` espera un campo `stroke.pts` que la app nunca escribió: hay que reescribirlo contra el formato real. Necesita reglas nuevas. | Sesión 2026-11-03 | Pendiente |
 | **Contador: añadir usuarios y países** | El contador de dibujos ya funciona en vivo. Sumar: cantidad de cuentas creadas y número de países distintos. Requiere escribir esos datos en `stats/global` desde la app (el país se puede inferir del idioma o la zona horaria, sin pedir ubicación). | Sesión 2026-11-03 | Pendiente |
@@ -188,6 +190,41 @@ main                    → PRODUCCIÓN (GitHub Pages)
 ```
 
 **Regla:** Claude trabaja en `claude/sharp-hamilton-JPQNj`. Cuando algo está listo → merge a `main`.
+
+---
+
+## 🔵 ESTRATEGIA: convertir SketchSend en plataforma
+
+> Nota de la sesión 2026-11-04. La idea fundacional del proyecto es que otros
+> construyan encima y paguen por ello. Esto es lo que haría falta.
+
+**El obstáculo real.** Hoy no hay nada que vender aparte de la app entera. Las
+funciones existen, pero viven dentro de un único HTML de 4.200 líneas donde el
+motor de dibujo, la interfaz y Firebase están entrelazados. Nadie puede tomar
+"el replay" sin llevarse todo lo demás. Antes de cobrar por una pieza hay que
+poder separarla.
+
+**Qué es lo valioso.** No el lienzo: dibujar en canvas lo resuelve cualquiera en
+una tarde. Lo difícil y distintivo es **el replay con el ritmo original** y **el
+link que reproduce un dibujo sin instalar nada**. Eso es lo que otra app querría
+y no querría construir. El formato de trazos y su compresión son el activo.
+
+**Orden sensato, cada paso útil por sí mismo:**
+
+| # | Paso | Para qué |
+|---|------|----------|
+| 1 | Extraer motor de dibujo + replay a una librería sin UI ni Firebase, con pruebas propias | Hace posible todo lo demás; de paso la app queda más mantenible |
+| 2 | Publicarla gratis en npm | Adopción y credibilidad antes de cobrar; nadie paga por algo que no probó |
+| 3 | SDK embebible: un `<script>` y un div | El 90% de los interesados quiere pegar dos líneas, no integrar una API |
+| 4 | API de pago con claves, cuotas y facturación | Solo aquí entra dinero — y exige backend propio: Firebase desde el cliente no sirve |
+
+**Dos cosas que conviene saber antes de empezar.** El paso 4 cambia el negocio:
+pasas de una app que se mantiene sola a un servicio con clientes que esperan
+disponibilidad, soporte y versiones estables. Y el paso 1 es el único que vale
+la pena aunque nunca llegues al 4, porque mejora la app igual.
+
+**Lo primero, y es barato:** publicar la especificación del formato `.SKS` y un
+visor de código abierto. Mide el interés real sin construir infraestructura.
 
 ---
 
