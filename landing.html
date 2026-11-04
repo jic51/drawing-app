@@ -894,16 +894,35 @@ function createGalleryCard(strokes, author) {
     card.appendChild(label);
   }
   const ctx = canvas.getContext('2d');
+  /* Mismo fondo que el lienzo de la app, para que el dibujo se vea igual. */
+  ctx.fillStyle = '#12121a';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (!Array.isArray(strokes) || !strokes.length) return card;
+
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-  strokes.forEach(stroke => {
-    if (!stroke.pts || stroke.pts.length < 2) return;
-    ctx.strokeStyle = stroke.color || '#333';
-    ctx.lineWidth = (stroke.size || 3) * (400 / (stroke.canvasW || 400));
+
+  /* La app guarda una lista plana de entradas, no trazos con .pts:
+       {tipo:'inicio', x, y, sid, origW, origH}
+       {tipo:'seg', de:{x,y}, a:{x,y}, color, gw, sid}
+       {tipo:'fin', sid}
+     El tamaño original viene en el primer 'inicio'. */
+  const meta = strokes.find(e => e && e.tipo === 'inicio' && e.origW);
+  const ow = (meta && meta.origW) || canvas.width;
+  const oh = (meta && meta.origH) || canvas.height;
+
+  /* Encajar sin deformar y centrar lo que sobre. */
+  const k = Math.min(canvas.width / ow, canvas.height / oh);
+  const ox = (canvas.width  - ow * k) / 2;
+  const oy = (canvas.height - oh * k) / 2;
+  const X = v => ox + v * k, Y = v => oy + v * k;
+
+  strokes.forEach(e => {
+    if (!e || e.tipo !== 'seg' || !e.de || !e.a) return;
+    ctx.strokeStyle = e.color || '#fff';
+    ctx.lineWidth = Math.max(0.5, (e.gw || 3) * k);
     ctx.beginPath();
-    ctx.moveTo(stroke.pts[0].x * 400 / (stroke.canvasW || 400), stroke.pts[0].y * 300 / (stroke.canvasH || 300));
-    for (let i = 1; i < stroke.pts.length; i++) {
-      ctx.lineTo(stroke.pts[i].x * 400 / (stroke.canvasW || 400), stroke.pts[i].y * 300 / (stroke.canvasH || 300));
-    }
+    ctx.moveTo(X(e.de.x), Y(e.de.y));
+    ctx.lineTo(X(e.a.x),  Y(e.a.y));
     ctx.stroke();
   });
   return card;

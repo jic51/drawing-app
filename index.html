@@ -1099,6 +1099,7 @@
     <button class="btn btn-p" id="png-btn">⬇️ Imagen (.PNG)</button>
     <button class="btn btn-s" id="vid-btn">🎬 Video replay (.WEBM)</button>
     <button class="btn btn-s" id="sks-btn">📦 Proyecto (.SKS)</button>
+    <button class="btn btn-s" id="gal-btn">🖼️ Compartir en la galería</button>
     <button class="btn-g" id="cerrar-btn" style="text-align:center;margin-top:2px">Cancelar</button>
   </div>
 </div>
@@ -1275,6 +1276,13 @@
           <span style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.3s;box-shadow:0 1px 3px rgba(0,0,0,0.3);" id="toggle-replay-knob"></span>
         </label>
       </div>
+      <div class="settings-row" id="review-row" style="cursor:pointer;">
+        <div>
+          <div class="settings-row-label" id="lbl-review">Leave a review</div>
+          <div class="settings-row-sub" id="lbl-review-sub">Tell us what you think — it may appear on our site</div>
+        </div>
+        <button class="settings-row-action" id="review-btn">✍️</button>
+      </div>
       <div class="settings-row">
         <div class="settings-row-label" id="lbl-version">Versión</div>
         <div style="font-size:0.82rem;color:var(--muted);">1.20.0</div>
@@ -1332,6 +1340,17 @@ const I18N = {
     save: '💾 Guardar', clear: '🗑️ Limpiar', inbox: 'Bandeja', exit: 'Salir',
     send: 'Enviar ✉️', send_to: 'Enviar a',
     save_modal_title: '💾 Guardar dibujo', save_modal_sub: '¿En qué formato?',
+    save_gallery: '🖼️ Compartir en la galería',
+    review_label: 'Deja tu opinión', review_sub: 'Cuéntanos qué te parece — puede aparecer en nuestra web',
+    review_ask: '¿Qué te parece SketchSend?', review_ph: 'Escribe tu opinión…',
+    review_edit: 'Ya enviaste una opinión. Puedes reemplazarla:',
+    review_sent: '¡Gracias! La revisaremos antes de publicarla.',
+    review_empty: 'Escribe algo antes de enviar',
+    review_fail: 'No se pudo enviar tu opinión',
+    review_send: 'Enviar', review_replace: 'Reemplazar',
+    gal_confirm: '¿Compartir este dibujo en la galería pública de SketchSend?<br><br><b>Lo verá cualquiera</b> que entre a nuestra web, junto a tu @usuario, y <b>no se borrará a las 24 horas</b> como los demás.',
+    gal_yes: 'Sí, compartir', gal_sent: '🖼️ Compartido en la galería',
+    gal_fail: 'No se pudo compartir el dibujo',
     save_png: '⬇️ Imagen (.PNG)', save_video: '🎬 Video replay (.WEBM)',
     save_sks: '📦 Proyecto (.SKS)', cancel: 'Cancelar',
     inbox_title: '✉️ Dibujos recibidos', inbox_close: 'Cerrar',
@@ -1415,6 +1434,17 @@ const I18N = {
     save: '💾 Save', clear: '🗑️ Clear', inbox: 'Inbox', exit: 'Sign out',
     send: 'Send ✉️', send_to: 'Send to',
     save_modal_title: '💾 Save drawing', save_modal_sub: 'Choose format:',
+    save_gallery: '🖼️ Share to gallery',
+    review_label: 'Leave a review', review_sub: 'Tell us what you think — it may appear on our site',
+    review_ask: 'What do you think of SketchSend?', review_ph: 'Write your review…',
+    review_edit: 'You already sent a review. You can replace it:',
+    review_sent: 'Thank you! We\'ll read it before publishing.',
+    review_empty: 'Write something before sending',
+    review_fail: "Couldn't send your review",
+    review_send: 'Send', review_replace: 'Replace',
+    gal_confirm: 'Share this drawing in the public SketchSend gallery?<br><br><b>Anyone</b> visiting our site will see it next to your @username, and it <b>will not disappear after 24 hours</b> like the others.',
+    gal_yes: 'Yes, share it', gal_sent: '🖼️ Shared to the gallery',
+    gal_fail: "Couldn't share the drawing",
     save_png: '⬇️ Image (.PNG)', save_video: '🎬 Video replay (.WEBM)',
     save_sks: '📦 Project (.SKS)', cancel: 'Cancel',
     inbox_title: '✉️ Received drawings', inbox_close: 'Close',
@@ -1554,6 +1584,7 @@ function applyLang() {
   set('png-btn', 'save_png');
   set('vid-btn', 'save_video');
   set('sks-btn', 'save_sks');
+  set('gal-btn', 'save_gallery');
   set('cerrar-btn', 'cancel');
 
   // ── Bandeja ──
@@ -1583,6 +1614,7 @@ function applyLang() {
   set('lbl-language', 'language');
   set('lbl-theme', 'theme');
   set('lbl-replay-self', 'replay_self'); set('lbl-replay-self-sub', 'replay_self_sub');
+  set('lbl-review', 'review_label'); set('lbl-review-sub', 'review_sub');
   set('lbl-version', 'version');
   // Tienda — labels con IDs, botones con "Pronto"/"Coming soon"
   set('store-colors-lbl', 'store_colors'); set('store-colors-sub', 'store_colors_sub');
@@ -3382,6 +3414,89 @@ vidBtn.addEventListener('click', async () => {
    - Compartido entre usuarios como archivo adjunto
    - Usado como base para animaciones y exports
 ══════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════
+   COMPARTIR EN LA GALERÍA PÚBLICA
+   ────────────────────────────────────────────────────
+   Siempre con permiso explícito del autor: publicar el dibujo de
+   alguien sin preguntarle es justo lo que no queremos. Y a diferencia
+   del resto, este no se borra a las 24 h, así que hay que decirlo.
+══════════════════════════════════════════════════════ */
+const galBtn = document.getElementById('gal-btn');
+galBtn.addEventListener('click', async () => {
+  if (!trazos.length) { toast(t('draw_first')); return; }
+  if (!firebaseReady || !auth?.currentUser) { toast(t('gal_fail')); return; }
+
+  modalEl.classList.remove('open');
+  const si = await ssModal(t('gal_confirm'), [
+    { label: lang === 'es' ? 'Cancelar' : 'Cancel', value: false },
+    { label: t('gal_yes'), value: true, primary: true }
+  ]);
+  if (!si) return;
+
+  /* Feedback inmediato; la escritura va de fondo. */
+  toast(t('gal_sent'));
+  const copia = JSON.parse(JSON.stringify(trazos));
+  db.collection('landing_gallery').add({
+    strokes: copia,
+    author: usuario,
+    uid: auth.currentUser.uid,
+    sharedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(e => {
+    logRemoteError('galeria', e);
+    toast('⚠️ ' + t('gal_fail') + ': ' + e.message);
+  });
+  if (window.posthog) posthog.capture('gallery_shared', { strokeCount: copia.length });
+});
+
+/* ══════════════════════════════════════════════════════
+   OPINIÓN DEL USUARIO → landing_testimonials
+   ────────────────────────────────────────────────────
+   Se guarda con approved:false; la landing solo muestra las aprobadas.
+   Una por cuenta: si ya hay una, se reemplaza en vez de acumular.
+══════════════════════════════════════════════════════ */
+async function abrirOpinion() {
+  if (!firebaseReady || !auth?.currentUser) { toast(t('review_fail')); return; }
+  const uid = auth.currentUser.uid;
+
+  /* ¿Ya opinó? Entonces mostramos lo suyo para que lo edite. */
+  let previa = null;
+  try {
+    const snap = await db.collection('landing_testimonials')
+      .where('uid', '==', uid).limit(1).get();
+    if (!snap.empty) previa = snap.docs[0];
+  } catch (e) { logRemoteError('opinionLeer', e); }
+
+  const texto = await ssPromptLargo(
+    previa ? t('review_edit') : t('review_ask'),
+    t('review_ph'),
+    { value: previa ? (previa.data().text || '') : '',
+      maxlength: 280,
+      ok: previa ? t('review_replace') : t('review_send') }
+  );
+  if (texto === null) return;                 /* canceló */
+  const limpio = (texto || '').trim();
+  if (!limpio) { toast(t('review_empty')); return; }
+
+  toast(t('review_sent'));
+  const datos = {
+    text: limpio,
+    author: usuario,
+    uid,
+    approved: false,                          /* nada se publica sin revisión */
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    lang
+  };
+  const op = previa
+    ? previa.ref.set(datos)
+    : db.collection('landing_testimonials').add(datos);
+  op.catch(e => {
+    logRemoteError('opinionEscribir', e);
+    toast('⚠️ ' + t('review_fail') + ': ' + e.message);
+  });
+  if (window.posthog) posthog.capture('review_submitted');
+}
+document.getElementById('review-row').addEventListener('click', abrirOpinion);
+
 sksBtn.addEventListener('click', () => {
   if (!trazos.length) { toast(t('draw_first')); return; }
 
@@ -3541,7 +3656,7 @@ function toast(msg) {
 }
 
 /* ── SketchSend Modal System (replaces native prompt/confirm/alert) ── */
-function ssModal(html, buttons, {input = false, placeholder = ''} = {}) {
+function ssModal(html, buttons, {input = false, placeholder = '', multiline = false, value = '', maxlength = 0} = {}) {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);animation:ssmFadeIn .2s ease';
@@ -3553,12 +3668,31 @@ function ssModal(html, buttons, {input = false, placeholder = ''} = {}) {
     box.appendChild(msg);
     let inp;
     if (input) {
-      inp = document.createElement('input');
-      inp.type = 'text'; inp.placeholder = placeholder;
-      inp.style.cssText = 'width:100%;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.95rem;margin-bottom:16px;outline:none;box-sizing:border-box';
+      /* multiline para textos largos (una opinión no cabe en una línea) */
+      inp = document.createElement(multiline ? 'textarea' : 'input');
+      if (!multiline) inp.type = 'text';
+      else { inp.rows = 4; inp.style.resize = 'vertical'; }
+      inp.placeholder = placeholder;
+      if (value) inp.value = value;
+      if (maxlength) inp.maxLength = maxlength;
+      inp.style.cssText += ';width:100%;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.95rem;margin-bottom:8px;outline:none;box-sizing:border-box;font-family:inherit;line-height:1.5';
       inp.addEventListener('focus', () => inp.style.borderColor = 'var(--accent)');
       inp.addEventListener('blur', () => inp.style.borderColor = 'var(--border)');
       box.appendChild(inp);
+      if (maxlength) {
+        /* Contador: sin él, el tope se siente como que la app se traba */
+        const cnt = document.createElement('div');
+        cnt.style.cssText = 'font-size:0.72rem;color:var(--muted);text-align:right;margin-bottom:12px';
+        const pinta = () => {
+          const q = maxlength - inp.value.length;
+          cnt.textContent = q + (lang === 'es' ? ' restantes' : ' left');
+          cnt.style.color = q <= 20 ? 'var(--danger)' : 'var(--muted)';
+        };
+        inp.addEventListener('input', pinta); pinta();
+        box.appendChild(cnt);
+      } else {
+        inp.style.marginBottom = '16px';
+      }
     }
     const row = document.createElement('div');
     row.style.cssText = 'display:flex;gap:10px;justify-content:center';
@@ -3589,6 +3723,12 @@ function ssPrompt(msg, placeholder) {
 }
 function ssAlert(msg) {
   return ssModal(msg, [{label: 'OK', value: true, primary: true}]);
+}
+/* Prompt de varias líneas con tope de caracteres — para la opinión. */
+function ssPromptLargo(msg, placeholder, {value = '', maxlength = 280, ok = ''} = {}) {
+  const cancel = lang === 'es' ? 'Cancelar' : 'Cancel';
+  return ssModal(msg, [{label: cancel}, {label: ok || (lang === 'es' ? 'Enviar' : 'Send'), primary: true}],
+                 {input: true, placeholder, multiline: true, value, maxlength});
 }
 
 function genAvatar(nombre) {
