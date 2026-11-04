@@ -3439,6 +3439,8 @@ galBtn.addEventListener('click', async () => {
   db.collection('landing_gallery').add({
     strokes: copia,
     author: usuario,
+    /* La landing muestra el mismo avatar que la app. */
+    photoURL: auth.currentUser.photoURL || '',
     uid: auth.currentUser.uid,
     sharedAt: firebase.firestore.FieldValue.serverTimestamp()
   }).catch(e => {
@@ -3481,6 +3483,8 @@ async function abrirOpinion() {
   const datos = {
     text: limpio,
     author: usuario,
+    /* La landing muestra el mismo avatar que la app. */
+    photoURL: auth.currentUser.photoURL || '',
     uid,
     approved: false,                          /* nada se publica sin revisión */
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -4155,6 +4159,9 @@ function logRemoteError(context, err) {
       msg: err ? (err.message || String(err)) : 'unknown',
       stack: err && err.stack ? err.stack.slice(0, 500) : null,
       ua: navigator.userAgent.slice(0, 200),
+      /* serverTimestamp se ve como fecha legible en la consola y permite
+         ordenar; ts era un número crudo imposible de leer de un vistazo. */
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       ts: Date.now(),
       url: location.pathname
     }).catch(() => {});

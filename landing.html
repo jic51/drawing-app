@@ -284,19 +284,24 @@ section {
   grid-template-columns: repeat(auto-fit, minmax(250px, 330px));
   justify-content: center;
 }
+/* Altura pareja y el nombre siempre abajo, sin importar lo largo que sea
+   el comentario: si no, las tarjetas quedan desalineadas. */
 .review-card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 16px; padding: 22px 24px; text-align: left;
+  display: flex; flex-direction: column; min-height: 190px;
 }
 .review-text {
   font-size: .95rem; color: var(--text); line-height: 1.6;
   margin-bottom: 16px; font-style: italic;
+  flex: 1;                      /* empuja el nombre al fondo */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5;
+  overflow: hidden;             /* lo que no cabe se corta con … */
 }
 .review-who { display: flex; align-items: center; gap: 10px; }
 .review-av {
   width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
-  background: var(--accent); color: #fff; font-weight: 700; font-size: .82rem;
-  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--accent); object-fit: cover;
 }
 .review-name { font-size: .82rem; color: var(--muted); }
 
@@ -309,7 +314,6 @@ section {
 }
 .gallery-card {
   background: #12121a; border-radius: 14px; overflow: hidden;
-  aspect-ratio: 4/3; position: relative;
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 /* Al pasar por encima crece, para poder seguir el trazo de cerca. */
@@ -317,11 +321,21 @@ section {
   transform: scale(1.35); z-index: 5;
   box-shadow: 0 18px 50px rgba(0,0,0,0.6), 0 0 40px var(--glow);
 }
-.gallery-card canvas { width: 100%; height: 100%; display: block; }
+.gallery-card canvas { width: 100%; aspect-ratio: 4/3; display: block; }
+/* El autor va DEBAJO del dibujo, no encima: tapaba la parte de abajo
+   justo donde suele terminar el trazo. */
 .gallery-card .gallery-author {
-  position: absolute; bottom: 0; left: 0; right: 0;
-  padding: 6px 10px; background: rgba(0,0,0,0.6);
-  color: #fff; font-size: 0.72rem; text-align: left;
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 10px; background: var(--surface);
+  border-top: 1px solid var(--border);
+  color: var(--text); font-size: 0.72rem;
+}
+.gallery-card .gallery-author img {
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid var(--accent); object-fit: cover;
+}
+.gallery-card .gallery-author span {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 
 /* ══ PREGUNTAS FRECUENTES ══ */
@@ -929,7 +943,32 @@ function actualizarContador(valor) {
 }
 
 /* ══ GALERÍA ══ */
-function createGalleryCard(strokes, author) {
+/* Copia exacta de genAvatar() de la app: el avatar de alguien debe verse
+   igual aquí que allá. Si cambias uno, cambia el otro. */
+function genAvatar(nombre) {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+  const cx = c.getContext('2d');
+  const ini = String(nombre || '?').trim().split(' ').map(n => n[0] || '').slice(0, 2).join('').toUpperCase();
+  const cols = ['#7c3aed','#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899','#06b6d4','#10b981'];
+  const i = (ini.charCodeAt(0) || 0) % cols.length;
+  const g = cx.createLinearGradient(0, 0, 64, 64);
+  g.addColorStop(0, cols[i]); g.addColorStop(1, cols[(i + 2) % cols.length]);
+  cx.fillStyle = g; cx.beginPath(); cx.arc(32, 32, 32, 0, Math.PI * 2); cx.fill();
+  cx.font = 'bold 26px DM Sans,sans-serif'; cx.fillStyle = '#fff';
+  cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(ini, 32, 33);
+  return c.toDataURL();
+}
+
+/* La foto que guardó el documento, o el avatar generado como respaldo. */
+function avatarDe(autor, photoURL) {
+  const img = document.createElement('img');
+  img.src = photoURL || genAvatar(autor);
+  img.alt = '';
+  img.onerror = () => { img.onerror = null; img.src = genAvatar(autor); };
+  return img;
+}
+
+function createGalleryCard(strokes, author, photoURL) {
   const card = document.createElement('div');
   card.className = 'gallery-card';
   const canvas = document.createElement('canvas');
@@ -938,7 +977,9 @@ function createGalleryCard(strokes, author) {
   if (author) {
     const label = document.createElement('div');
     label.className = 'gallery-author';
-    label.textContent = '@' + author;
+    const nm = document.createElement('span');
+    nm.textContent = '@' + author;
+    label.append(avatarDe(author, photoURL), nm);
     card.appendChild(label);
   }
   const ctx = canvas.getContext('2d');
@@ -970,27 +1011,51 @@ function createGalleryCard(strokes, author) {
 
   const fondo = () => { ctx.fillStyle = '#12121a'; ctx.fillRect(0, 0, canvas.width, canvas.height); };
 
-  /* El dibujo se rehace trazo a trazo, se queda completo unos segundos
-     y vuelve a empezar: enseñar CÓMO se dibujó es el punto de la app,
-     una imagen fija no lo cuenta. */
-  const ESPERA = 160;            /* ~2.7 s a 60fps con el dibujo entero */
-  const PASO = Math.max(1, Math.ceil(segs.length / 150));  /* ~2.5 s de trazado */
-  let i = 0, pausa = 0, raf = 0;
+  /* Reproduce al RITMO REAL en que se dibujó, no a velocidad fija: por eso
+     antes se veía en cámara rápida. Dos ajustes para que siga siendo
+     mirable: los silencios largos entre trazos se recortan (igual que hace
+     comprimirGaps en la app), y si aun así dura demasiado se acelera por
+     igual, conservando las proporciones del trazo. */
+  const HUECO_MAX = 400;     /* ms: una pausa más larga se recorta aquí */
+  const DURACION_MAX = 14000;
 
-  function cuadro() {
-    if (i >= segs.length) {
-      if (++pausa > ESPERA) { fondo(); i = 0; pausa = 0; }
+  let acum = 0, antes = null;
+  const linea = segs.map((e, idx) => {
+    const t = typeof e.t === 'number' ? e.t : null;
+    /* Avanzar según el índice, no según 'antes': si NINGÚN trazo trae
+       marca de tiempo, 'antes' nunca se asigna, el acumulado se queda en
+       cero y el dibujo entero se pinta en el primer cuadro. */
+    if (idx > 0) {
+      if (t !== null && antes !== null) acum += Math.min(Math.max(t - antes, 0), HUECO_MAX);
+      else acum += 16;                            /* sin marca: ~1 cuadro */
+    }
+    if (t !== null) antes = t;
+    return { e, ms: acum };
+  });
+  const total = linea[linea.length - 1].ms || 1;
+  const factor = total > DURACION_MAX ? DURACION_MAX / total : 1;
+  const ESPERA_MS = 2700;    /* el dibujo completo se queda quieto */
+
+  let i = 0, t0 = 0, finEn = 0, raf = 0;
+
+  function cuadro(ahora) {
+    if (!t0) t0 = ahora;
+    if (i >= linea.length) {
+      if (!finEn) finEn = ahora;
+      if (ahora - finEn > ESPERA_MS) { fondo(); i = 0; t0 = ahora; finEn = 0; }
       raf = requestAnimationFrame(cuadro);
       return;
     }
-    for (let n = 0; n < PASO && i < segs.length; n++, i++) {
-      const e = segs[i];
+    const transcurrido = (ahora - t0);
+    while (i < linea.length && linea[i].ms * factor <= transcurrido) {
+      const e = linea[i].e;
       ctx.strokeStyle = e.color || '#fff';
       ctx.lineWidth = Math.max(0.5, (e.gw || 3) * k);
       ctx.beginPath();
       ctx.moveTo(X(e.de.x), Y(e.de.y));
       ctx.lineTo(X(e.a.x),  Y(e.a.y));
       ctx.stroke();
+      i++;
     }
     raf = requestAnimationFrame(cuadro);
   }
@@ -998,7 +1063,9 @@ function createGalleryCard(strokes, author) {
   /* Solo anima mientras se ve: varias tarjetas a la vez gastarían batería. */
   let vivo = false;
   new IntersectionObserver(es => es.forEach(en => {
-    if (en.isIntersecting && !vivo) { vivo = true; cuadro(); }
+    /* t0 se resetea al volver a entrar: si no, al reaparecer el dibujo
+       saltaría al final por todo el tiempo transcurrido fuera de pantalla. */
+    if (en.isIntersecting && !vivo) { vivo = true; t0 = 0; raf = requestAnimationFrame(cuadro); }
     else if (!en.isIntersecting && vivo) { vivo = false; cancelAnimationFrame(raf); }
   }), { threshold: 0.15 }).observe(card);
 
@@ -1048,9 +1115,8 @@ function createGalleryCard(strokes, author) {
           txt.textContent = '“' + String(x.text).slice(0, 280) + '”';
           const who = document.createElement('div');
           who.className = 'review-who';
-          const av = document.createElement('div');
+          const av = avatarDe(autor, x.photoURL);
           av.className = 'review-av';
-          av.textContent = (autor[0] || '?').toUpperCase();
           const nm = document.createElement('div');
           nm.className = 'review-name';
           nm.textContent = '@' + autor;
@@ -1068,7 +1134,7 @@ function createGalleryCard(strokes, author) {
       snap.forEach(doc => {
         const d = doc.data();
         if (!d.strokes) return;
-        const card = createGalleryCard(d.strokes, d.author);
+        const card = createGalleryCard(d.strokes, d.author, d.photoURL);
         grid.appendChild(card);
         observar(card);
         puestas++;
