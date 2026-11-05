@@ -1315,6 +1315,35 @@
 ══════════════════════════════════════════════════════════════ */
 
 /* ══════════════════════════════════════════════════════
+   ALMACENAMIENTO SEGURO
+   ────────────────────────────────────────────────────
+   Safari LANZA una excepción al solo TOCAR localStorage cuando el
+   usuario tiene "Bloquear todas las cookies" activado, en Modo
+   Restringido, y en algunos estados de navegación privada. Chrome no:
+   por eso la app funcionaba ahí y moría en Safari.
+   Como el primer uso estaba en el nivel superior del script, esa
+   excepción dejaba sin inicializar TODO lo declarado después con
+   let/const — la app entera quedaba muerta, no solo las preferencias.
+   Estas funciones nunca lanzan. Si el navegador no deja guardar, se usa
+   memoria: las preferencias se pierden al cerrar, pero la app funciona.
+══════════════════════════════════════════════════════ */
+const _memoria = {};
+const ls = {
+  get(k) {
+    try { const v = localStorage.getItem(k); return v === null ? (k in _memoria ? _memoria[k] : null) : v; }
+    catch (e) { return k in _memoria ? _memoria[k] : null; }
+  },
+  set(k, v) {
+    _memoria[k] = String(v);
+    try { localStorage.setItem(k, v); } catch (e) {}
+  },
+  del(k) {
+    delete _memoria[k];
+    try { localStorage.removeItem(k); } catch (e) {}
+  }
+};
+
+/* ══════════════════════════════════════════════════════
    SISTEMA I18N — inglés / español
 ══════════════════════════════════════════════════════ */
 const I18N = {
@@ -1507,7 +1536,7 @@ const I18N = {
   }
 };
 
-let lang = localStorage.getItem('ss_lang') || 'en';
+let lang = ls.get('ss_lang') || 'en';
 function t(key) { return I18N[lang][key] || I18N['en'][key] || key; }
 
 /* HTML escape — usar siempre que datos de Firestore / usuario entren en innerHTML */
@@ -1989,14 +2018,14 @@ function finalizarLogin(username, displayName, photoURL) {
 
 function checkLogin() {
   if (firebaseReady) return;
-  const n = localStorage.getItem('ss_user');
+  const n = ls.get('ss_user');
   if (n) finalizarLogin(n, n, null); else mostrarLogin();
 }
 
 function doLogout() {
   if (window._resetAppVisible) window._resetAppVisible(); /* allow onAuthStateChanged null to show login */
   if (firebaseReady && auth) auth.signOut().catch(() => {});
-  else { localStorage.removeItem('ss_user'); mostrarLogin(); }
+  else { ls.del('ss_user'); mostrarLogin(); }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -2006,8 +2035,8 @@ function doLogout() {
 ══════════════════════════════════════════════════════ */
 if (firebaseReady && auth && auth.isSignInWithEmailLink(window.location.href)) {
   (async () => {
-    let pendingEmail = localStorage.getItem('ss_email_pending');
-    let pendingNombre = localStorage.getItem('ss_nombre_pending') || '';
+    let pendingEmail = ls.get('ss_email_pending');
+    let pendingNombre = ls.get('ss_nombre_pending') || '';
     if (!pendingEmail) {
       pendingEmail = await ssPrompt(
         lang === 'en' ? 'Confirm your email to sign in:' : 'Confirma tu correo para entrar:',
@@ -2017,12 +2046,12 @@ if (firebaseReady && auth && auth.isSignInWithEmailLink(window.location.href)) {
     if (pendingEmail) {
       try {
         const result = await auth.signInWithEmailLink(pendingEmail, window.location.href);
-        localStorage.removeItem('ss_email_pending');
+        ls.del('ss_email_pending');
         if (pendingNombre) {
           if (!result.user.displayName && pendingNombre) {
             result.user.updateProfile({ displayName: pendingNombre }).catch(() => {});
           }
-          localStorage.removeItem('ss_nombre_pending');
+          ls.del('ss_nombre_pending');
         }
         history.replaceState({}, '', location.pathname);
       } catch (e) {
@@ -2053,8 +2082,8 @@ if (firebaseReady && auth) {
     try {
       const doc = await db.collection('users').doc(user.uid).get();
       if (!doc.exists) {
-        const nombre = user.displayName || localStorage.getItem('ss_nombre_pending') || user.email.split('@')[0];
-        localStorage.removeItem('ss_nombre_pending');
+        const nombre = user.displayName || ls.get('ss_nombre_pending') || user.email.split('@')[0];
+        ls.del('ss_nombre_pending');
         mostrarPantallaUsername(nombre, user.photoURL);
       } else {
         const d = doc.data();
@@ -2112,8 +2141,8 @@ document.getElementById('magic-btn').addEventListener('click', async () => {
     if (window.posthog) posthog.capture('login_started', { method: 'email_magic_link' });
     /* localStorage para que persista cuando el link abra en nueva pestaña/ventana.
        Solo guarda email (no contraseña), Firebase valida el token del link. */
-    localStorage.setItem('ss_email_pending', email);
-    localStorage.setItem('ss_nombre_pending', nombre);
+    ls.set('ss_email_pending', email);
+    ls.set('ss_nombre_pending', nombre);
     mostrarVerificacion(email);
   } catch(e) {
     const msgs = {
@@ -2132,7 +2161,7 @@ document.getElementById('magic-btn').addEventListener('click', async () => {
 
 /* ── Pantalla de espera: reenviar / cambiar correo ── */
 document.getElementById('verify-resend-btn').addEventListener('click', async () => {
-  const email = localStorage.getItem('ss_email_pending');
+  const email = ls.get('ss_email_pending');
   if (!email) { mostrarLogin(); return; }
   try {
     const actionCodeSettings = { url: getBaseUrl(), handleCodeInApp: true };
@@ -2142,8 +2171,8 @@ document.getElementById('verify-resend-btn').addEventListener('click', async () 
 });
 
 document.getElementById('verify-logout-btn').addEventListener('click', () => {
-  localStorage.removeItem('ss_email_pending');
-  localStorage.removeItem('ss_nombre_pending');
+  ls.del('ss_email_pending');
+  ls.del('ss_nombre_pending');
   mostrarLogin();
 });
 
@@ -2792,7 +2821,7 @@ const ENVIOS_POR_HORA = 60;
 function dentroDelLimiteDeEnvio() {
   const ahora = Date.now();
   let envios = [];
-  try { envios = JSON.parse(localStorage.getItem('ss_envios') || '[]'); } catch(e) {}
+  try { envios = JSON.parse(ls.get('ss_envios') || '[]'); } catch(e) {}
   envios = envios.filter(t => ahora - t < 3600000);
   if (envios.length >= ENVIOS_POR_HORA) {
     toast('⚠️ ' + (lang === 'es'
@@ -2801,7 +2830,7 @@ function dentroDelLimiteDeEnvio() {
     return false;
   }
   envios.push(ahora);
-  try { localStorage.setItem('ss_envios', JSON.stringify(envios)); } catch(e) {}
+  try { ls.set('ss_envios', JSON.stringify(envios)); } catch(e) {}
   return true;
 }
 
@@ -2815,7 +2844,7 @@ enviarBtn.addEventListener('click', async () => {
   enviarBtn.disabled = true;
 
   /* Self-replay (optional, default on) */
-  const replaySelf = localStorage.getItem('ss_replay_self') !== 'false';
+  const replaySelf = ls.get('ss_replay_self') !== 'false';
   if (replaySelf) setTimeout(() => iniciarReplay(snap), 300);
 
   /* Modo respuesta: enviando directamente a quien nos escribió */
@@ -3162,6 +3191,20 @@ function descargarDataURL(dataURL, filename) {
    el gradiente rainbow como máscara usando globalCompositeOperation.
    Esto colorea TODO incluyendo el emoji ✏️, igual que CSS background-clip:text.
 */
+/* ctx.roundRect llegó en Safari 16.4 (marzo 2023). En un iPhone con iOS
+   16.3 o anterior lanzaba "is not a function" y tumbaba la descarga de
+   imagen Y de video, porque ambas pintan esta firma. */
+function rectRedondo(ctx, x, y, w, h, r) {
+  if (typeof ctx.roundRect === 'function') { ctx.roundRect(x, y, w, h, r); return; }
+  const k = Math.min(r, w / 2, h / 2);
+  ctx.moveTo(x + k, y);
+  ctx.lineTo(x + w - k, y);       ctx.quadraticCurveTo(x + w, y, x + w, y + k);
+  ctx.lineTo(x + w, y + h - k);   ctx.quadraticCurveTo(x + w, y + h, x + w - k, y + h);
+  ctx.lineTo(x + k, y + h);       ctx.quadraticCurveTo(x, y + h, x, y + h - k);
+  ctx.lineTo(x, y + k);           ctx.quadraticCurveTo(x, y, x + k, y);
+  ctx.closePath();
+}
+
 function dibujarFirma(targetCtx, w, h, animated) {
   if (!usuario) return;
   targetCtx.save();
@@ -3184,7 +3227,7 @@ function dibujarFirma(targetCtx, w, h, animated) {
   }
   targetCtx.fillStyle = esDark() ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.85)';
   targetCtx.beginPath();
-  targetCtx.roundRect(fx, fy, firmW, firmH, 8);
+  rectRedondo(targetCtx, fx, fy, firmW, firmH, 8);
   targetCtx.fill();
   targetCtx.shadowColor = 'transparent';
   targetCtx.shadowBlur = 0;
@@ -3317,11 +3360,30 @@ vidBtn.addEventListener('click', async () => {
   const cw = cv.width / DPR, ch = cv.height / DPR;
   tc.fillStyle = canvasBg(); tc.fillRect(0, 0, cw, ch);
 
-  let mimeType = 'video/webm; codecs=vp9';
-  if (!MediaRecorder.isTypeSupported(mimeType)) {
-    mimeType = 'video/webm; codecs=vp8';
-    if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
+  /* Safari soporta MediaRecorder pero NUNCA webm: solo MP4/H.264. La
+     cadena anterior era webm entera, así que las tres comprobaciones
+     fallaban, construía el grabador con un formato no soportado y el
+     video siempre daba error en iPhone. Se prueban los formatos en orden
+     y se usa el primero que el navegador acepte de verdad. */
+  const formatos = [
+    'video/webm; codecs=vp9',
+    'video/webm; codecs=vp8',
+    'video/webm',
+    'video/mp4; codecs=avc1.42E01E',   /* Safari */
+    'video/mp4'
+  ];
+  const mimeType = formatos.find(f => {
+    try { return MediaRecorder.isTypeSupported(f); } catch (e) { return false; }
+  });
+  if (!mimeType) {
+    toast(t('no_video_support'));
+    _downloading = false;
+    return;
   }
+  /* La extensión debe coincidir con lo que realmente se grabó: un .webm
+     que por dentro es MP4 no abre en el visor de fotos de iOS. */
+  const ext = mimeType.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
+  const tipoBlob = ext === 'mp4' ? 'video/mp4' : 'video/webm';
 
   const stream = tmp.captureStream(60);
   const recorder = new MediaRecorder(stream, { mimeType });
@@ -3343,8 +3405,8 @@ vidBtn.addEventListener('click', async () => {
     recorder.onstop = () => {
       cancelAnimationFrame(firmaLoop);
       clearInterval(progInterval);
-      const blob = new Blob(chunks, { type: 'video/webm' });
-      descargar(blob, `sketchsend_${Date.now()}.webm`);
+      const blob = new Blob(chunks, { type: tipoBlob });
+      descargar(blob, `sketchsend_${Date.now()}.${ext}`);
       toast('🎬 Video descargado');
       _downloading = false;
       resolve();
@@ -4067,19 +4129,19 @@ photoFileInput.addEventListener('change', async () => {
 
 /* Botones de idioma */
 document.getElementById('lang-es-btn').addEventListener('click', () => {
-  lang = 'es'; localStorage.setItem('ss_lang', 'es');
+  lang = 'es'; ls.set('ss_lang', 'es');
   applyLang();
   toast('🇪🇸 Español');
 });
 document.getElementById('lang-en-btn').addEventListener('click', () => {
-  lang = 'en'; localStorage.setItem('ss_lang', 'en');
+  lang = 'en'; ls.set('ss_lang', 'en');
   applyLang();
   toast('🇺🇸 English');
 });
 
 /* Theme toggle */
 function applyTheme(theme) {
-  localStorage.setItem('ss_theme', theme);
+  ls.set('ss_theme', theme);
   if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.setAttribute('data-theme', theme);
   ['auto','dark','light'].forEach(v => {
@@ -4089,7 +4151,7 @@ function applyTheme(theme) {
   });
   if (typeof setupCanvas === 'function' && cv) { const w=cv.width/DPR, h=cv.height/DPR; ctx.clearRect(0,0,w,h); fondoCanvas(ctx,w,h); }
 }
-applyTheme(localStorage.getItem('ss_theme') || 'auto');
+applyTheme(ls.get('ss_theme') || 'auto');
 document.getElementById('theme-auto-btn').addEventListener('click', () => { applyTheme('auto'); toast('🔄 Auto'); });
 document.getElementById('theme-dark-btn').addEventListener('click', () => { applyTheme('dark'); toast('🌙 Dark'); });
 document.getElementById('theme-light-btn').addEventListener('click', () => { applyTheme('light'); toast('☀️ Light'); });
@@ -4098,14 +4160,14 @@ document.getElementById('theme-light-btn').addEventListener('click', () => { app
 const replayToggle = document.getElementById('toggle-replay-self');
 const replayKnob = document.getElementById('toggle-replay-knob');
 function syncReplayToggle() {
-  const on = localStorage.getItem('ss_replay_self') !== 'false';
+  const on = ls.get('ss_replay_self') !== 'false';
   replayToggle.checked = on;
   replayKnob.style.transform = on ? 'translateX(20px)' : 'none';
   replayKnob.parentElement.previousElementSibling.style.background = on ? 'var(--accent)' : 'var(--border)';
 }
 syncReplayToggle();
 replayToggle.addEventListener('change', () => {
-  localStorage.setItem('ss_replay_self', replayToggle.checked ? 'true' : 'false');
+  ls.set('ss_replay_self', replayToggle.checked ? 'true' : 'false');
   syncReplayToggle();
 });
 document.getElementById('replay-toggle-row').addEventListener('click', () => { replayToggle.checked = !replayToggle.checked; replayToggle.dispatchEvent(new Event('change')); });
