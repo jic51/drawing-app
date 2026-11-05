@@ -1866,7 +1866,17 @@ const firebaseReady = (() => {
     auth = firebase.auth();
     db = firebase.firestore();
     window.storage = firebase.storage();
-    auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+    /* LOCAL necesita IndexedDB. Safari lo niega en navegación privada, con
+       cookies bloqueadas y bajo su protección antirrastreo: la promesa se
+       rechazaba sin que nadie la atendiera y la sesión no se guardaba en
+       ninguna parte, así que el usuario entraba bien y volvía al login.
+       Se degrada en cadena: LOCAL (sobrevive al cierre) → SESSION (dura
+       lo que la pestaña) → NONE (solo en memoria, pero deja usar la app). */
+    const P = firebase.auth.Auth.Persistence;
+    auth.setPersistence(P.LOCAL)
+      .catch(() => auth.setPersistence(P.SESSION))
+      .catch(() => auth.setPersistence(P.NONE))
+      .catch(e => logRemoteError('persistencia', e));
     return true;
   } catch(e) {
     console.warn('Firebase no inicializado:', e.message);
