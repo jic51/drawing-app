@@ -19,9 +19,14 @@ exports.sendSketchNotification = onDocumentCreated('sketches/{sketchId}', async 
 
   const message = {
     token: fcmToken,
-    notification: {
+    /* Sin bloque 'notification': si va, el navegador pinta el aviso por su
+       cuenta y nunca llega al service worker, que es quien agrupa por
+       remitente y lleva la cuenta. Solo datos, y el SW decide. */
+    data: {
       title: `${fromName || 'Alguien'} te envió un dibujo ✏️`,
       body: 'Toca para verlo antes de que desaparezca',
+      fromName: String(fromName || ''),
+      sketchId: String(event.params.sketchId || '')
     },
     webpush: {
       fcmOptions: { link: 'https://jic51.github.io/drawing-app/' }

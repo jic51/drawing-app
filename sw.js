@@ -69,17 +69,43 @@ self.addEventListener('push', e => {
   if (!e.data) return;
   let data;
   try { data = e.data.json(); } catch(_) { return; }
-  const notification = data.notification || {};
-  const title = notification.title || 'SketchSend';
-  const options = {
-    body: notification.body || 'Tienes un nuevo dibujo ✏️',
-    icon: notification.icon || './og-preview.png',
-    badge: './og-preview.png',
-    tag: 'sketchsend-new',
-    renotify: true,
-    data: data.data || {}
-  };
-  e.waitUntil(self.registration.showNotification(title, options));
+  /* Dos formatos posibles: el mensaje solo-datos que manda nuestra
+     función (campos en la raíz) y el clásico con bloque 'notification',
+     por si queda algún envío viejo en camino. */
+  const notification = data.notification || data;
+  const extra = data.data || data;
+  const quien = extra.fromName || '';
+
+  /* Una etiqueta por remitente. Con una fija, cada aviso borraba el
+     anterior y solo se veía el último. Así cada persona tiene el suyo, y
+     varios dibujos de la misma se juntan en uno que lleva la cuenta. */
+  const tag = quien ? 'ss-de-' + quien : 'ss-sketch';
+
+  e.waitUntil((async () => {
+    const previas = await self.registration.getNotifications({ tag });
+    const n = (previas.reduce((t, p) => t + ((p.data && p.data.cuantos) || 1), 0)) + 1;
+
+    const es = (self.navigator.language || '').toLowerCase().startsWith('es');
+    let title = notification.title || 'SketchSend';
+    let body  = notification.body || 'Tienes un nuevo dibujo ✏️';
+    if (n > 1 && quien) {
+      title = es ? `${quien} te envió ${n} dibujos ✏️`
+                 : `${quien} sent you ${n} drawings ✏️`;
+      body  = es ? 'Tócalos para verlos antes de que desaparezcan'
+                 : 'Tap to see them before they disappear';
+    }
+
+    await self.registration.showNotification(title, {
+      body,
+      /* Icono cuadrado: og-preview es un banner de 1200x630 y salía
+         aplastado e irreconocible en el aviso. */
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag,
+      renotify: true,
+      data: Object.assign({}, extra, { cuantos: n })
+    });
+  })());
 });
 
 self.addEventListener('notificationclick', e => {

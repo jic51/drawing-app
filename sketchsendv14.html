@@ -2874,14 +2874,23 @@ async function cargarAmigos() {
 async function agregarAmigo(input) {
   if (!firebaseReady || !auth.currentUser) { toast(t('need_login')); return; }
   const uid = auth.currentUser.uid;
-  const isCode = /^[A-Z0-9]{6}$/.test(input.toUpperCase());
-  const query = isCode
-    ? db.collection('users').where('shortCode', '==', input.toUpperCase())
-    : db.collection('users').where('username', '==', input.toLowerCase());
-  const username = isCode ? input.toUpperCase() : input.toLowerCase();
+  /* Antes se adivinaba si la entrada era código o usuario con una regla de
+     exactamente 6 caracteres, pero generarShortCode() produce 8: ningún
+     código coincidía nunca y todos se buscaban como nombre, así que el
+     código no servía. Ahora se prueban las dos cosas y gana la que
+     encuentre, sin adivinar longitudes. */
+  const limpio = String(input || '').trim().replace(/^@/, '');
+  if (!limpio) { toast(t('friend_not_found')); return; }
   try {
-    const snap = await query.get();
-    if (snap.empty) { toast(t('friend_not_found') + ' ' + (isCode ? input.toUpperCase() : '@' + username)); return; }
+    let snap = await db.collection('users')
+      .where('shortCode', '==', limpio.toUpperCase()).limit(1).get();
+    let isCode = !snap.empty;
+    if (snap.empty) {
+      snap = await db.collection('users')
+        .where('username', '==', limpio.toLowerCase()).limit(1).get();
+    }
+    if (snap.empty) { toast(t('friend_not_found') + ' ' + limpio); return; }
+    const username = isCode ? limpio.toUpperCase() : limpio.toLowerCase();
     const otroUser = snap.docs[0].data();
     if (otroUser.uid === uid) { toast('❌ No puedes agregarte a ti mismo'); return; }
     /* Verificar si ya hay amistad */
@@ -4592,9 +4601,16 @@ if ('serviceWorker' in navigator) {
         if (window.posthog) posthog.capture('viewer_reply_clicked', { sketchId: viewId });
         active = false;
         timers.forEach(clearTimeout);
-        history.replaceState({}, '', getBaseUrl() + '?reply=' + viewId);
         screen.classList.remove('activo');
-        mostrarLogin();
+        /* Si ya hay sesión, entrar directo. Antes se llamaba a
+           mostrarLogin() sin comprobarlo, así que a quien ya estaba dentro
+           se le pedía el correo otra vez al abrir un enlace. Navegar deja
+           que el arranque normal decida, en vez de duplicar esa lógica. */
+        if (auth && auth.currentUser) {
+          location.href = getBaseUrl();
+        } else {
+          mostrarLogin();
+        }
       });
 
     }).catch(err => {
