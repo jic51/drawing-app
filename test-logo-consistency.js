@@ -235,6 +235,33 @@ check(
   'La landing debe cargar la fuente Syne, si no el logo cae a una fuente genérica'
 );
 
+/* ── 11. La imagen de preview de los enlaces lleva el mismo logo ──
+   Es lo primero que ve alguien a quien le comparten un dibujo por
+   WhatsApp. Se le escapó el lápiz durante semanas porque nada lo miraba. */
+const ogPath = path.join(__dirname, 'og-preview.svg');
+if (fs.existsSync(ogPath)) {
+  const og = fs.readFileSync(ogPath, 'utf8');
+  const titulo = og.match(/<text[^>]*fill="url\(#rainbow\)"[^>]*>([^<]*)<\/text>/);
+  check(
+    'El preview muestra el logo con su lápiz',
+    titulo && titulo[1].trim() === 'SketchSend ✏️',
+    `El texto del logo debe ser "SketchSend ✏️". Encontrado: ${titulo ? JSON.stringify(titulo[1]) : 'ninguno'}`
+  );
+  check(
+    'El preview usa la fuente Syne',
+    /font-family="Syne/.test(og),
+    'El logo del preview debe usar Syne, como el resto'
+  );
+  const paradas = [...og.matchAll(/stop-color="(#[0-9a-f]{6})"/gi)]
+    .map(m => m[1].toLowerCase());
+  const arco = paradas.filter(c => GRADIENT.includes(c));
+  check(
+    'El preview usa el gradiente canónico',
+    GRADIENT.split(',').every(c => paradas.includes(c.trim())),
+    `Faltan paradas del arcoíris. Encontradas: ${arco.join(', ')}`
+  );
+}
+
 /* ── Reporte ── */
 console.log('');
 if (failures.length === 0) {
