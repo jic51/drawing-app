@@ -4,7 +4,17 @@
 > Se actualiza en cada sesión de trabajo con Claude.
 > Última actualización: 2026-10-29
 >
-> **Orden de trabajo actual:**
+> **Orden de trabajo acordado (2026-11-04):**
+> 1. 🔴 Safari — la app está rota para la mayoría de iPhones
+> 2. 🔴 Revisión legal de privacy.html y terms.html
+> 3. 🔵 Extraer el motor de dibujo y replay a una librería (ver estrategia al final)
+> 4. Rama aparte `claude/mejoras-bandeja`, NO a main: rediseño de bandeja (I28),
+>    carrusel, contador de usuarios y países
+> 5. Compresión de trazos — en `claude/compresion-trazos`, pendiente de que el
+>    usuario la pruebe. Publicar el LECTOR en main antes que el escritor.
+> 6. Iconos propios — aplazado, no urgente
+
+> **Orden anterior (histórico):**
 > 1. ~~C6: Login flash fix~~ ✅
 > 2. ~~C7: OG preview + favicon~~ ✅
 > 3. ~~C8: Idioma inglés por defecto~~ ✅
@@ -143,7 +153,15 @@
 | Lanzar en nicho específico (diseño, arte casual, parejas) antes de ir a todos | Lección de Draw Something / BeReal | Estrategia |
 | Estrategia de distribución: PWA → dominio propio → Play Store (TWA) → App Store (Capacitor) | Análisis de mercado | Estrategia — no entrar a tiendas hasta tener tracción. 90% del código se reutiliza. |
 | **🔵 PLATAFORMA: abrir las funciones a otros desarrolladores** | La idea fundacional del proyecto: que otras apps usen dibujar, replay, descarga de video/imagen, links públicos y amigos, y paguen por ello. Hoy es imposible porque toda la lógica vive dentro de un único HTML de 4.200 líneas acoplado a la UI y a Firebase. Camino realista: (1) extraer el motor de dibujo y replay a una librería sin UI ni Firebase, con su propia suite de pruebas; (2) publicarla como paquete npm gratuito para crear adopción; (3) encima de ella, un SDK embebible (`<script>` + un div) que cualquiera pega en su web; (4) solo entonces una API de pago con claves, cuotas y facturación, que exige backend propio — Firebase desde el cliente no sirve para esto. Lo que se vende no es el dibujo: es el replay animado y el link que se comparte. Ver nota de estrategia al final de este archivo. | Sesión 2026-11-04 | 🔵 Estratégico |
-| **Carrusel para galería y opiniones** | Cuando haya suficientes, convertirlos en carrusel que se detenga al pasar el cursor por encima. No antes: con 1-2 elementos un carrusel se ve peor que una rejilla. Umbral sugerido: 5+. | Sesión 2026-11-04 | 🟡 Cuando haya volumen |
+| **Estados vacíos y de error que orienten** | Hoy un fallo muestra un aviso genérico, y una bandeja vacía o una lista de amigos sin nadie se quedan en blanco. Cada estado vacío debería decir qué hacer a continuación, no limitarse a no mostrar nada. Es de lo que más separa una app cuidada de una a medio hacer. | Sesión 2026-11-05 | 🟡 Alta |
+| **Evitar saltos de layout al cargar** | Al pasar de "Cargando…" al contenido los elementos se desplazan. Reservar el espacio desde el principio (alto mínimo o esqueletos) para que nada brinque. | Sesión 2026-11-05 | 🟡 Media |
+| **Onboarding de 30 segundos** | Quien entra por primera vez debería poder dibujar algo ANTES de que se le pida nada. Hoy lo primero es un login. | Sesión 2026-11-05 | 🟡 Alta |
+| **Botón "Borrar mi cuenta"** | Obligatorio para App Store. Debe eliminar el documento del usuario, amistades, sketches, token FCM y la cuenta en Firebase Auth. (Duplica F15; se mantiene aquí por prioridad.) | Sesión 2026-11-05 | 🔴 Pre-lanzamiento |
+| **Comportamiento sin conexión** | Hoy no hay respuesta clara si se cae la red: ni aviso ni reintento. Definir qué ve el usuario y si se encola el envío. | Sesión 2026-11-05 | 🟡 Media |
+| **Deshacer tras un trazo que salió del lienzo** | Un gesto que sale y vuelve a entrar se guarda como varios tramos, así que deshacer quita uno por vez en lugar del gesto completo. Decidir si debe agruparse por gesto. Consecuencia conocida del cambio del 2026-11-05. | Sesión 2026-11-05 | 🟢 Baja |
+| **Contador de usuarios en la landing** | Junto a los dibujos enviados, mostrar cuántas cuentas se han creado (activas o no). Esa zona debe ser vistosa: fondo claro que contraste con el resto de la página y un título que explique qué se está mirando, porque hoy un número suelto no se entiende. Requiere escribir el total en `stats/global` al crear cuenta. | Sesión 2026-11-04 | 🟡 Rama bandeja |
+| **Carrusel para galería y opiniones** | Carrusel que se detiene al pasar el cursor. Va en la rama de la bandeja, no a main. | Sesión 2026-11-04 | 🟡 Rama bandeja |
+| **Países que usan la app** | Contador de países distintos, inferido del idioma o la zona horaria del navegador (sin pedir ubicación). | Sesión 2026-11-04 | 🟡 Rama bandeja |
 | **Testimonios: recoger los reales desde la app** | Los 3 testimonios que había eran inventados como relleno — eliminados. Para tener reales: botón "Deja tu opinión" en Ajustes que guarda en `landing_testimonials` con `approved:false`; la landing solo muestra las aprobadas; el dueño aprueba desde la consola de Firebase. Necesita reglas nuevas. | Sesión 2026-11-03 | Pendiente |
 | **Galería: botón "Compartir en la galería"** | Hoy no hay forma de que un dibujo llegue a `landing_gallery`. Agregar un botón al terminar un dibujo que lo copie ahí **con permiso explícito del autor**, nunca automático. La landing ya lee esa colección, pero `createGalleryCard` espera un campo `stroke.pts` que la app nunca escribió: hay que reescribirlo contra el formato real. Necesita reglas nuevas. | Sesión 2026-11-03 | Pendiente |
 | **Contador: añadir usuarios y países** | El contador de dibujos ya funciona en vivo. Sumar: cantidad de cuentas creadas y número de países distintos. Requiere escribir esos datos en `stats/global` desde la app (el país se puede inferir del idioma o la zona horaria, sin pedir ubicación). | Sesión 2026-11-03 | Pendiente |
