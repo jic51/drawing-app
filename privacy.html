@@ -79,7 +79,8 @@ footer{border-top:1px solid var(--border);padding:28px 16px;text-align:center;
       <tr><td data-i="d1">Email address</td><td data-i="w1">To sign you in and recover your account</td><td data-i="k1">Until you delete your account</td></tr>
       <tr><td data-i="d2">Display name, @username and invite code</td><td data-i="w2">So friends can find you and know who sent a drawing</td><td data-i="k2">Until you delete your account</td></tr>
       <tr><td data-i="d3">Profile picture from Google</td><td data-i="w3">Shown next to your name, only if you sign in with Google</td><td data-i="k3">Until you delete your account</td></tr>
-      <tr><td data-i="d4">Your drawings</td><td data-i="w4">To deliver them to the friends you chose</td><td data-i="k4"><strong>24 hours</strong>, then deleted automatically</td></tr>
+      <tr><td data-i="d4">Drawings you send to a friend</td><td data-i="w4">To deliver them to the friends you chose</td><td data-i="k4"><strong>24 hours</strong>, then deleted automatically</td></tr>
+      <tr><td data-i="d4b">Drawings you share to the gallery</td><td data-i="w4b">To show them on our public site, only if you chose to share and we approved it</td><td data-i="k4b"><strong>Kept indefinitely</strong> — these do not expire. Ask us and we will remove yours</td></tr>
       <tr><td data-i="d5">Your friend list</td><td data-i="w5">To show who you can send drawings to</td><td data-i="k5">Until you remove the friend or delete your account</td></tr>
       <tr><td data-i="d6">Notification token</td><td data-i="w6">To tell your device a drawing arrived — only if you allow notifications</td><td data-i="k6">Until you turn notifications off</td></tr>
       <tr><td data-i="d7">Anonymous usage events</td><td data-i="w7">To see which parts of the app work and which break</td><td data-i="k7">Aggregated, not tied to your drawings</td></tr>
@@ -96,7 +97,8 @@ footer{border-top:1px solid var(--border);padding:28px 16px;text-align:center;
   </ul>
 
   <h2 data-i="h_draw">Your drawings</h2>
-  <p data-i="p_draw1">A drawing you send is stored so the person you sent it to can open it. Twenty-four hours after you send it, it is deleted. That deletion is automatic and we cannot undo it.</p>
+  <p data-i="p_draw1">A drawing you send to a friend is stored so they can open it. Twenty-four hours later it is deleted, automatically and irreversibly.</p>
+  <p data-i="p_draw1b">A drawing you choose to share to our public gallery works differently: it stays up for as long as we keep the gallery, and does not expire. You can ask us to take yours down at any time.</p>
   <p data-i="p_draw2">Anyone who has the link to a drawing can open it. Links are long and random, so they cannot be guessed, but a person who receives a drawing can pass its link to someone else. Treat a drawing as something that can be shared onward, like a photo you send in a chat.</p>
 
   <h2 data-i="h_third">Services we rely on</h2>
@@ -138,7 +140,8 @@ const T = {
   d1:'Correo electrónico', w1:'Para iniciar sesión y recuperar tu cuenta', k1:'Hasta que borres tu cuenta',
   d2:'Nombre, @usuario y código de invitación', w2:'Para que tus amigos te encuentren y sepan quién les envió un dibujo', k2:'Hasta que borres tu cuenta',
   d3:'Foto de perfil de Google', w3:'Se muestra junto a tu nombre, solo si entras con Google', k3:'Hasta que borres tu cuenta',
-  d4:'Tus dibujos', w4:'Para entregarlos a los amigos que elegiste', k4:'<strong>24 horas</strong>, después se borran solos',
+  d4:'Dibujos que envías a un amigo', w4:'Para entregarlos a los amigos que elegiste', k4:'<strong>24 horas</strong>, después se borran solos',
+  d4b:'Dibujos que compartes a la galería', w4b:'Para mostrarlos en nuestra web pública, solo si elegiste compartirlos y los aprobamos', k4b:'<strong>Se conservan indefinidamente</strong> — estos no caducan. Pídenoslo y quitamos el tuyo',
   d5:'Tu lista de amigos', w5:'Para mostrarte a quién puedes enviar dibujos', k5:'Hasta que elimines al amigo o borres tu cuenta',
   d6:'Token de notificaciones', w6:'Para avisar a tu teléfono que llegó un dibujo — solo si aceptas notificaciones', k6:'Hasta que desactives las notificaciones',
   d7:'Eventos de uso anónimos', w7:'Para ver qué partes de la app funcionan y cuáles fallan', k7:'Agregados, sin vincularse a tus dibujos',
@@ -149,7 +152,8 @@ const T = {
   n3:'No accedemos a tu cámara ni a tus fotos.',
   n4:'No vendemos tus datos y no mostramos publicidad.',
   h_draw:'Tus dibujos',
-  p_draw1:'Un dibujo que envías se guarda para que la persona a la que se lo mandaste pueda abrirlo. Veinticuatro horas después se borra. Ese borrado es automático y no podemos deshacerlo.',
+  p_draw1:'Un dibujo que envías a un amigo se guarda para que pueda abrirlo. Veinticuatro horas después se borra, de forma automática e irreversible.',
+  p_draw1b:'Un dibujo que eliges compartir a nuestra galería pública funciona distinto: se queda mientras mantengamos la galería, y no caduca. Puedes pedirnos que lo quitemos cuando quieras.',
   p_draw2:'Cualquiera que tenga el enlace de un dibujo puede abrirlo. Los enlaces son largos y aleatorios, así que no se adivinan, pero quien recibe un dibujo puede pasarle el enlace a otra persona. Trata un dibujo como algo que puede reenviarse, igual que una foto que mandas por chat.',
   h_third:'Servicios de los que dependemos',
   p_third:'No tenemos servidores propios. La app está construida sobre estos servicios, y tus datos pasan por ellos:',

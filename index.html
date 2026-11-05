@@ -486,6 +486,12 @@
       display:flex; align-items:center; justify-content:center; transition:background 0.15s;
     }
     .inbox-share-btn:hover { background:var(--accent); border-color:var(--accent); }
+    .inbox-report-btn {
+      background:transparent; border:1px solid var(--border); border-radius:50%;
+      width:30px; height:30px; font-size:0.8rem; cursor:pointer; color:var(--muted);
+      display:flex; align-items:center; justify-content:center; transition:all 0.15s;
+    }
+    .inbox-report-btn:hover { border-color:var(--danger); color:var(--danger); }
 
     /* ══════════════════════════════════════════════════════
        OVERLAY DE REPLAY — completamente limpio
@@ -840,10 +846,21 @@
       gap:12px; overflow:hidden;
     }
     #viewer-screen.activo { display:flex; animation:aparecer 0.35s ease; }
-    /* text-align:center alinea el slogan con el logo. El logo ya se centra
-       solo por el margin-inline:auto de .titulo, y sin esto el texto se
-       quedaba pegado a la izquierda mientras el logo iba en medio. */
-    #viewer-header { width:100%; flex-shrink:0; text-align:center; }
+    /* Todo el bloque de cabecera va a la izquierda: logo, slogan, quién
+       lo dibujó y cuánto le queda. El margin-inline:auto que .titulo trae
+       de la regla compartida hay que anularlo o el logo se iría al centro
+       mientras el resto queda a la izquierda. */
+    #viewer-header { width:100%; flex-shrink:0; text-align:left; }
+    #viewer-header .titulo { margin-inline:0; }
+    #viewer-expira { justify-content:flex-start; }
+    /* Denunciar: discreto a propósito. Tiene que estar siempre al alcance
+       sin disputarle la atención al botón principal. */
+    #viewer-report {
+      margin-top:8px; padding:4px 10px; border-radius:20px; cursor:pointer;
+      background:transparent; border:1px solid var(--border);
+      color:var(--muted); font-family:var(--sans); font-size:0.68rem;
+    }
+    #viewer-report:hover { border-color:var(--danger); color:var(--danger); }
     #viewer-context { font-size:0.72rem; color:var(--muted); margin-top:2px; }
     /* Cuánto le queda al dibujo antes de desaparecer. */
     #viewer-expira {
@@ -908,13 +925,14 @@
   <div id="viewer-header">
     <div class="titulo" style="font-size:1.3rem;">SketchSend ✏️</div>
     <div id="viewer-context">Every message is a drawing</div>
-    <div id="viewer-expira">⏳ <span id="viewer-expira-txt"></span></div>
-  </div>
-  <div id="viewer-main">
     <div id="viewer-sender" style="display:none;">
       <img id="viewer-avatar" src="" alt="">
       <span id="viewer-drawing-by">Drawing by </span><span id="viewer-from">...</span>
     </div>
+    <div id="viewer-expira">⏳ <span id="viewer-expira-txt"></span></div>
+    <button id="viewer-report" style="display:none;">⚑ <span id="lbl-viewer-report">Report</span></button>
+  </div>
+  <div id="viewer-main">
     <div id="viewer-loading">Loading drawing... ✏️</div>
     <canvas id="viewer-canvas" style="display:none;"></canvas>
     <div id="viewer-expired" style="display:none;">
@@ -1420,6 +1438,9 @@ const I18N = {
     store_themes: '🌈 Temas de temporada', store_themes_sub: 'Halloween, Navidad, San Valentín',
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Dibujos permanentes, 4K, sin firma',
     install_app: 'Instalar app', install_app_sub: 'Agregar SketchSend a tu pantalla de inicio',
+    rep_ask: '¿Por qué denuncias esto?', rep_sent: '⚑ Denuncia enviada. La revisaremos.',
+    rep_r1: 'Acoso o amenazas', rep_r2: 'Contenido sexual', rep_r3: 'Odio o discriminación', rep_r4: 'Otro motivo',
+    report: 'Denunciar',
     install_btn: 'Instalar 📲', web_site: 'Sitio web', language: 'Idioma', theme: 'Tema', replay_self: 'Replay al enviar', replay_self_sub: 'Reproduce tu dibujo después de enviarlo', version: 'Versión', logout: 'Cerrar sesión',
     tool_rainbow: 'Arcoíris', tool_brush: 'Pincel', tool_erase: 'Borrar',
     store_section: 'Tienda',
@@ -1513,6 +1534,9 @@ const I18N = {
     store_themes: '🌈 Seasonal themes', store_themes_sub: "Halloween, Christmas, Valentine's",
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Permanent drawings, 4K, no watermark',
     install_app: 'Install app', install_app_sub: 'Add SketchSend to your home screen',
+    rep_ask: 'Why are you reporting this?', rep_sent: '⚑ Report sent. We will review it.',
+    rep_r1: 'Harassment or threats', rep_r2: 'Sexual content', rep_r3: 'Hate or discrimination', rep_r4: 'Something else',
+    report: 'Report',
     install_btn: 'Install 📲', web_site: 'Website', language: 'Language', theme: 'Theme', replay_self: 'Replay after sending', replay_self_sub: 'Play back your drawing after you send it', version: 'Version', logout: 'Sign out',
     tool_rainbow: 'Rainbow', tool_brush: 'Brush', tool_erase: 'Erase',
     store_section: 'Store',
@@ -1663,6 +1687,7 @@ function applyLang() {
   set('lbl-theme', 'theme');
   set('lbl-replay-self', 'replay_self'); set('lbl-replay-self-sub', 'replay_self_sub');
   set('lbl-review', 'review_label'); set('lbl-review-sub', 'review_sub');
+  set('lbl-viewer-report', 'report');
   set('lbl-web', 'web_site');
   set('lbl-version', 'version');
   // Tienda — labels con IDs, botones con "Pronto"/"Coming soon"
@@ -2730,6 +2755,35 @@ function iniciarPromptsCanvas() {
 limpiarBtn.addEventListener('click', limpiarCanvas);
 limpiarBtnMob.addEventListener('click', limpiarCanvas);
 /* ══════════════════════════════════════════════════════
+   DENUNCIAR CONTENIDO
+   ────────────────────────────────────────────────────
+   Disponible tanto dentro de la app como en un enlace compartido, donde
+   quien mira puede no tener cuenta: por eso no exige estar identificado.
+   Guarda el motivo y qué se denuncia; la revisión es manual.
+══════════════════════════════════════════════════════ */
+async function denunciar(tipo, refId, autor) {
+  const motivos = [
+    { label: t('rep_r1'), value: 'acoso' },
+    { label: t('rep_r2'), value: 'sexual' },
+    { label: t('rep_r3'), value: 'odio' },
+    { label: t('rep_r4'), value: 'otro' },
+    { label: t('cancel'), value: null }
+  ];
+  const motivo = await ssModal(t('rep_ask'), motivos);
+  if (!motivo) return;
+  toast(t('rep_sent'));
+  try {
+    if (!firebaseReady || !db) return;
+    await db.collection('_reports').add({
+      tipo, refId: refId || null, autor: autor || null, motivo,
+      porUid: (auth && auth.currentUser) ? auth.currentUser.uid : null,
+      ua: navigator.userAgent.slice(0, 200),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) { logRemoteError('denuncia', e); }
+}
+
+/* ══════════════════════════════════════════════════════
    COMPARTIR UN ENLACE
    ────────────────────────────────────────────────────
    Un solo sitio para los tres botones que comparten. La clave: se manda
@@ -3116,7 +3170,14 @@ function renderInbox() {
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
         <div class="inbox-card-timer">⏱ ${esc(timerText)}</div>
         <button class="inbox-share-btn" data-id="${esc(msg.id)}" title="Compartir link">🔗</button>
+        <button class="inbox-report-btn" data-id="${esc(msg.id)}" title="${esc(t('report'))}">⚑</button>
       </div>`;
+
+    /* Denunciar este dibujo — tampoco abre el replay */
+    card.querySelector('.inbox-report-btn').addEventListener('click', e => {
+      e.stopPropagation();
+      denunciar('sketch', msg.id, msg.sender);
+    });
 
     /* Botón compartir — no abre el replay */
     card.querySelector('.inbox-share-btn').addEventListener('click', e => {
@@ -4423,6 +4484,11 @@ if ('serviceWorker' in navigator) {
       canvasEl.style.display  = 'block';
       ctaEl.style.display     = 'flex';
       document.getElementById('viewer-sender').style.display = 'flex';
+      const btnRep = document.getElementById('viewer-report');
+      if (btnRep) {
+        btnRep.style.display = 'inline-block';
+        btnRep.onclick = () => denunciar('sketch', viewId, senderName);
+      }
 
       /* Ajustar canvas al espacio REAL que queda entre el nombre y el CTA,
          no a un porcentaje fijo del viewport: así encaja en cualquier pantalla. */
