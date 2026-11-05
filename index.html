@@ -1724,6 +1724,8 @@ const inboxBadgeMob = document.getElementById('inbox-badge-mob');
 
 /* ── ESTADO ── */
 let dibujando      = false;
+/* El dedo sigue apoyado pero el puntero está fuera del lienzo. */
+let fuera          = false;
 let hue            = 0;
 let herramienta    = 'rainbow';
 let tamBase        = 4;        /* Pincel fino — la mitad de v8 */
@@ -2407,21 +2409,54 @@ function limiteAlcanzado() {
   return false;
 }
 
+/* ¿El punto cae dentro del lienzo? Se compara en coordenadas del lienzo,
+   las mismas que devuelve coords(). */
+function dentroDelLienzo(x, y) {
+  const w = cv.width / DPR, h = cv.height / DPR;
+  return x >= 0 && y >= 0 && x <= w && y <= h;
+}
+
+/* Marca el inicio de un tramo. Se usa al apoyar el dedo y también al
+   volver a entrar al lienzo sin haberlo levantado. */
+function abrirTramo(x, y) {
+  currentStrokeId++;
+  lastDrawTime = 0;                 /* la velocidad se mide desde cero */
+  ultimo = { x, y };
+  trazos.push({ tipo:'inicio', x, y, h:herramienta, sid:currentStrokeId, t:Date.now(),
+                origW: Math.round(cv.width/DPR), origH: Math.round(cv.height/DPR) });
+}
+
 function iniciarDibujo(e) {
   if (limiteAlcanzado()) return;
   e.preventDefault(); dibujando = true; pilaRedo = [];
-  currentStrokeId++;
-  lastDrawTime = 0; /* reset velocity tracking */
-  const { x, y } = coords(e); ultimo = { x, y };
-  trazos.push({ tipo:'inicio', x, y, h:herramienta, sid:currentStrokeId, t:Date.now(),
-                origW: Math.round(cv.width/DPR), origH: Math.round(cv.height/DPR) });
+  fuera = false;
+  /* Capturar el puntero: sin esto el navegador deja de mandar eventos en
+     cuanto el dedo sale del lienzo y no hay forma de saber que volvió. */
+  try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  const { x, y } = coords(e);
+  abrirTramo(x, y);
   actualizarBotones();
 }
 
 function dibujar(e) {
   if (!dibujando) return; e.preventDefault();
   if (limiteAlcanzado()) return;
-  const { x, y, p } = coords(e); const gw = grosor(p, x, y);
+  const { x, y, p } = coords(e);
+
+  /* El dedo sigue abajo pero salió del lienzo: se cierra el tramo donde
+     salió y se deja de pintar, sin terminar el trazo. Al volver a entrar
+     se abre un tramo nuevo. Lo de fuera no se guarda. */
+  if (!dentroDelLienzo(x, y)) {
+    if (!fuera) {
+      fuera = true;
+      trazos.push({ tipo:'fin', sid:currentStrokeId, t:Date.now() });
+      preview.style.display = 'none';
+    }
+    return;
+  }
+  if (fuera) { fuera = false; abrirTramo(x, y); return; }
+
+  const gw = grosor(p, x, y);
   let color;
   if (herramienta==='borrador') { color=canvasBg(); }
   else if (colorSeleccionado==='rainbow') { hue=(hue+1.2)%360; color=`hsl(${hue},100%,55%)`; }
@@ -2440,17 +2475,24 @@ function dibujar(e) {
   ultimo = { x, y };
 }
 
-function pararDibujo() {
-  if (!dibujando) return; dibujando=false; ultimo=null;
-  preview.style.display='none';
-  trazos.push({ tipo:'fin', sid:currentStrokeId, t:Date.now() });
+function pararDibujo(e) {
+  if (!dibujando) return;
+  dibujando = false; ultimo = null;
+  preview.style.display = 'none';
+  if (e && e.pointerId != null) { try { cv.releasePointerCapture(e.pointerId); } catch (_) {} }
+  /* Si salió del lienzo el tramo ya se cerró: no duplicar el 'fin'. */
+  if (!fuera) trazos.push({ tipo:'fin', sid:currentStrokeId, t:Date.now() });
+  fuera = false;
   actualizarBotones();
 }
 
 cv.addEventListener('pointerdown', iniciarDibujo);
 cv.addEventListener('pointermove', dibujar);
 cv.addEventListener('pointerup', pararDibujo);
-cv.addEventListener('pointerout', pararDibujo);
+/* 'pointerout' ya NO termina el trazo: salir del lienzo con el dedo
+   apoyado solo pausa el trazado, y al volver a entrar se sigue dibujando.
+   El trazo acaba al levantar el dedo o si el sistema cancela el gesto. */
+cv.addEventListener('pointercancel', pararDibujo);
 /* Sin listeners touch: los eventos pointer ya cubren dedo, lápiz y ratón.
    Tenerlos a la vez hacía que cada movimiento del dedo se registrara dos
    veces, lo que duplicaba los datos guardados y aplastaba la variación de
