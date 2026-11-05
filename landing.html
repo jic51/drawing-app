@@ -1126,21 +1126,28 @@ function createGalleryCard(strokes, author, photoURL) {
         sec.style.display = '';
       }, () => {});
 
-    db.collection('landing_gallery').orderBy('sharedAt', 'desc').limit(8).get().then(snap => {
-      if (snap.empty) return;              /* la sección sigue oculta */
+    /* Solo los aprobados, y en vivo como las opiniones: marcar approved
+       en la consola los publica al instante. Sin orderBy junto al where
+       para no exigir un índice compuesto; se ordena aquí. */
+    db.collection('landing_gallery').where('approved', '==', true).limit(12)
+      .onSnapshot(snap => {
       const grid = document.getElementById('gallery-grid');
       const sec = document.getElementById('gallery-section');
-      let puestas = 0;
-      snap.forEach(doc => {
-        const d = doc.data();
-        if (!d.strokes) return;
+      if (!grid || !sec) return;
+      const filas = [];
+      snap.forEach(doc => { const d = doc.data(); if (d && d.strokes) filas.push(d); });
+      if (!filas.length) { sec.classList.remove('ready'); return; }
+      filas.sort((a, b) => (b.sharedAt?.seconds || 0) - (a.sharedAt?.seconds || 0));
+      /* Vaciar antes de repintar: onSnapshot vuelve a disparar con cada
+         cambio y si no, las tarjetas se duplicarían. */
+      grid.innerHTML = '';
+      filas.slice(0, 8).forEach(d => {
         const card = createGalleryCard(d.strokes, d.author, d.photoURL);
         grid.appendChild(card);
         observar(card);
-        puestas++;
       });
-      if (puestas) sec.classList.add('ready');
-    }).catch(() => {});
+      sec.classList.add('ready');
+    }, () => {});
 
   } catch(e) { /* sin Firebase el contador y la galería quedan ocultos */ }
 })();

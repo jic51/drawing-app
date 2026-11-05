@@ -840,8 +840,17 @@
       gap:12px; overflow:hidden;
     }
     #viewer-screen.activo { display:flex; animation:aparecer 0.35s ease; }
-    #viewer-header { width:100%; flex-shrink:0; }
+    /* text-align:center alinea el slogan con el logo. El logo ya se centra
+       solo por el margin-inline:auto de .titulo, y sin esto el texto se
+       quedaba pegado a la izquierda mientras el logo iba en medio. */
+    #viewer-header { width:100%; flex-shrink:0; text-align:center; }
     #viewer-context { font-size:0.72rem; color:var(--muted); margin-top:2px; }
+    /* Cuánto le queda al dibujo antes de desaparecer. */
+    #viewer-expira {
+      margin-top:6px; font-size:0.72rem; color:var(--muted);
+      display:none; align-items:center; justify-content:center; gap:5px;
+    }
+    #viewer-expira b { color:var(--accent2); font-weight:700; font-variant-numeric:tabular-nums; }
     /* Zona central: ocupa el alto sobrante y centra su contenido. */
     #viewer-main {
       flex:1; min-height:0; width:100%;
@@ -899,6 +908,7 @@
   <div id="viewer-header">
     <div class="titulo" style="font-size:1.3rem;">SketchSend ✏️</div>
     <div id="viewer-context">Every message is a drawing</div>
+    <div id="viewer-expira">⏳ <span id="viewer-expira-txt"></span></div>
   </div>
   <div id="viewer-main">
     <div id="viewer-sender" style="display:none;">
@@ -987,7 +997,8 @@
   <header class="hdr">
     <!-- Row 1: Logo + season badge (always visible) -->
     <div class="hdr-row1">
-      <div class="hdr-logo" id="hdr-logo-placeholder" style="visibility:hidden;">SketchSend ✏️</div>
+      <a class="hdr-logo" id="hdr-logo-placeholder" href="landing.html" target="_blank" rel="noopener"
+         title="SketchSend" style="visibility:hidden;text-decoration:none;">SketchSend ✏️</a>
       <div class="hdr-sep"></div>
       <span class="season-badge" id="season-badge"></span>
       <!-- Desktop only: buttons and user here -->
@@ -1283,6 +1294,14 @@
         </div>
         <button class="settings-row-action" id="review-btn">✍️</button>
       </div>
+      <div class="settings-row" id="web-row" style="cursor:pointer;">
+        <div>
+          <div class="settings-row-label" id="lbl-web">Sitio web</div>
+          <div class="settings-row-sub">sketchsend.com</div>
+        </div>
+        <a class="settings-row-action" id="web-btn" href="landing.html" target="_blank" rel="noopener"
+           style="text-decoration:none;">↗</a>
+      </div>
       <div class="settings-row">
         <div class="settings-row-label" id="lbl-version">Versión</div>
         <div style="font-size:0.82rem;color:var(--muted);">1.20.0</div>
@@ -1377,8 +1396,8 @@ const I18N = {
     review_empty: 'Escribe algo antes de enviar',
     review_fail: 'No se pudo enviar tu opinión',
     review_send: 'Enviar', review_replace: 'Reemplazar',
-    gal_confirm: '¿Compartir este dibujo en la galería pública de SketchSend?<br><br><b>Lo verá cualquiera</b> que entre a nuestra web, junto a tu @usuario, y <b>no se borrará a las 24 horas</b> como los demás.',
-    gal_yes: 'Sí, compartir', gal_sent: '🖼️ Compartido en la galería',
+    gal_confirm: '¿Compartir este dibujo en la galería pública de SketchSend?<br><br>Pasa primero por revisión. Si se aprueba, <b>lo verá cualquiera</b> que entre a nuestra web, junto a tu @usuario, y <b>no se borrará a las 24 horas</b> como los demás.',
+    gal_yes: 'Sí, compartir', gal_sent: '🖼️ Enviado para revisión',
     gal_fail: 'No se pudo compartir el dibujo',
     save_png: '⬇️ Imagen (.PNG)', save_video: '🎬 Video replay (.WEBM)',
     save_sks: '📦 Proyecto (.SKS)', cancel: 'Cancelar',
@@ -1401,7 +1420,7 @@ const I18N = {
     store_themes: '🌈 Temas de temporada', store_themes_sub: 'Halloween, Navidad, San Valentín',
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Dibujos permanentes, 4K, sin firma',
     install_app: 'Instalar app', install_app_sub: 'Agregar SketchSend a tu pantalla de inicio',
-    install_btn: 'Instalar 📲', language: 'Idioma', theme: 'Tema', replay_self: 'Replay al enviar', replay_self_sub: 'Reproduce tu dibujo después de enviarlo', version: 'Versión', logout: 'Cerrar sesión',
+    install_btn: 'Instalar 📲', web_site: 'Sitio web', language: 'Idioma', theme: 'Tema', replay_self: 'Replay al enviar', replay_self_sub: 'Reproduce tu dibujo después de enviarlo', version: 'Versión', logout: 'Cerrar sesión',
     tool_rainbow: 'Arcoíris', tool_brush: 'Pincel', tool_erase: 'Borrar',
     store_section: 'Tienda',
     no_friends: 'Agrega amigos para enviarles dibujos →',
@@ -1471,8 +1490,8 @@ const I18N = {
     review_empty: 'Write something before sending',
     review_fail: "Couldn't send your review",
     review_send: 'Send', review_replace: 'Replace',
-    gal_confirm: 'Share this drawing in the public SketchSend gallery?<br><br><b>Anyone</b> visiting our site will see it next to your @username, and it <b>will not disappear after 24 hours</b> like the others.',
-    gal_yes: 'Yes, share it', gal_sent: '🖼️ Shared to the gallery',
+    gal_confirm: 'Share this drawing in the public SketchSend gallery?<br><br>It goes through review first. If approved, <b>anyone</b> visiting our site will see it next to your @username, and it <b>will not disappear after 24 hours</b> like the others.',
+    gal_yes: 'Yes, share it', gal_sent: '🖼️ Sent for review',
     gal_fail: "Couldn't share the drawing",
     save_png: '⬇️ Image (.PNG)', save_video: '🎬 Video replay (.WEBM)',
     save_sks: '📦 Project (.SKS)', cancel: 'Cancel',
@@ -1494,7 +1513,7 @@ const I18N = {
     store_themes: '🌈 Seasonal themes', store_themes_sub: "Halloween, Christmas, Valentine's",
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Permanent drawings, 4K, no watermark',
     install_app: 'Install app', install_app_sub: 'Add SketchSend to your home screen',
-    install_btn: 'Install 📲', language: 'Language', theme: 'Theme', replay_self: 'Replay after sending', replay_self_sub: 'Play back your drawing after you send it', version: 'Version', logout: 'Sign out',
+    install_btn: 'Install 📲', web_site: 'Website', language: 'Language', theme: 'Theme', replay_self: 'Replay after sending', replay_self_sub: 'Play back your drawing after you send it', version: 'Version', logout: 'Sign out',
     tool_rainbow: 'Rainbow', tool_brush: 'Brush', tool_erase: 'Erase',
     store_section: 'Store',
     no_friends: 'Add friends to send them drawings →',
@@ -1644,6 +1663,7 @@ function applyLang() {
   set('lbl-theme', 'theme');
   set('lbl-replay-self', 'replay_self'); set('lbl-replay-self-sub', 'replay_self_sub');
   set('lbl-review', 'review_label'); set('lbl-review-sub', 'review_sub');
+  set('lbl-web', 'web_site');
   set('lbl-version', 'version');
   // Tienda — labels con IDs, botones con "Pronto"/"Coming soon"
   set('store-colors-lbl', 'store_colors'); set('store-colors-sub', 'store_colors_sub');
@@ -2709,6 +2729,28 @@ function iniciarPromptsCanvas() {
 /* ── LIMPIAR ── */
 limpiarBtn.addEventListener('click', limpiarCanvas);
 limpiarBtnMob.addEventListener('click', limpiarCanvas);
+/* ══════════════════════════════════════════════════════
+   COMPARTIR UN ENLACE
+   ────────────────────────────────────────────────────
+   Un solo sitio para los tres botones que comparten. La clave: se manda
+   'url' y 'title', nunca 'text'. Con 'text' presente, los destinos que
+   copian al portapapeles pegan ambos en una cadena y el enlace queda
+   como "...?view=ABC joseisrael te envió un dibujo ✏️", que ya no abre
+   el dibujo sino la app. El respaldo copia SOLO la URL.
+══════════════════════════════════════════════════════ */
+async function compartirEnlace(titulo, url) {
+  if (navigator.share) {
+    try { await navigator.share({ title: titulo, url }); return; }
+    catch (e) { if (e && e.name === 'AbortError') return; }   /* canceló */
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    toast(t('link_copied'));
+  } catch (e) {
+    toast(url);      /* sin permiso de portapapeles: al menos mostrarla */
+  }
+}
+
 function limpiarCanvas() {
   if (!trazos.length) { toast(t('canvas_clean')); return; }
   pilaRedo = []; trazos = []; currentStrokeId = 0; avisoLimiteMostrado = false;
@@ -2844,11 +2886,14 @@ async function buildCarousel() {
   carouselEl.appendChild(addBtn);
 
   /* Botón compartir */
+  /* NUNCA pasar 'text' junto a 'url' a navigator.share: al elegir "copiar",
+     muchos destinos los pegan en una sola cadena y el enlace acaba con
+     palabras detrás, dejando de abrir el dibujo. El contexto va en 'title',
+     que los destinos tratan como metadato y no concatenan. */
   const share = document.createElement('div'); share.className='sharebtn';
   share.innerHTML=`<div class="sharecircle">🔗</div><span class="cname" style="max-width:52px">${esc(t('share_label'))}</span>`;
   share.addEventListener('click', () => {
-    if (navigator.share) navigator.share({title:'SketchSend',text:t('share_sent_drawing'),url:getBaseUrl()}).catch(()=>{});
-    else toast(t('share_link_hint'));
+    compartirEnlace('SketchSend', getBaseUrl());
   });
   carouselEl.appendChild(share);
 }
@@ -3077,11 +3122,7 @@ function renderInbox() {
     card.querySelector('.inbox-share-btn').addEventListener('click', e => {
       e.stopPropagation();
       const shareUrl = getBaseUrl() + '?view=' + msg.id;
-      if (navigator.share) {
-        navigator.share({ title:'SketchSend', text:t('share_sent_you').replace('{name}', esc(msg.sender)), url: shareUrl }).catch(() => {});
-      } else {
-        navigator.clipboard.writeText(shareUrl).then(() => toast(t('link_copied'))).catch(() => toast(shareUrl));
-      }
+      compartirEnlace(t('share_sent_you').replace('{name}', msg.sender), shareUrl);
     });
 
     card.addEventListener('click', () => {
@@ -3546,6 +3587,9 @@ galBtn.addEventListener('click', async () => {
     /* La landing muestra el mismo avatar que la app. */
     photoURL: auth.currentUser.photoURL || '',
     uid: auth.currentUser.uid,
+    /* Igual que las opiniones: nada aparece en la landing sin revisión.
+       Un dibujo público es más difícil de deshacer que un comentario. */
+    approved: false,
     sharedAt: firebase.firestore.FieldValue.serverTimestamp()
   }).catch(e => {
     logRemoteError('galeria', e);
@@ -4084,9 +4128,7 @@ settingsInvite.addEventListener('click', () => {
   const inviteUrl = code && code !== '——'
     ? getBaseUrl() + '?add=' + code
     : getBaseUrl();
-  const shareData = { title:'SketchSend', text:t('share_together'), url:inviteUrl };
-  if (navigator.share) { navigator.share(shareData).catch(()=>{}); }
-  else { navigator.clipboard.writeText(inviteUrl).then(()=>toast('🔗 ' + (lang === 'es' ? 'Link copiado' : 'Link copied'))).catch(()=>toast(inviteUrl)); }
+  compartirEnlace(t('share_together'), inviteUrl);
 });
 
 document.getElementById('shortcode-copy-btn').addEventListener('click', () => {
@@ -4352,6 +4394,27 @@ if ('serviceWorker' in navigator) {
       const now = Date.now();
       const expires = d.expiresAt?.toMillis ? d.expiresAt.toMillis() : (d.expiresAt || 0);
       if (expires < now) { showExpired(); return; }
+
+      /* Cuánto le queda. Saber que se va crea urgencia y explica por qué
+         el enlace dejará de funcionar. Se refresca cada minuto. */
+      (function cuentaAtras() {
+        const caja = document.getElementById('viewer-expira');
+        const txt  = document.getElementById('viewer-expira-txt');
+        if (!caja || !txt) return;
+        const pintar = () => {
+          const resta = expires - Date.now();
+          if (resta <= 0) { location.reload(); return; }
+          const hs = Math.floor(resta / 3600000);
+          const mn = Math.floor((resta % 3600000) / 60000);
+          const cuanto = hs > 0 ? `${hs}h ${mn}m` : `${mn}m`;
+          txt.innerHTML = (lang === 'es'
+            ? `Este dibujo desaparece en <b>${cuanto}</b>`
+            : `This drawing disappears in <b>${cuanto}</b>`);
+          caja.style.display = 'flex';
+        };
+        pintar();
+        setInterval(pintar, 60000);
+      })();
 
       const senderName = d.fromName || 'Someone';
       fromEl.textContent = '@' + senderName;
