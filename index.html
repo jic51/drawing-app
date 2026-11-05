@@ -1312,6 +1312,16 @@
         </div>
         <button class="settings-row-action" id="review-btn">✍️</button>
       </div>
+      <div class="settings-row">
+        <div class="settings-row-label" id="lbl-privacy">Privacidad</div>
+        <a class="settings-row-action" href="privacy.html" target="_blank" rel="noopener"
+           style="text-decoration:none;">↗</a>
+      </div>
+      <div class="settings-row">
+        <div class="settings-row-label" id="lbl-terms">Términos</div>
+        <a class="settings-row-action" href="terms.html" target="_blank" rel="noopener"
+           style="text-decoration:none;">↗</a>
+      </div>
       <div class="settings-row" id="web-row" style="cursor:pointer;">
         <div>
           <div class="settings-row-label" id="lbl-web">Sitio web</div>
@@ -1442,7 +1452,7 @@ const I18N = {
     rep_ask: '¿Por qué denuncias esto?', rep_sent: '⚑ Denuncia enviada. La revisaremos.',
     rep_r1: 'Acoso o amenazas', rep_r2: 'Contenido sexual', rep_r3: 'Odio o discriminación', rep_r4: 'Otro motivo',
     report: 'Denunciar',
-    install_btn: 'Instalar 📲', web_site: 'Sitio web', language: 'Idioma', theme: 'Tema', replay_self: 'Replay al enviar', replay_self_sub: 'Reproduce tu dibujo después de enviarlo', version: 'Versión', logout: 'Cerrar sesión',
+    install_btn: 'Instalar 📲', web_site: 'Sitio web', privacy: 'Privacidad', terms: 'Términos', language: 'Idioma', theme: 'Tema', replay_self: 'Replay al enviar', replay_self_sub: 'Reproduce tu dibujo después de enviarlo', version: 'Versión', logout: 'Cerrar sesión',
     tool_rainbow: 'Arcoíris', tool_brush: 'Pincel', tool_erase: 'Borrar',
     store_section: 'Tienda',
     no_friends: 'Agrega amigos para enviarles dibujos →',
@@ -1539,7 +1549,7 @@ const I18N = {
     rep_ask: 'Why are you reporting this?', rep_sent: '⚑ Report sent. We will review it.',
     rep_r1: 'Harassment or threats', rep_r2: 'Sexual content', rep_r3: 'Hate or discrimination', rep_r4: 'Something else',
     report: 'Report',
-    install_btn: 'Install 📲', web_site: 'Website', language: 'Language', theme: 'Theme', replay_self: 'Replay after sending', replay_self_sub: 'Play back your drawing after you send it', version: 'Version', logout: 'Sign out',
+    install_btn: 'Install 📲', web_site: 'Website', privacy: 'Privacy Policy', terms: 'Terms of Service', language: 'Language', theme: 'Theme', replay_self: 'Replay after sending', replay_self_sub: 'Play back your drawing after you send it', version: 'Version', logout: 'Sign out',
     tool_rainbow: 'Rainbow', tool_brush: 'Brush', tool_erase: 'Erase',
     store_section: 'Store',
     no_friends: 'Add friends to send them drawings →',
@@ -1690,6 +1700,8 @@ function applyLang() {
   set('lbl-replay-self', 'replay_self'); set('lbl-replay-self-sub', 'replay_self_sub');
   set('lbl-review', 'review_label'); set('lbl-review-sub', 'review_sub');
   set('lbl-viewer-report', 'report');
+  set('lbl-privacy', 'privacy');
+  set('lbl-terms', 'terms');
   set('lbl-web', 'web_site');
   set('lbl-version', 'version');
   // Tienda — labels con IDs, botones con "Pronto"/"Coming soon"
