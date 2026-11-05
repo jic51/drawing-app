@@ -1438,6 +1438,7 @@ const I18N = {
     store_themes: '🌈 Temas de temporada', store_themes_sub: 'Halloween, Navidad, San Valentín',
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Dibujos permanentes, 4K, sin firma',
     install_app: 'Instalar app', install_app_sub: 'Agregar SketchSend a tu pantalla de inicio',
+    notif_fail: 'No se pudieron activar las notificaciones',
     rep_ask: '¿Por qué denuncias esto?', rep_sent: '⚑ Denuncia enviada. La revisaremos.',
     rep_r1: 'Acoso o amenazas', rep_r2: 'Contenido sexual', rep_r3: 'Odio o discriminación', rep_r4: 'Otro motivo',
     report: 'Denunciar',
@@ -1534,6 +1535,7 @@ const I18N = {
     store_themes: '🌈 Seasonal themes', store_themes_sub: "Halloween, Christmas, Valentine's",
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Permanent drawings, 4K, no watermark',
     install_app: 'Install app', install_app_sub: 'Add SketchSend to your home screen',
+    notif_fail: "Couldn't turn on notifications",
     rep_ask: 'Why are you reporting this?', rep_sent: '⚑ Report sent. We will review it.',
     rep_r1: 'Harassment or threats', rep_r2: 'Sexual content', rep_r3: 'Hate or discrimination', rep_r4: 'Something else',
     report: 'Report',
@@ -1888,8 +1890,11 @@ async function solicitarNotificaciones() {
       if (window.posthog) posthog.capture('notifications_denied');
       return;
     }
-    const reg = await navigator.serviceWorker.getRegistration();
-    if (!reg) return;
+    /* .ready ESPERA a que haya un service worker activo. getRegistration()
+       devuelve undefined si aún no terminó de registrarse, y el `return`
+       de antes abandonaba en silencio sin reintentar ni avisar. */
+    const reg = await navigator.serviceWorker.ready;
+    if (!reg) { toast('⚠️ ' + t('notif_fail')); return; }
     const token = await messaging.getToken({
       vapidKey: 'BN2t-sQXDsXoEtQlv2RnXbl2SMmw6xb7DIBuQZ0HiHI5pb9hKPgJP9eoYXu0tX0NydkrwykSUn7Xd3GAAlU45M4',
       serviceWorkerRegistration: reg
@@ -1902,7 +1907,10 @@ async function solicitarNotificaciones() {
       if (window.posthog) posthog.capture('notifications_enabled');
     }
   } catch(e) {
+    /* Antes solo iba a la consola, así que un usuario que activaba las
+       notificaciones y nunca recibía nada no tenía forma de saberlo. */
     console.warn('FCM token error:', e.message);
+    toast('⚠️ ' + t('notif_fail'));
     logRemoteError('fcmToken', e);
   }
 }
