@@ -1434,6 +1434,8 @@ const I18N = {
     inbox_empty: 'No tienes dibujos nuevos', inbox_sent_you: 'Te envió un dibujo',
     inbox_empty_hint: 'Dibuja algo y envíalo: cuando te respondan, aparecerá aquí.',
     no_friends_hint: 'Comparte tu enlace para que te agreguen →',
+    prof_open: 'Ver perfil', prof_share: '🔗 Compartir su perfil',
+    prof_report: '⚑ Denunciar', prof_remove: '✕ Eliminar amigo',
     settings_title: '⚙️ Configuración',
     profile: 'Perfil', friends: 'Amigos', store: 'Tienda', app_section: 'App',
     change_name: 'Nombre', change_name_sub: 'Lo que ven tus amigos al recibir dibujos',
@@ -1536,6 +1538,8 @@ const I18N = {
     inbox_empty: 'No new drawings', inbox_sent_you: 'sent you a drawing',
     inbox_empty_hint: 'Draw something and send it — replies will show up here.',
     no_friends_hint: 'Share your link so people can add you →',
+    prof_open: 'View profile', prof_share: '🔗 Share their profile',
+    prof_report: '⚑ Report', prof_remove: '✕ Remove friend',
     settings_title: '⚙️ Settings',
     profile: 'Profile', friends: 'Friends', store: 'Store', app_section: 'App',
     change_name: 'Name', change_name_sub: 'What your friends see when they receive drawings',
@@ -2192,6 +2196,20 @@ function finalizarLogin(username, displayName, photoURL) {
         ? `Add a friend using invite code "<b>${esc(addCode)}</b>"?`
         : `¿Agregar amigo con el código "<b>${esc(addCode)}</b>"?`);
       if (yes) agregarAmigo(addCode);
+    }, 800);
+  }
+
+  /* ?u=usuario — el enlace de perfil. Mismo trato que ?add=: se pregunta
+     antes, para que un enlace de un tercero no agregue a nadie solo. */
+  const addUser = urlParams.get('u');
+  if (addUser && /^[a-z0-9_]{3,20}$/i.test(addUser)) {
+    history.replaceState({}, '', location.pathname);
+    setTimeout(async () => {
+      const quien = addUser.toLowerCase();
+      const yes = await ssConfirm(lang === 'en'
+        ? `Add <b>@${esc(quien)}</b> as a friend?`
+        : `¿Agregar a <b>@${esc(quien)}</b> como amigo?`);
+      if (yes) agregarAmigo(quien);
     }, 800);
   }
 }
@@ -4220,7 +4238,6 @@ function abrirSettings() {
       amigos.forEach(c => {
         const chip = document.createElement('div');
         chip.className = 'settings-friend-chip';
-        chip.title = lang === 'es' ? 'Toca para eliminar' : 'Tap to remove';
         const avWrap = document.createElement('span'); avWrap.className='settings-friend-av-wrap rainbow-hover-ring';
         const avImg = document.createElement('img'); avImg.className='settings-friend-av';
         avImg.src = safeUrl(c.photoURL) || genAvatar(c.nombre); avImg.alt = c.nombre;
@@ -4229,7 +4246,11 @@ function abrirSettings() {
         const rmSpan = document.createElement('span'); rmSpan.textContent='✕';
         rmSpan.style.cssText='margin-left:4px;opacity:0.4;font-size:0.7rem;';
         chip.appendChild(avWrap); chip.appendChild(nameNode); chip.appendChild(rmSpan);
-        chip.addEventListener('click', async () => {
+        chip.title = t('prof_open');
+        rmSpan.title = t('prof_remove');
+        rmSpan.style.cursor = 'pointer';
+
+        const eliminar = async () => {
           if (!await ssConfirm(lang === 'es' ? `¿Eliminar a <b>${esc(c.nombre)}</b> de tus amigos?` : `Remove <b>${esc(c.nombre)}</b> from your friends?`)) return;
           try {
             const uid = auth.currentUser.uid;
@@ -4241,7 +4262,11 @@ function abrirSettings() {
             chip.remove();
             buildCarousel();
           } catch(e) { toast('❌ ' + e.message); }
-        });
+        };
+
+        /* Solo la ✕ elimina; el resto del chip abre el perfil. */
+        rmSpan.addEventListener('click', e => { e.stopPropagation(); eliminar(); });
+        chip.addEventListener('click', () => abrirPerfilAmigo(c, eliminar));
         settingsFriends.appendChild(chip);
       });
     });
@@ -4253,6 +4278,47 @@ function abrirSettings() {
      una vez que el shortCode real esté disponible (incluyendo cuentas antiguas) */
 
   settingsOverlay.classList.add('activo');
+}
+
+/* ══════════════════════════════════════════════════════
+   PERFIL DE UN AMIGO
+   ────────────────────────────────────────────────────
+   Se abre al tocar el nombre o el avatar. Antes, tocar cualquier parte
+   del chip preguntaba si querías eliminarlo: la acción destructiva era
+   la única, y la más fácil de disparar sin querer. Ahora eliminar vive
+   solo en la ✕, y el resto abre esto.
+══════════════════════════════════════════════════════ */
+async function abrirPerfilAmigo(amigo, alEliminar) {
+  const foto = safeUrl(amigo.photoURL) || genAvatar(amigo.nombre);
+  const arroba = amigo.username ? '@' + amigo.username : '';
+  const cuerpo =
+    `<div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+       <img src="${esc(foto)}" alt="" style="width:76px;height:76px;border-radius:50%;
+            border:3px solid var(--accent);object-fit:cover;">
+       <div style="font-size:1.05rem;font-weight:700;">${esc(amigo.nombre)}</div>
+       ${arroba ? `<div style="font-size:0.85rem;color:var(--accent2);">${esc(arroba)}</div>` : ''}
+     </div>`;
+
+  const accion = await ssModal(cuerpo, [
+    { label: t('prof_share'),  value: 'compartir' },
+    { label: t('prof_report'), value: 'denunciar' },
+    { label: t('prof_remove'), value: 'eliminar' },
+    { label: t('cancel'),      value: null, primary: true }
+  ]);
+
+  if (accion === 'compartir') {
+    /* El enlace lleva el @usuario, que es con lo que se busca a alguien.
+       El código corto sigue existiendo para cuentas que aún no tienen
+       @usuario, pero el @usuario es lo legible y lo que perdura. */
+    const url = amigo.username
+      ? getBaseUrl() + '?u=' + encodeURIComponent(amigo.username)
+      : getBaseUrl();
+    compartirEnlace(amigo.nombre, url);
+  } else if (accion === 'denunciar') {
+    denunciar('perfil', amigo.id, amigo.username || amigo.nombre);
+  } else if (accion === 'eliminar') {
+    alEliminar();
+  }
 }
 
 function cerrarSettings() {
