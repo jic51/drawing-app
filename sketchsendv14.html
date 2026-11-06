@@ -70,6 +70,7 @@
       --text:       #e8e8f0;
       --muted:      #7070a0;
       --danger:     #ef4444;
+      --ok:         #22c55e;   /* disponible: verde del indicador de @usuario */
       --online:     #4ade80;
       --canvas-bg:  #12121a;
       --r: 14px;
@@ -1469,6 +1470,7 @@ const I18N = {
     err_email_pass: 'Completa email y contraseña',
     err_username_fmt: 'Solo letras minúsculas, números y _ · mínimo 3 chars',
     err_username_taken: 'Ese @usuario ya está tomado, elige otro',
+    u_free: 'Disponible', u_taken: 'Ya está tomado', u_checking: 'Comprobando…',
     err_saving: 'Error al guardar: ',
     link_expired: '❌ El enlace expiró o ya fue usado. Pide uno nuevo.',
     canvas_clean: 'El canvas ya está limpio',
@@ -1566,6 +1568,7 @@ const I18N = {
     err_email_pass: 'Enter your email and password',
     err_username_fmt: 'Only lowercase letters, numbers and _ · minimum 3 chars',
     err_username_taken: 'That @username is taken, choose another',
+    u_free: 'Available', u_taken: 'Already taken', u_checking: 'Checking…',
     err_saving: 'Error saving: ',
     link_expired: '❌ The link expired or was already used. Request a new one.',
     canvas_clean: 'Canvas is already clean',
@@ -1984,6 +1987,76 @@ function mostrarVerificacion(email) {
   }
 }
 
+/* ══════════════════════════════════════════════════════
+   DISPONIBILIDAD DEL @USUARIO EN VIVO
+   ────────────────────────────────────────────────────
+   Indica mientras se escribe si el @usuario está libre, en vez de
+   descubrirlo al confirmar. Dos cuidados:
+   - Se espera a que deje de teclear antes de consultar, o cada letra
+     sería una lectura de Firestore.
+   - Las respuestas pueden llegar desordenadas, así que cada consulta
+     lleva número y solo se pinta la última: si no, un resultado viejo
+     podría sobrescribir al actual y mentir.
+══════════════════════════════════════════════════════ */
+const RE_USERNAME = /^[a-z0-9_]{3,20}$/;
+
+function normalizarUsername(v) {
+  return String(v || '').trim().toLowerCase().replace(/^@/, '');
+}
+
+/* Devuelve 'libre' | 'tomado' | 'formato' | 'error' */
+async function estadoUsername(raw, uidPropio) {
+  if (!RE_USERNAME.test(raw)) return 'formato';
+  if (!firebaseReady || !db) return 'error';
+  try {
+    const snap = await db.collection('users')
+      .where('username', '==', raw).limit(1).get();
+    if (snap.empty) return 'libre';
+    /* El propio no cuenta como ocupado: deja guardar sin cambiarlo. */
+    return (uidPropio && snap.docs[0].id === uidPropio) ? 'libre' : 'tomado';
+  } catch (e) { return 'error'; }
+}
+
+/* Conecta un input con su indicador. Devuelve () => estado actual. */
+function vigilarUsername(input, salida, uidPropio) {
+  let pedido = 0, timer = null, ultimo = 'formato';
+
+  const pintar = (estado, raw) => {
+    ultimo = estado;
+    const msg = {
+      libre:   '✓ ' + t('u_free'),
+      tomado:  '✕ ' + t('u_taken'),
+      formato: raw ? t('err_username_fmt') : '',
+      error:   '',
+      buscando: t('u_checking')
+    }[estado] || '';
+    salida.textContent = msg;
+    salida.style.display = msg ? 'block' : 'none';
+    salida.style.color = estado === 'libre' ? 'var(--ok)'
+                       : estado === 'buscando' ? 'var(--muted)'
+                       : 'var(--danger)';
+  };
+
+  const alEscribir = () => {
+    const raw = normalizarUsername(input.value);
+    clearTimeout(timer);
+    if (!RE_USERNAME.test(raw)) { pintar('formato', raw); return; }
+    pintar('buscando', raw);
+    /* Esperar a que pare de teclear: sin esto cada tecla consultaría. */
+    timer = setTimeout(async () => {
+      const mio = ++pedido;
+      const estado = await estadoUsername(raw, uidPropio);
+      if (mio !== pedido) return;          /* llegó tarde: ya hay otra */
+      if (normalizarUsername(input.value) !== raw) return;  /* cambió */
+      pintar(estado, raw);
+    }, 400);
+  };
+
+  input.addEventListener('input', alEscribir);
+  alEscribir();
+  return () => ultimo;
+}
+
 function mostrarPantallaUsername(nombre, fotoUrl) {
   ocultarTodasLasPantallas();
   volador.style.opacity = '0';
@@ -1995,23 +2068,33 @@ function mostrarPantallaUsername(nombre, fotoUrl) {
   const confirmBtn  = document.getElementById('username-confirm-btn');
   const errorEl     = document.getElementById('username-error');
   const pre = nombre.toLowerCase().replace(/[^a-z0-9_]/g,'').slice(0,20);
-  if (pre.length >= 3) usernameInp.value = pre;
 
-  /* Remover listener previo clonando el botón */
+  /* Remover listener previo clonando el input y el botón, o se
+     acumularían vigilantes cada vez que se muestra la pantalla. */
+  const newInp = usernameInp.cloneNode(true);
+  usernameInp.parentNode.replaceChild(newInp, usernameInp);
+  /* El valor va DESPUÉS de clonar: cloneNode no copia lo que escribió el
+     código, solo el atributo del HTML, así que la sugerencia se perdería. */
+  if (pre.length >= 3) newInp.value = pre;
   const newBtn = confirmBtn.cloneNode(true);
   confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
 
+  vigilarUsername(newInp, errorEl, null);
+
   newBtn.addEventListener('click', async () => {
-    const raw = usernameInp.value.trim().toLowerCase().replace(/^@/, '');
-    if (!/^[a-z0-9_]{3,20}$/.test(raw)) {
+    const raw = normalizarUsername(newInp.value);
+    if (!RE_USERNAME.test(raw)) {
       errorEl.textContent = t('err_username_fmt'); errorEl.style.display='block'; return;
     }
-    errorEl.style.display = 'none';
     newBtn.disabled = true; newBtn.textContent = t('verifying');
     try {
+      /* Se vuelve a comprobar aquí aunque el indicador ya lo dijera: entre
+         teclear y confirmar alguien pudo haberlo tomado. El indicador
+         orienta; esta consulta es la que manda. */
       const snap = await db.collection('users').where('username','==',raw).get();
       if (!snap.empty) {
         errorEl.textContent = t('err_username_taken'); errorEl.style.display='block';
+        errorEl.style.color = 'var(--danger)';
         newBtn.disabled = false; newBtn.textContent = t('confirm'); return;
       }
       const uid = auth.currentUser.uid;
@@ -2028,7 +2111,9 @@ function mostrarPantallaUsername(nombre, fotoUrl) {
       newBtn.disabled = false; newBtn.textContent = t('confirm');
     }
   });
-  usernameInp.addEventListener('keydown', e => { if (e.key === 'Enter') newBtn.click(); });
+  /* Sobre newInp, no sobre usernameInp: ese ya fue reemplazado y no está
+     en el documento, así que su Enter nunca se dispararía. */
+  newInp.addEventListener('keydown', e => { if (e.key === 'Enter') newBtn.click(); });
 }
 
 async function mostrarApp(nombre, fotoUrl) {
@@ -4180,32 +4265,40 @@ document.getElementById('rename-save-btn').addEventListener('click', async () =>
 document.getElementById('rename-inp').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('rename-save-btn').click(); if (e.key==='Escape') document.getElementById('rename-cancel-btn').click(); });
 
 /* ── Cambiar @usuario inline ── */
+let _vigilaUnameAjustes = false;
 document.getElementById('settings-change-username').addEventListener('click', () => {
   const cur = document.getElementById('settings-username-display').textContent.replace('@','');
-  document.getElementById('uname-inp').value = cur;
+  const inp = document.getElementById('uname-inp');
+  inp.value = cur;
   document.getElementById('uname-edit-error').style.display = 'none';
   document.getElementById('uname-view-row').style.display = 'none';
   document.getElementById('uname-edit-row').style.display = 'flex';
-  document.getElementById('uname-inp').focus();
+  /* Una sola vez: este input vive siempre en el DOM, y engancharlo en
+     cada clic acumularía vigilantes que consultarían de más. */
+  if (!_vigilaUnameAjustes) {
+    _vigilaUnameAjustes = true;
+    vigilarUsername(inp, document.getElementById('uname-edit-error'),
+                    auth && auth.currentUser ? auth.currentUser.uid : null);
+  }
+  inp.focus();
 });
 document.getElementById('uname-cancel-btn').addEventListener('click', () => {
   document.getElementById('uname-view-row').style.display = 'flex';
   document.getElementById('uname-edit-row').style.display = 'none';
 });
 document.getElementById('uname-save-btn').addEventListener('click', async () => {
-  const raw = document.getElementById('uname-inp').value.trim().toLowerCase().replace(/^@/,'');
+  const raw = normalizarUsername(document.getElementById('uname-inp').value);
   const errEl = document.getElementById('uname-edit-error');
-  if (!/^[a-z0-9_]{3,20}$/.test(raw)) {
-    errEl.textContent = lang==='es' ? 'Solo letras, números y _ · mínimo 3 caracteres' : 'Letters, numbers and _ only · min 3 chars';
-    errEl.style.display = 'block'; return;
-  }
-  errEl.style.display = 'none';
+  const falla = msg => { errEl.textContent = msg; errEl.style.color = 'var(--danger)'; errEl.style.display = 'block'; };
+  if (!RE_USERNAME.test(raw)) { falla(t('err_username_fmt')); return; }
   document.getElementById('uname-save-btn').disabled = true;
   try {
     const uid = auth.currentUser.uid;
     const snap = await db.collection('users').where('username','==',raw).get();
+    /* Se recomprueba al guardar aunque el indicador dijera que estaba
+       libre: entre teclear y pulsar, alguien pudo tomarlo. */
     if (!snap.empty && snap.docs[0].id !== uid) {
-      errEl.textContent = lang==='es' ? 'Ese @usuario ya está tomado' : 'That @username is taken'; errEl.style.display='block';
+      falla(t('err_username_taken'));
       document.getElementById('uname-save-btn').disabled = false; return;
     }
     /* Guardar historial de usernames */
@@ -4218,7 +4311,7 @@ document.getElementById('uname-save-btn').addEventListener('click', async () => 
     document.getElementById('uname-view-row').style.display = 'flex';
     document.getElementById('uname-edit-row').style.display = 'none';
     toast(`✅ @usuario: ${raw}`);
-  } catch(e) { errEl.textContent = e.message; errEl.style.display='block'; }
+  } catch(e) { falla(e.message); }
   document.getElementById('uname-save-btn').disabled = false;
 });
 document.getElementById('uname-inp').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('uname-save-btn').click(); if (e.key==='Escape') document.getElementById('uname-cancel-btn').click(); });
