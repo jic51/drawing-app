@@ -1747,6 +1747,17 @@ function getBaseUrl() {
   return location.origin + location.pathname.replace(/\/?(index|sketchsendv\d+)\.html$/, '/');
 }
 
+/* País aproximado a partir de la zona horaria del navegador. No pide
+   permiso de ubicación ni usa la IP: solo sirve para contar cuántos
+   países distintos usan la app, no para saber dónde está nadie. */
+function paisAproximado() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    const region = tz.split('/')[0];
+    return (tz && region) ? tz.replace(/[^A-Za-z_\/]/g, '') : '';
+  } catch (e) { return ''; }
+}
+
 function generarShortCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const arr = new Uint8Array(8);
@@ -2127,6 +2138,13 @@ function mostrarPantallaUsername(nombre, fotoUrl) {
         shortCode: generarShortCode(),
         usernameHistory: [raw]
       });
+      /* Contadores de la landing. Van en el mismo documento que los
+         dibujos enviados; cada zona horaria se cuenta una vez para poder
+         saber cuántas distintas hay sin guardar a quién pertenece. */
+      const zona = paisAproximado();
+      const stats = { usuarios: firebase.firestore.FieldValue.increment(1) };
+      if (zona) stats.zonas = { [zona]: firebase.firestore.FieldValue.increment(1) };
+      db.collection('stats').doc('global').set(stats, { merge: true }).catch(() => {});
       finalizarLogin(raw, nombre, fotoUrl);
     } catch(e) {
       errorEl.textContent = 'Error: ' + e.message; errorEl.style.display='block';
