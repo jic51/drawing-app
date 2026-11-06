@@ -1432,6 +1432,8 @@ const I18N = {
     save_sks: '📦 Proyecto (.SKS)', cancel: 'Cancelar',
     inbox_title: '✉️ Dibujos recibidos', inbox_close: 'Cerrar',
     inbox_empty: 'No tienes dibujos nuevos', inbox_sent_you: 'Te envió un dibujo',
+    inbox_empty_hint: 'Dibuja algo y envíalo: cuando te respondan, aparecerá aquí.',
+    no_friends_hint: 'Comparte tu enlace para que te agreguen →',
     settings_title: '⚙️ Configuración',
     profile: 'Perfil', friends: 'Amigos', store: 'Tienda', app_section: 'App',
     change_name: 'Nombre', change_name_sub: 'Lo que ven tus amigos al recibir dibujos',
@@ -1449,6 +1451,7 @@ const I18N = {
     store_themes: '🌈 Temas de temporada', store_themes_sub: 'Halloween, Navidad, San Valentín',
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Dibujos permanentes, 4K, sin firma',
     install_app: 'Instalar app', install_app_sub: 'Agregar SketchSend a tu pantalla de inicio',
+    notif_ios: 'En iPhone: toca Compartir y «Añadir a inicio» para recibir avisos',
     notif_fail: 'No se pudieron activar las notificaciones',
     rep_ask: '¿Por qué denuncias esto?', rep_sent: '⚑ Denuncia enviada. La revisaremos.',
     rep_r1: 'Acoso o amenazas', rep_r2: 'Contenido sexual', rep_r3: 'Odio o discriminación', rep_r4: 'Otro motivo',
@@ -1531,6 +1534,8 @@ const I18N = {
     save_sks: '📦 Project (.SKS)', cancel: 'Cancel',
     inbox_title: '✉️ Received drawings', inbox_close: 'Close',
     inbox_empty: 'No new drawings', inbox_sent_you: 'sent you a drawing',
+    inbox_empty_hint: 'Draw something and send it — replies will show up here.',
+    no_friends_hint: 'Share your link so people can add you →',
     settings_title: '⚙️ Settings',
     profile: 'Profile', friends: 'Friends', store: 'Store', app_section: 'App',
     change_name: 'Name', change_name_sub: 'What your friends see when they receive drawings',
@@ -1547,6 +1552,7 @@ const I18N = {
     store_themes: '🌈 Seasonal themes', store_themes_sub: "Halloween, Christmas, Valentine's",
     store_pro: '⭐ SketchSend Pro', store_pro_sub: 'Permanent drawings, 4K, no watermark',
     install_app: 'Install app', install_app_sub: 'Add SketchSend to your home screen',
+    notif_ios: 'On iPhone: tap Share, then "Add to Home Screen" to get alerts',
     notif_fail: "Couldn't turn on notifications",
     rep_ask: 'Why are you reporting this?', rep_sent: '⚑ Report sent. We will review it.',
     rep_r1: 'Harassment or threats', rep_r2: 'Sexual content', rep_r3: 'Hate or discrimination', rep_r4: 'Something else',
@@ -1907,8 +1913,20 @@ try {
   }
 } catch(e) { console.warn('FCM init skipped:', e.message); }
 
+/* iOS solo entrega notificaciones web a una app añadida a la pantalla de
+   inicio (desde 16.4). En Safari normal ni siquiera aparece el diálogo de
+   permiso, así que sin avisar el usuario cree que están rotas. */
+function iosSinInstalar() {
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent)
+           || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const instalada = window.navigator.standalone === true
+                 || matchMedia('(display-mode: standalone)').matches;
+  return ios && !instalada;
+}
+
 async function solicitarNotificaciones() {
   if (!messaging || !auth?.currentUser) return;
+  if (iosSinInstalar()) { toast('📲 ' + t('notif_ios')); return; }
   try {
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
@@ -3258,11 +3276,20 @@ function renderInbox() {
   actualizarBadge();
 
   if (!bandejaEntrada.length) {
-    inboxBody.innerHTML = `
-      <div class="inbox-empty">
-        <div class="inbox-empty-icon">✉️</div>
-        <div class="inbox-empty-text">${lang === 'es' ? 'No tienes dibujos nuevos' : 'No new drawings'}</div>
-      </div>`;
+    /* Un estado vacío debe decir qué hacer a continuación, no limitarse a
+       informar de que no hay nada. */
+    inboxBody.innerHTML = '';
+    const vacio = document.createElement('div');
+    vacio.className = 'inbox-empty';
+    const icono = document.createElement('div');
+    icono.className = 'inbox-empty-icon'; icono.textContent = '✉️';
+    const titulo = document.createElement('div');
+    titulo.className = 'inbox-empty-text'; titulo.textContent = t('inbox_empty');
+    const pista = document.createElement('div');
+    pista.style.cssText = 'font-size:0.8rem;color:var(--muted);margin-top:6px;max-width:240px;line-height:1.5';
+    pista.textContent = t('inbox_empty_hint');
+    vacio.append(icono, titulo, pista);
+    inboxBody.appendChild(vacio);
     return;
   }
 
@@ -4178,7 +4205,16 @@ function abrirSettings() {
     cargarAmigos().then(amigos => {
       settingsFriends.innerHTML = '';
       if (amigos.length === 0) {
-        settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">' + esc(t('no_friends_yet')) + '</span>';
+        settingsFriends.innerHTML = '';
+        const sinAmigos = document.createElement('div');
+        sinAmigos.style.cssText = 'font-size:0.8rem;color:var(--muted);line-height:1.6';
+        const l1 = document.createElement('div'); l1.textContent = t('no_friends_yet');
+        const l2 = document.createElement('div');
+        l2.style.cssText = 'margin-top:4px;color:var(--accent2);cursor:pointer;text-decoration:underline';
+        l2.textContent = t('no_friends_hint');
+        l2.addEventListener('click', () => document.getElementById('settings-invite')?.click());
+        sinAmigos.append(l1, l2);
+        settingsFriends.appendChild(sinAmigos);
         return;
       }
       amigos.forEach(c => {
