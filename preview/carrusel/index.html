@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SketchSend — Every message is a drawing</title>
+<meta name="description" content="Draw, send, and watch your messages come alive. SketchSend turns every message into a hand-drawn animated creation.">
+<meta property="og:title" content="SketchSend — Every message is a drawing ✏️">
+<meta property="og:description" content="Draw, send, and watch your messages come alive.">
+<meta property="og:image" content="https://jic51.github.io/drawing-app/og-preview.png">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0e14;
+  --surface: #1a1a2e;
+  --surface2: #22223a;
+  --accent: #7c3aed;
+  --accent2: #a78bfa;
+  --text: #e8e8f0;
+  --muted: #8888a8;
+  --border: #2a2a40;
+  --rainbow: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #9400d3, #ff0000);
+  --glow: rgba(124,58,237,0.3);
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --nav-h: 60px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; scroll-padding-top: calc(var(--nav-h) + 16px); }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--accent2); text-decoration: none; }
+img { max-width: 100%; height: auto; display: block; }
+
+/* ══ LOGO CANÓNICO — idéntico al .titulo de la app ══
+   NO modificar sin actualizar .titulo en sketchsendv14.html.
+   Todo lugar que muestre "SketchSend ✏️" debe usar .ss-logo. */
+.ss-logo {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  white-space: nowrap;
+  background: var(--rainbow);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: mover 2.5s linear infinite;
+  /* El degradado se mide sobre la CAJA, no sobre el texto. En un padre de
+     bloque (como el footer) la caja se estira a todo el ancho y el texto
+     solo alcanza a mostrar un color: el arcoíris se pierde. */
+  width: fit-content;
+  margin-inline: auto;
+}
+@keyframes mover { from{background-position:0% center} to{background-position:200% center} }
+
+/* ══ NAV FIJO ══ */
+.nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+  height: var(--nav-h);
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 clamp(16px, 4vw, 40px);
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background 0.3s ease, border-color 0.3s ease, backdrop-filter 0.3s ease;
+}
+.nav.scrolled {
+  background: rgba(14,14,20,0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom-color: var(--border);
+}
+/* El logo del nav es un item flex: anular el centrado automático de .ss-logo */
+.nav-logo { font-size: 1.1rem; margin-inline: 0; flex-shrink: 0; }
+.nav-spacer { flex: 1; }
+.nav-cta {
+  padding: 8px 18px; border-radius: 50px;
+  background: var(--accent); color: #fff;
+  font-size: 0.85rem; font-weight: 700; white-space: nowrap;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.nav-cta:hover { transform: scale(1.04); box-shadow: 0 0 20px var(--glow); }
+
+/* Selector de idioma, ahora dentro del nav */
+.lang-toggle {
+  display: flex; border-radius: 20px; overflow: hidden;
+  border: 1px solid var(--border); background: rgba(26,26,46,0.6);
+  flex-shrink: 0;
+}
+.lang-toggle button {
+  padding: 5px 12px; border: none; cursor: pointer;
+  background: transparent; color: var(--muted);
+  font-family: var(--sans); font-size: 0.72rem; font-weight: 600;
+  transition: all 0.2s;
+}
+.lang-toggle button.active { background: var(--accent); color: #fff; }
+
+/* ══ SECCIONES ══ */
+section {
+  padding: 90px 16px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+.section-head { text-align: center; margin-bottom: 54px; }
+.section-title {
+  font-size: clamp(1.6rem, 4vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+/* El arcoíris queda reservado al logo, al contador y a los dibujos.
+   Los encabezados sólo llevan una barra de acento debajo. */
+.section-rule {
+  width: 56px; height: 4px; border-radius: 2px;
+  margin: 14px auto 0;
+  background: var(--rainbow); background-size: 200% auto;
+  animation: mover 2.5s linear infinite;
+}
+.section-sub { color: var(--muted); font-size: 0.95rem; margin-top: 12px; }
+
+/* Aparición al hacer scroll */
+.reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; }
+.reveal.visible { opacity: 1; transform: translateY(0); }
+
+/* ══ HERO ══ */
+.hero {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: calc(var(--nav-h) + 40px) 16px 60px;
+  position: relative;
+  max-width: none;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 30%, rgba(124,58,237,0.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+.hero > * { position: relative; }
+.hero-logo {
+  /* El minimo manda en pantallas angostas: 2.8rem desbordaba
+     en 360px y cortaba la S y el lapiz. */
+  font-size: clamp(1.5rem, 7.5vw, 5rem);
+  margin-bottom: 8px;
+}
+.hero-tagline { font-size: clamp(1.1rem, 3vw, 1.6rem); font-weight: 600; margin-bottom: 6px; }
+.hero-subtitle { font-size: clamp(0.9rem, 2vw, 1.1rem); color: var(--muted); margin-bottom: 30px; }
+.hero-canvas-wrap { position: relative; margin-bottom: 36px; }
+#hero-canvas {
+  border-radius: 16px;
+  box-shadow: 0 0 60px var(--glow), 0 20px 60px rgba(0,0,0,0.4);
+  background: #fff;
+  max-width: 90vw;
+}
+.cta-btn {
+  display: inline-block;
+  padding: 16px 40px; border-radius: 50px; border: none;
+  background: var(--accent); color: #fff;
+  font-family: var(--sans); font-size: 1.1rem; font-weight: 700;
+  cursor: pointer; box-shadow: 0 0 30px var(--glow);
+  transition: transform 0.15s, box-shadow 0.15s;
+  animation: ctaPulse 3s ease infinite;
+}
+.cta-btn:hover { transform: scale(1.05); box-shadow: 0 0 40px var(--glow); }
+@keyframes ctaPulse { 0%, 80%, 100% { transform: scale(1); } 90% { transform: scale(1.05); } }
+.hero-note { margin-top: 14px; font-size: 0.82rem; color: var(--muted); }
+
+/* ══ CONTADOR (odómetro) ══
+   Oculto hasta que Firestore entregue un número: un "0" mientras carga
+   se lee como "nadie usa esto". */
+/* Franja clara a propósito: rompe el fondo oscuro para que las cifras
+   se vean al pasar, en vez de disolverse con el resto de la página. */
+.counter-section {
+  padding: 56px 16px; text-align: center; display: none;
+  background: linear-gradient(180deg, #f4f4fb 0%, #e9e9f6 100%);
+}
+.counter-section.ready { display: block; }
+.cifras-titulo {
+  font-size: clamp(1.3rem, 4vw, 1.9rem); font-weight: 800;
+  color: #1a1a2e; margin-bottom: 26px; letter-spacing: -0.02em;
+}
+.cifras {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 16px;
+}
+.counter-wrap {
+  display: inline-flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 26px 40px; border-radius: 20px; min-width: 190px;
+  background: #ffffff; border: 1px solid #d8d8e8;
+  box-shadow: 0 6px 20px rgba(26,26,46,0.07);
+}
+.counter-section .counter-label { color: #5a5a7a; }
+.odometer {
+  display: flex; justify-content: center;
+  font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 900;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.od-digit { height: 1em; overflow: hidden; display: inline-block; }
+/* El degradado va en cada tira, no en el contenedor: un hijo con
+   overflow:hidden corta el background-clip:text del padre y el número
+   sale en blanco. El desfase por dígito hace que el color siga
+   recorriendo el número de izquierda a derecha. */
+.od-strip, .od-sep {
+  background: var(--rainbow); background-size: 200% auto;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: mover 2.5s linear infinite;
+}
+.od-strip {
+  display: flex; flex-direction: column;
+  transition: transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.od-strip span { height: 1em; line-height: 1em; display: block; text-align: center; }
+.od-sep { padding: 0 0.04em; }
+.counter-label { font-size: 1rem; color: var(--muted); font-weight: 500; }
+
+/* ══ CÓMO FUNCIONA ══ */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: stretch; }
+.step-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 34px 26px; text-align: center;
+  display: flex; flex-direction: column;
+  transition: transform 0.25s, border-color 0.25s;
+}
+.step-card:hover { transform: translateY(-4px); border-color: var(--accent); }
+.step-num { font-size: 0.7rem; font-weight: 800; color: var(--accent); letter-spacing: 0.1em; margin-bottom: 12px; }
+.step-icon { font-size: 2.4rem; margin-bottom: 14px; display: block; }
+.step-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
+.step-desc { font-size: 0.9rem; color: var(--muted); line-height: 1.5; }
+
+/* ══ FILAS DE DOS COLUMNAS CON CAPTURAS ══ */
+.frow {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: clamp(32px, 6vw, 80px); align-items: center;
+  margin-bottom: 90px;
+}
+.frow:last-child { margin-bottom: 0; }
+/* Alternar el lado de la captura fila por fila */
+.frow.flip .frow-media { order: -1; }
+.frow-title { font-size: clamp(1.3rem, 3vw, 1.9rem); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 14px; }
+.frow-desc { font-size: 1rem; color: var(--muted); line-height: 1.65; margin-bottom: 20px; }
+.frow-points { list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.frow-points li { display: flex; gap: 10px; align-items: flex-start; font-size: 0.92rem; color: var(--text); }
+.frow-points li .pt-icon { flex-shrink: 0; font-size: 1.1rem; line-height: 1.4; }
+.frow-points li span:last-child { color: var(--muted); }
+.frow-points strong { color: var(--text); font-weight: 600; }
+
+/* Marco de teléfono */
+.phone {
+  width: min(292px, 78vw);
+  margin: 0 auto;
+  background: #07070b;
+  border: 1px solid #2c2c3e;
+  border-radius: 38px;
+  padding: 10px;
+  box-shadow: 0 30px 70px rgba(0,0,0,0.55), 0 0 60px rgba(124,58,237,0.18);
+}
+.phone img, .phone canvas { border-radius: 28px; display: block; width: 100%; height: auto; }
+/* El replay va en un canvas sobre el fondo de la app, no en una imagen fija. */
+.phone canvas { background: #12121a; aspect-ratio: 585 / 1266; }
+
+/* ══ PRUÉBALO ══ */
+.try-section { text-align: center; }
+.try-canvas-wrap { display: inline-block; position: relative; margin-bottom: 16px; }
+#try-canvas {
+  border-radius: 14px; border: 2px solid var(--border);
+  background: #fff; cursor: crosshair; touch-action: none; max-width: 90vw;
+}
+.try-controls { display: flex; justify-content: center; gap: 12px; margin-bottom: 14px; }
+.try-controls button {
+  padding: 8px 20px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text);
+  font-family: var(--sans); font-size: 0.85rem; cursor: pointer;
+  transition: border-color 0.2s;
+}
+.try-controls button:hover { border-color: var(--accent); }
+.try-msg { font-size: 0.95rem; color: var(--muted); margin-bottom: 20px; opacity: 0; transition: opacity 0.5s; }
+.try-msg.show { opacity: 1; }
+
+/* ══ GALERÍA ══
+   Oculta mientras no haya dibujos: una sección vacía se lee como
+   obra en construcción. */
+.gallery-section { text-align: center; display: none; }
+.gallery-section.ready { display: block; }
+/* ══ OPINIONES ══ */
+.reviews-section { padding: 72px clamp(16px,4vw,40px); max-width: 1100px; margin: 0 auto; }
+/* ══ CARRUSEL ══
+   Con pocas tarjetas una rejilla centrada se ve mejor que un carrusel:
+   mover cuatro cosas parece que falta contenido. A partir de cinco sí
+   compensa, y entonces la rejilla pasa a fila deslizante. Se detiene al
+   pasar el cursor o al tocarla, para poder leer o mirar un dibujo. */
+.carrusel {
+  display: flex !important;
+  grid-template-columns: none !important;
+  justify-content: flex-start !important;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  /* Sin scroll-snap: con 'mandatory' el navegador devuelve cada avance de
+     menos de un píxel al punto de anclaje, así que el carrusel se quedaba
+     clavado en cero. El arrastre manual se siente bien igualmente. */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+.carrusel::-webkit-scrollbar { display: none; }
+.carrusel > * {
+  flex: 0 0 auto;
+}
+.gallery-grid.carrusel > * { width: 230px; }
+.reviews-grid.carrusel > * { width: 300px; }
+/* El hover crece la tarjeta: dentro del carrusel la recortaría el
+   desbordamiento, así que ahí se queda quieta. */
+.gallery-grid.carrusel .gallery-card:hover { transform: none; }
+
+.reviews-grid {
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 330px));
+  justify-content: center;
+}
+/* Altura pareja y el nombre siempre abajo, sin importar lo largo que sea
+   el comentario: si no, las tarjetas quedan desalineadas. */
+.review-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 22px 24px; text-align: left;
+  display: flex; flex-direction: column; min-height: 190px;
+}
+.review-text {
+  font-size: .95rem; color: var(--text); line-height: 1.6;
+  margin-bottom: 16px; font-style: italic;
+  flex: 1;                      /* empuja el nombre al fondo */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 5;
+  overflow: hidden;             /* lo que no cabe se corta con … */
+}
+.review-who { display: flex; align-items: center; gap: 10px; }
+.review-av {
+  width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--accent); object-fit: cover;
+}
+.review-name { font-size: .82rem; color: var(--muted); }
+
+/* auto-fit + justify-content centra las tarjetas cuando no llenan la fila;
+   con auto-fill una sola quedaba pegada a la izquierda. */
+.gallery-grid {
+  display: grid; gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 230px));
+  justify-content: center;
+}
+.gallery-card {
+  background: #12121a; border-radius: 14px; overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+/* Al pasar por encima crece, para poder seguir el trazo de cerca. */
+.gallery-card:hover, .gallery-card:focus-visible {
+  transform: scale(1.35); z-index: 5;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.6), 0 0 40px var(--glow);
+}
+.gallery-card canvas { width: 100%; aspect-ratio: 4/3; display: block; }
+/* El autor va DEBAJO del dibujo, no encima: tapaba la parte de abajo
+   justo donde suele terminar el trazo. */
+.gallery-card .gallery-author {
+  display: flex; align-items: center; gap: 7px;
+  padding: 8px 10px; background: var(--surface);
+  border-top: 1px solid var(--border);
+  color: var(--text); font-size: 0.72rem;
+}
+.gallery-card .gallery-author img {
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid var(--accent); object-fit: cover;
+}
+.gallery-card .gallery-author span {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ══ PREGUNTAS FRECUENTES ══ */
+.faq-list { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+details.faq {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden;
+  transition: border-color 0.2s;
+}
+details.faq[open] { border-color: var(--accent); }
+details.faq summary {
+  list-style: none; cursor: pointer;
+  padding: 20px 56px 20px 22px; position: relative;
+  font-size: 1rem; font-weight: 600; color: var(--text);
+}
+details.faq summary::-webkit-details-marker { display: none; }
+details.faq summary::after {
+  content: '+'; position: absolute; right: 22px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.4rem; font-weight: 400; color: var(--accent2); line-height: 1;
+}
+details.faq[open] summary::after { content: '−'; }
+details.faq .faq-a {
+  padding: 0 22px 20px; font-size: 0.93rem; color: var(--muted); line-height: 1.65;
+}
+
+/* ══ PIE ══ */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 56px clamp(16px, 4vw, 40px) 36px;
+  color: var(--muted); font-size: 0.86rem;
+}
+.foot-grid {
+  max-width: 1180px; margin: 0 auto;
+  display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 40px;
+}
+.footer-logo { font-size: 1.3rem; margin-inline: 0; margin-bottom: 10px; }
+.foot-tagline { max-width: 320px; line-height: 1.6; }
+.foot-col h4 {
+  font-size: 0.78rem; font-weight: 700; color: var(--text);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px;
+}
+.foot-col ul { list-style: none; display: flex; flex-direction: column; gap: 9px; }
+.foot-col a { color: var(--muted); transition: color 0.2s; }
+.foot-col a:hover { color: var(--accent2); }
+.foot-bottom {
+  max-width: 1180px; margin: 40px auto 0;
+  padding-top: 22px; border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  font-size: 0.8rem;
+}
+
+/* ══ RESPONSIVE ══ */
+@media (max-width: 900px) {
+  .frow { grid-template-columns: 1fr; gap: 32px; margin-bottom: 64px; }
+  .frow.flip .frow-media { order: 0; }
+  .frow-text { text-align: center; }
+  .frow-points li { text-align: left; }
+  .frow-points { max-width: 420px; margin: 0 auto; }
+}
+@media (max-width: 700px) {
+  .steps { grid-template-columns: 1fr; }
+  .foot-grid { grid-template-columns: 1fr; gap: 30px; text-align: center; }
+  .foot-tagline { margin-inline: auto; }
+  .foot-col ul { align-items: center; }
+  .foot-bottom { justify-content: center; text-align: center; }
+}
+@media (max-width: 600px) {
+  :root { --nav-h: 54px; }
+  section { padding: 56px 16px; }
+  .hero { padding: calc(var(--nav-h) + 24px) 16px 40px; min-height: 92vh; }
+  .hero-tagline { font-size: 1rem; }
+  .hero-subtitle { font-size: 0.85rem; margin-bottom: 20px; }
+  .cta-btn { padding: 14px 32px; font-size: 1rem; }
+  .hero-note { font-size: 0.75rem; }
+  .section-head { margin-bottom: 34px; }
+  .nav { gap: 8px; padding: 0 16px; }
+  .nav-logo { font-size: 0.95rem; }
+  .nav-cta { padding: 7px 13px; font-size: 0.75rem; }
+  .lang-toggle button { padding: 5px 9px; font-size: 0.68rem; }
+  .step-card { padding: 24px 18px; }
+  .step-icon { font-size: 2rem; }
+  .step-title { font-size: 1.05rem; }
+  .step-desc { font-size: 0.82rem; }
+  .counter-wrap { padding: 22px 30px; }
+  .counter-label { font-size: 0.85rem; }
+  .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .try-controls { flex-wrap: wrap; gap: 8px; }
+  .try-controls button { padding: 6px 14px; font-size: 0.8rem; }
+  details.faq summary { padding: 16px 48px 16px 18px; font-size: 0.93rem; }
+  details.faq .faq-a { padding: 0 18px 16px; font-size: 0.87rem; }
+}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+<!-- ══ SPLASH ══ -->
+<div id="landing-splash" style="position:fixed;inset:0;z-index:9999;background:#0e0e14;display:flex;align-items:center;justify-content:center;transition:opacity 0.5s;">
+  <div id="landing-splash-logo" class="ss-logo" style="font-size:clamp(1.5rem,7.5vw,5rem);">SketchSend ✏️</div>
+</div>
+
+<!-- ══ NAV FIJO ══ -->
+<nav class="nav" id="nav">
+  <a href="#top" class="ss-logo nav-logo">SketchSend ✏️</a>
+  <div class="nav-spacer"></div>
+  <div class="lang-toggle">
+    <button id="btn-en" class="active" onclick="setLang('en')">EN</button>
+    <button id="btn-es" onclick="setLang('es')">ES</button>
+  </div>
+  <a href="./" target="_blank" class="nav-cta" data-i18n="nav_cta">Start Drawing</a>
+</nav>
+
+<!-- ══ HERO ══ -->
+<section class="hero" id="top">
+  <div class="ss-logo hero-logo" style="visibility:hidden;">SketchSend ✏️</div>
+  <div class="hero-tagline" data-i18n="hero_tagline">Every message is a drawing</div>
+  <div class="hero-subtitle" data-i18n="hero_subtitle">Draw. Send. Watch it come alive.</div>
+  <div class="hero-canvas-wrap">
+    <canvas id="hero-canvas" width="400" height="300"></canvas>
+  </div>
+  <a href="./" target="_blank" class="cta-btn" data-i18n="hero_cta">Start Drawing — It's Free</a>
+  <div class="hero-note" data-i18n="hero_note">No download needed. Works in your browser.</div>
+</section>
+
+<!-- ══ CONTADOR ══ -->
+<section class="counter-section" id="counter-section">
+  <h2 class="cifras-titulo" data-i18n="cifras_titulo">SketchSend so far</h2>
+  <div class="cifras">
+    <div class="counter-wrap">
+      <div class="odometer" id="drawings-counter"></div>
+      <div class="counter-label" data-i18n="counter_label">drawings sent and counting</div>
+    </div>
+    <div class="counter-wrap" id="users-wrap" style="display:none;">
+      <div class="odometer" id="users-counter"></div>
+      <div class="counter-label" data-i18n="users_label">people drawing</div>
+    </div>
+    <div class="counter-wrap" id="paises-wrap" style="display:none;">
+      <div class="odometer" id="paises-counter"></div>
+      <div class="counter-label" data-i18n="paises_label">countries</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CÓMO FUNCIONA ══ -->
+<section class="reveal" id="how">
+  <div class="section-head">
+    <h2 class="section-title" data-i18n="how_title">How it works</h2>
+    <div class="section-rule"></div>
+  </div>
+  <div class="steps">
+    <div class="step-card reveal">
+      <div class="step-num">01</div>
+      <span class="step-icon">🎨</span>
+      <div class="step-title" data-i18n="step1_title">Draw</div>
+      <div class="step-desc" data-i18n="step1_desc">Use the rainbow brush and your creativity</div>
+    </div>
+    <div class="step-card reveal">
+      <div class="step-num">02</div>
+      <span class="step-icon">✉️</span>
+      <div class="step-title" data-i18n="step2_title">Send</div>
+      <div class="step-desc" data-i18n="step2_desc">Pick a friend and send your masterpiece</div>
+    </div>
+    <div class="step-card reveal">
+      <div class="step-num">03</div>
+      <span class="step-icon">🎬</span>
+      <div class="step-title" data-i18n="step3_title">They watch it come alive</div>
+      <div class="step-desc" data-i18n="step3_desc">Your drawing replays stroke by stroke</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ POR QUÉ SKETCHSEND — filas de dos columnas ══ -->
+<section id="why">
+  <div class="section-head reveal">
+    <h2 class="section-title" data-i18n="why_title">Why SketchSend?</h2>
+    <div class="section-rule"></div>
+  </div>
+
+  <div class="frow reveal">
+    <div class="frow-text">
+      <h3 class="frow-title" data-i18n="r1_title">No text. Just drawings.</h3>
+      <p class="frow-desc" data-i18n="r1_desc">Every message is made by hand, stroke by stroke. Say the things words get wrong.</p>
+      <ul class="frow-points">
+        <li><span class="pt-icon">🌈</span><span><strong data-i18n="r1_p1_t">Rainbow brush.</strong> <span data-i18n="r1_p1_d">Colors shift as you draw, so every line comes out different.</span></span></li>
+        <li><span class="pt-icon">✏️</span><span><strong data-i18n="r1_p2_t">Nothing to learn.</strong> <span data-i18n="r1_p2_d">Open it, draw with your finger, pick a friend, send.</span></span></li>
+      </ul>
+    </div>
+    <div class="frow-media">
+      <div class="phone"><img src="img/app-drawing.png" data-i18n-alt="alt_drawing" alt="Drawing a cat with the rainbow brush in SketchSend" width="585" height="1266"></div>
+    </div>
+  </div>
+
+  <div class="frow flip reveal">
+    <div class="frow-text">
+      <h3 class="frow-title" data-i18n="r2_title">They watch it being drawn</h3>
+      <p class="frow-desc" data-i18n="r2_desc">Your friend doesn't get a flat picture. The drawing replays in front of them, line by line, exactly the way you made it.</p>
+      <ul class="frow-points">
+        <li><span class="pt-icon">🎬</span><span><strong data-i18n="r2_p1_t">Animated replay.</strong> <span data-i18n="r2_p1_d">Every stroke reappears at the speed you drew it.</span></span></li>
+        <li><span class="pt-icon">⏳</span><span><strong data-i18n="r2_p2_t">Gone in 24 hours.</strong> <span data-i18n="r2_p2_d">Like a sketch on paper. Here today, gone tomorrow.</span></span></li>
+      </ul>
+    </div>
+    <div class="frow-media">
+      <div class="phone"><canvas id="replay-canvas" width="585" height="1266" role="img" data-i18n-alt="alt_replay" aria-label="A drawing replaying stroke by stroke in SketchSend"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ PRUÉBALO ══ -->
+<section class="try-section reveal">
+  <div class="section-head">
+    <h2 class="section-title" data-i18n="try_title">Try it yourself</h2>
+    <div class="section-rule"></div>
+    <p class="section-sub" data-i18n="try_subtitle">Go ahead, draw something!</p>
+  </div>
+  <div class="try-canvas-wrap">
+    <canvas id="try-canvas" width="400" height="300"></canvas>
+  </div>
+  <div class="try-controls">
+    <button onclick="clearTryCanvas()" data-i18n="try_clear">Clear</button>
+  </div>
+  <div class="try-msg" id="try-msg" data-i18n="try_msg">Imagine sending this to a friend ✨</div>
+  <div><a href="./" target="_blank" class="cta-btn" style="font-size:1rem;padding:14px 34px;" data-i18n="try_cta">Create your account</a></div>
+</section>
+
+<!-- ══ GALERÍA ══ -->
+<section class="gallery-section" id="gallery-section">
+  <div class="section-head">
+    <h2 class="section-title" data-i18n="gallery_title">Community drawings</h2>
+    <div class="section-rule"></div>
+    <p class="section-sub" data-i18n="gallery_subtitle">Shared by our artists</p>
+  </div>
+  <div class="gallery-grid" id="gallery-grid">
+    <!-- Lo llena el JS con los sketches públicos de Firestore -->
+  </div>
+</section>
+
+<!-- ══ OPINIONES ══
+     Solo se muestran las que tienen approved:true en Firestore. Se leen
+     en vivo, así que aprobar una la publica al instante sin recargar.
+     Nunca inventar opiniones aquí: si no hay aprobadas, la sección no
+     existe para el visitante. -->
+<section class="reviews-section" id="reviews-section" style="display:none;">
+  <div class="section-head">
+    <h2 class="section-title" data-i18n="reviews_title">What people say</h2>
+    <div class="section-rule"></div>
+  </div>
+  <div class="reviews-grid" id="reviews-grid"></div>
+</section>
+
+<!-- ══ PREGUNTAS FRECUENTES ══ -->
+<section class="reveal" id="faq">
+  <div class="section-head">
+    <h2 class="section-title" data-i18n="faq_title">Common questions</h2>
+    <div class="section-rule"></div>
+  </div>
+  <div class="faq-list">
+    <details class="faq">
+      <summary data-i18n="faq_q1">Is it free?</summary>
+      <div class="faq-a" data-i18n="faq_a1">Completely. There's no cost to create an account and no ads while you draw.</div>
+    </details>
+    <details class="faq">
+      <summary data-i18n="faq_q2">Do drawings really disappear?</summary>
+      <div class="faq-a" data-i18n="faq_a2">Yes. Twenty-four hours after you send one, it's deleted. That's the point — a sketch is a moment, not an archive.</div>
+    </details>
+    <details class="faq">
+      <summary data-i18n="faq_q3">Do I need to install anything?</summary>
+      <div class="faq-a" data-i18n="faq_a3">No. SketchSend runs in your browser. If you'd rather have it as an icon, you can add it to your home screen in a couple of taps.</div>
+    </details>
+    <details class="faq">
+      <summary data-i18n="faq_q4">Who can see my drawings?</summary>
+      <div class="faq-a" data-i18n="faq_a4">Only the friends you send them to. Anyone who receives a drawing can share its link, so whoever holds that link can open it too.</div>
+    </details>
+  </div>
+</section>
+
+<!-- ══ PIE ══ -->
+<footer>
+  <div class="foot-grid">
+    <div>
+      <div class="ss-logo footer-logo">SketchSend ✏️</div>
+      <p class="foot-tagline" data-i18n="foot_tagline">A messaging app where every message is a drawing. Made with ✏️ and ❤️</p>
+    </div>
+    <div class="foot-col">
+      <h4 data-i18n="foot_product">Product</h4>
+      <ul>
+        <li><a href="./" target="_blank" data-i18n="foot_open">Open the app</a></li>
+        <li><a href="#how" data-i18n="foot_how">How it works</a></li>
+        <li><a href="#faq" data-i18n="foot_faq">Questions</a></li>
+      </ul>
+    </div>
+    <div class="foot-col">
+      <h4 data-i18n="foot_legal">Legal</h4>
+      <!-- privacy.html y terms.html son BORRADORES sin revisión legal.
+           Google Play, App Store y GDPR los exigen, y hay que someterlos a
+           revisión profesional antes del lanzamiento. Ver F13 y F14. -->
+      <ul>
+        <li><a href="privacy.html" data-i18n="foot_privacy">Privacy Policy</a></li>
+        <li><a href="terms.html" data-i18n="foot_terms">Terms of Service</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <span>© 2026 SketchSend</span>
+    <span data-i18n="foot_built">Built for people who'd rather draw it.</span>
+  </div>
+</footer>
+
+<script>
+/* ── i18n ── */
+const I18N = {
+  en: {
+    nav_cta: 'Start Drawing',
+    hero_tagline: 'Every message is a drawing',
+    hero_subtitle: 'Draw. Send. Watch it come alive.',
+    hero_cta: 'Start Drawing — It\'s Free',
+    hero_note: 'No download needed. Works in your browser.',
+    counter_label: 'drawings sent and counting',
+    how_title: 'How it works',
+    step1_title: 'Draw', step1_desc: 'Use the rainbow brush and your creativity',
+    step2_title: 'Send', step2_desc: 'Pick a friend and send your masterpiece',
+    step3_title: 'They watch it come alive', step3_desc: 'Your drawing replays stroke by stroke',
+    why_title: 'Why SketchSend?',
+    r1_title: 'No text. Just drawings.',
+    r1_desc: 'Every message is made by hand, stroke by stroke. Say the things words get wrong.',
+    r1_p1_t: 'Rainbow brush.', r1_p1_d: 'Colors shift as you draw, so every line comes out different.',
+    r1_p2_t: 'Nothing to learn.', r1_p2_d: 'Open it, draw with your finger, pick a friend, send.',
+    r2_title: 'They watch it being drawn',
+    r2_desc: 'Your friend doesn\'t get a flat picture. The drawing replays in front of them, line by line, exactly the way you made it.',
+    r2_p1_t: 'Animated replay.', r2_p1_d: 'Every stroke reappears at the speed you drew it.',
+    r2_p2_t: 'Gone in 24 hours.', r2_p2_d: 'Like a sketch on paper. Here today, gone tomorrow.',
+    alt_drawing: 'Drawing a cat with the rainbow brush in SketchSend',
+    alt_replay: 'A drawing replaying stroke by stroke in SketchSend',
+    try_title: 'Try it yourself', try_subtitle: 'Go ahead, draw something!',
+    try_clear: 'Clear', try_msg: 'Imagine sending this to a friend ✨',
+    try_cta: 'Create your account',
+    gallery_title: 'Community drawings', gallery_subtitle: 'Shared by our artists',
+    reviews_title: 'What people say',
+    cifras_titulo: 'SketchSend so far', users_label: 'people drawing', paises_label: 'countries',
+    faq_title: 'Common questions',
+    faq_q1: 'Is it free?',
+    faq_a1: 'Completely. There\'s no cost to create an account and no ads while you draw.',
+    faq_q2: 'Do drawings really disappear?',
+    faq_a2: 'Yes. Twenty-four hours after you send one, it\'s deleted. That\'s the point — a sketch is a moment, not an archive.',
+    faq_q3: 'Do I need to install anything?',
+    faq_a3: 'No. SketchSend runs in your browser. If you\'d rather have it as an icon, you can add it to your home screen in a couple of taps.',
+    faq_q4: 'Who can see my drawings?',
+    faq_a4: 'Only the friends you send them to. Anyone who receives a drawing can share its link, so whoever holds that link can open it too.',
+    foot_tagline: 'A messaging app where every message is a drawing. Made with ✏️ and ❤️',
+    foot_product: 'Product', foot_open: 'Open the app', foot_how: 'How it works', foot_faq: 'Questions',
+    foot_legal: 'Legal', foot_privacy: 'Privacy Policy', foot_terms: 'Terms of Service',
+    foot_built: 'Built for people who\'d rather draw it.'
+  },
+  es: {
+    nav_cta: 'Dibujar',
+    hero_tagline: 'Cada mensaje es un dibujo',
+    hero_subtitle: 'Dibuja. Envía. Míralo cobrar vida.',
+    hero_cta: 'Empieza a Dibujar — Es Gratis',
+    hero_note: 'Sin descargas. Funciona en tu navegador.',
+    counter_label: 'dibujos enviados y contando',
+    how_title: 'Cómo funciona',
+    step1_title: 'Dibuja', step1_desc: 'Usa el pincel arcoíris y tu creatividad',
+    step2_title: 'Envía', step2_desc: 'Elige un amigo y envía tu obra maestra',
+    step3_title: 'Lo ven cobrar vida', step3_desc: 'Tu dibujo se reproduce trazo a trazo',
+    why_title: '¿Por qué SketchSend?',
+    r1_title: 'Sin texto. Solo dibujos.',
+    r1_desc: 'Cada mensaje se hace a mano, trazo a trazo. Di eso que con palabras nunca sale igual.',
+    r1_p1_t: 'Pincel arcoíris.', r1_p1_d: 'Los colores cambian mientras dibujas, así que ninguna línea sale igual a otra.',
+    r1_p2_t: 'No hay que aprender nada.', r1_p2_d: 'Abres, dibujas con el dedo, eliges a quién y envías.',
+    r2_title: 'Lo ven dibujarse',
+    r2_desc: 'A tu amigo no le llega una imagen quieta. El dibujo se reproduce frente a él, línea por línea, tal como lo hiciste.',
+    r2_p1_t: 'Replay animado.', r2_p1_d: 'Cada trazo reaparece a la velocidad con que lo dibujaste.',
+    r2_p2_t: 'Desaparece en 24 horas.', r2_p2_d: 'Como un dibujo en papel. Hoy está, mañana no.',
+    alt_drawing: 'Dibujando un gato con el pincel arcoíris en SketchSend',
+    alt_replay: 'Un dibujo reproduciéndose trazo a trazo en SketchSend',
+    try_title: 'Pruébalo tú mismo', try_subtitle: '¡Adelante, dibuja algo!',
+    try_clear: 'Limpiar', try_msg: 'Imagina enviar esto a un amigo ✨',
+    try_cta: 'Crea tu cuenta',
+    gallery_title: 'Dibujos de la comunidad', gallery_subtitle: 'Compartidos por nuestros artistas',
+    reviews_title: 'Lo que dicen las personas',
+    cifras_titulo: 'SketchSend hasta hoy', users_label: 'personas dibujando', paises_label: 'países',
+    faq_title: 'Preguntas frecuentes',
+    faq_q1: '¿Es gratis?',
+    faq_a1: 'Del todo. Crear la cuenta no cuesta nada y no hay anuncios mientras dibujas.',
+    faq_q2: '¿De verdad se borran los dibujos?',
+    faq_a2: 'Sí. A las veinticuatro horas de enviarlo se elimina. De eso se trata: un dibujo es un momento, no un archivo.',
+    faq_q3: '¿Tengo que instalar algo?',
+    faq_a3: 'No. SketchSend funciona en el navegador. Si prefieres tenerlo como ícono, puedes añadirlo a tu pantalla de inicio en dos toques.',
+    faq_q4: '¿Quién puede ver mis dibujos?',
+    faq_a4: 'Solo los amigos a quienes se los envías. Quien recibe un dibujo puede compartir su enlace, así que quien tenga ese enlace también podrá abrirlo.',
+    foot_tagline: 'Una app de mensajes donde cada mensaje es un dibujo. Hecha con ✏️ y ❤️',
+    foot_product: 'Producto', foot_open: 'Abrir la app', foot_how: 'Cómo funciona', foot_faq: 'Preguntas',
+    foot_legal: 'Legal', foot_privacy: 'Política de Privacidad', foot_terms: 'Términos del Servicio',
+    foot_built: 'Hecha para quien prefiere dibujarlo.'
+  }
+};
+
+let lang = 'en';
+function setLang(l) {
+  lang = l;
+  try { localStorage.setItem('ss_landing_lang', l); } catch(e) {}
+  document.getElementById('btn-en').classList.toggle('active', l === 'en');
+  document.getElementById('btn-es').classList.toggle('active', l === 'es');
+  document.documentElement.lang = l;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (I18N[l][key]) el.textContent = I18N[l][key];
+  });
+  document.querySelectorAll('[data-i18n-alt]').forEach(el => {
+    const key = el.getAttribute('data-i18n-alt');
+    if (I18N[l][key]) el.alt = I18N[l][key];
+  });
+}
+(function initLang() {
+  let saved = null;
+  try { saved = localStorage.getItem('ss_landing_lang'); } catch(e) {}
+  if (saved) { setLang(saved); return; }
+  const nav = (navigator.language || '').toLowerCase();
+  setLang(nav.startsWith('es') ? 'es' : 'en');
+})();
+
+/* ── Aparición al hacer scroll ──
+   observar() se usa también para los elementos creados después de cargar:
+   antes sólo se registraban los que existían al arrancar, así que cualquier
+   tarjeta añadida por JS se quedaba en opacity:0 para siempre. */
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+}, { threshold: 0.15 });
+function observar(el) { el.classList.add('reveal'); obs.observe(el); }
+document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+/* ── Nav: fondo sólido al bajar ── */
+(function() {
+  const nav = document.getElementById('nav');
+  const onScroll = () => nav.classList.toggle('scrolled', window.scrollY > 80);
+  addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+})();
+
+/* ── Hero canvas — dibujo animado ── */
+(function() {
+  const cv = document.getElementById('hero-canvas');
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const W = 400, H = 300;
+  cv.width = W * DPR; cv.height = H * DPR;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.scale(DPR, DPR);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  const cx = W / 2, cy = H / 2;
+  function hslColor(t) { return `hsl(${(t * 360) % 360}, 90%, 55%)`; }
+
+  const allPoints = [];
+  let colorOffset = 0;
+
+  for (let y = H - 30; y >= cy + 40; y -= 3) {
+    const wobble = Math.sin(y * 0.05) * 8;
+    allPoints.push([cx + wobble, y]);
+  }
+  for (let a = 0; a <= Math.PI; a += 0.1) {
+    allPoints.push([cx - 10 - Math.sin(a) * 25, cy + 60 - Math.cos(a) * 12]);
+  }
+  for (let a = Math.PI; a >= 0; a -= 0.1) {
+    allPoints.push([cx + 10 + Math.sin(a) * 25, cy + 45 - Math.cos(a) * 12]);
+  }
+  for (let p = 0; p < 5; p++) {
+    const pa = (Math.PI * 2 / 5) * p - Math.PI / 2;
+    const pcx = cx + Math.cos(pa) * 35;
+    const pcy = cy - 5 + Math.sin(pa) * 35;
+    for (let a = 0; a <= Math.PI * 2 + 0.2; a += 0.15) {
+      allPoints.push([pcx + Math.cos(a) * 20, pcy + Math.sin(a) * 18]);
+    }
+  }
+  for (let a = 0; a <= Math.PI * 2 + 0.2; a += 0.12) {
+    allPoints.push([cx + Math.cos(a) * 14, cy - 5 + Math.sin(a) * 14]);
+  }
+  for (let a = 0; a <= Math.PI * 4; a += 0.2) {
+    const r = 2 + a * 1.2;
+    allPoints.push([cx + Math.cos(a) * Math.min(r, 12), cy - 5 + Math.sin(a) * Math.min(r, 12)]);
+  }
+
+  let ptIdx = 0;
+  const SPEED = 3, PAUSE = 120;
+  let pauseCount = 0;
+  const totalPts = allPoints.length;
+
+  function animate() {
+    if (ptIdx >= totalPts) {
+      pauseCount++;
+      if (pauseCount > PAUSE) {
+        ctx.clearRect(0, 0, W, H);
+        ptIdx = 0; pauseCount = 0; colorOffset += 0.3;
+      }
+      requestAnimationFrame(animate);
+      return;
+    }
+    for (let i = 0; i < SPEED && ptIdx < totalPts; i++, ptIdx++) {
+      if (ptIdx === 0) continue;
+      ctx.beginPath();
+      ctx.moveTo(allPoints[ptIdx - 1][0], allPoints[ptIdx - 1][1]);
+      ctx.lineTo(allPoints[ptIdx][0], allPoints[ptIdx][1]);
+      ctx.strokeStyle = hslColor(colorOffset + ptIdx / totalPts);
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+/* ── Canvas interactivo ── */
+(function() {
+  const cv = document.getElementById('try-canvas');
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const W = 400, H = 300;
+  cv.width = W * DPR; cv.height = H * DPR;
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  const ctx = cv.getContext('2d');
+  ctx.scale(DPR, DPR);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.lineWidth = 4;
+
+  let drawing = false, hue = 0, lastX, lastY, hasDrawn = false;
+  const msg = document.getElementById('try-msg');
+
+  function pos(e) {
+    const r = cv.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return [(t.clientX - r.left) * (W / r.width), (t.clientY - r.top) * (H / r.height)];
+  }
+  function start(e) { e.preventDefault(); drawing = true; [lastX, lastY] = pos(e); }
+  function move(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    const [x, y] = pos(e);
+    ctx.strokeStyle = `hsl(${hue}, 90%, 55%)`;
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(x, y); ctx.stroke();
+    hue = (hue + 2) % 360;
+    lastX = x; lastY = y;
+    if (!hasDrawn) { hasDrawn = true; msg.classList.add('show'); }
+  }
+  function end() { drawing = false; }
+
+  cv.addEventListener('mousedown', start);
+  cv.addEventListener('mousemove', move);
+  cv.addEventListener('mouseup', end);
+  cv.addEventListener('mouseleave', end);
+  cv.addEventListener('touchstart', start, { passive: false });
+  cv.addEventListener('touchmove', move, { passive: false });
+  cv.addEventListener('touchend', end);
+
+  window.clearTryCanvas = function() {
+    ctx.clearRect(0, 0, W, H);
+    hasDrawn = false;
+    msg.classList.remove('show');
+  };
+})();
+
+/* ══ CONTADOR ODÓMETRO ══
+   Cada dígito es una tira vertical de 0-9 que se desliza hasta su cifra.
+   Las tiras arrancan escalonadas para que el número se asiente de
+   izquierda a derecha en vez de saltar de golpe. */
+let odValor = null;
+function renderOdometro(el, valor) {
+  const texto = valor.toLocaleString('en-US');
+  const reconstruir = el.dataset.largo !== String(texto.length);
+  if (reconstruir) {
+    el.dataset.largo = String(texto.length);
+    el.innerHTML = '';
+    let iDigito = 0;
+    for (const ch of texto) {
+      if (ch < '0' || ch > '9') {
+        const sep = document.createElement('span');
+        sep.className = 'od-sep';
+        sep.textContent = ch;
+        el.appendChild(sep);
+        continue;
+      }
+      const hueco = document.createElement('span');
+      hueco.className = 'od-digit';
+      const tira = document.createElement('span');
+      tira.className = 'od-strip';
+      tira.style.transitionDelay = (iDigito * 70) + 'ms';
+      /* Desfasar el arcoíris por dígito para que el color recorra el
+         número entero en vez de repetirse igual en cada cifra. */
+      tira.style.animationDelay = (-iDigito * 0.18) + 's';
+      for (let n = 0; n <= 9; n++) {
+        const s = document.createElement('span');
+        s.textContent = String(n);
+        tira.appendChild(s);
+      }
+      hueco.appendChild(tira);
+      el.appendChild(hueco);
+      iDigito++;
+    }
+  }
+  /* Dejar que el layout se asiente antes de animar, si no la primera
+     transición no se ve. */
+  requestAnimationFrame(() => {
+    const tiras = el.querySelectorAll('.od-strip');
+    let i = 0;
+    for (const ch of texto) {
+      if (ch < '0' || ch > '9') continue;
+      const tira = tiras[i++];
+      if (tira) tira.style.transform = `translateY(-${Number(ch) * 10}%)`;
+    }
+  });
+}
+function actualizarContador(valor) {
+  if (!(valor > 0) || valor === odValor) return;
+  odValor = valor;
+  const el = document.getElementById('drawings-counter');
+  const sec = document.getElementById('counter-section');
+  if (!el || !sec) return;
+  sec.classList.add('ready');
+  renderOdometro(el, valor);
+}
+
+/* Usuarios y países. Cada cifra solo aparece si tiene algo que contar:
+   un "0 países" dice menos que no decir nada. */
+const odOtros = {};
+function actualizarCifra(id, valor) {
+  if (!(valor > 0) || odOtros[id] === valor) return;
+  odOtros[id] = valor;
+  const el = document.getElementById(id);
+  const caja = el && el.closest('.counter-wrap');
+  if (!el || !caja) return;
+  caja.style.display = '';
+  document.getElementById('counter-section')?.classList.add('ready');
+  renderOdometro(el, valor);
+}
+
+/* ══ GALERÍA ══ */
+/* Copia exacta de genAvatar() de la app: el avatar de alguien debe verse
+   igual aquí que allá. Si cambias uno, cambia el otro. */
+function genAvatar(nombre) {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 64;
+  const cx = c.getContext('2d');
+  const ini = String(nombre || '?').trim().split(' ').map(n => n[0] || '').slice(0, 2).join('').toUpperCase();
+  const cols = ['#7c3aed','#6366f1','#8b5cf6','#a855f7','#d946ef','#ec4899','#06b6d4','#10b981'];
+  const i = (ini.charCodeAt(0) || 0) % cols.length;
+  const g = cx.createLinearGradient(0, 0, 64, 64);
+  g.addColorStop(0, cols[i]); g.addColorStop(1, cols[(i + 2) % cols.length]);
+  cx.fillStyle = g; cx.beginPath(); cx.arc(32, 32, 32, 0, Math.PI * 2); cx.fill();
+  cx.font = 'bold 26px DM Sans,sans-serif'; cx.fillStyle = '#fff';
+  cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(ini, 32, 33);
+  return c.toDataURL();
+}
+
+/* La foto que guardó el documento, o el avatar generado como respaldo. */
+function avatarDe(autor, photoURL) {
+  const img = document.createElement('img');
+  img.src = photoURL || genAvatar(autor);
+  img.alt = '';
+  img.onerror = () => { img.onerror = null; img.src = genAvatar(autor); };
+  return img;
+}
+
+function createGalleryCard(strokes, author, photoURL) {
+  const card = document.createElement('div');
+  card.className = 'gallery-card';
+  const canvas = document.createElement('canvas');
+  canvas.width = 400; canvas.height = 300;
+  card.appendChild(canvas);
+  if (author) {
+    const label = document.createElement('div');
+    label.className = 'gallery-author';
+    const nm = document.createElement('span');
+    nm.textContent = '@' + author;
+    label.append(avatarDe(author, photoURL), nm);
+    card.appendChild(label);
+  }
+  const ctx = canvas.getContext('2d');
+  /* Mismo fondo que el lienzo de la app, para que el dibujo se vea igual. */
+  ctx.fillStyle = '#12121a';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (!Array.isArray(strokes) || !strokes.length) return card;
+
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  /* La app guarda una lista plana de entradas, no trazos con .pts:
+       {tipo:'inicio', x, y, sid, origW, origH}
+       {tipo:'seg', de:{x,y}, a:{x,y}, color, gw, sid}
+       {tipo:'fin', sid}
+     El tamaño original viene en el primer 'inicio'. */
+  const meta = strokes.find(e => e && e.tipo === 'inicio' && e.origW);
+  const ow = (meta && meta.origW) || canvas.width;
+  const oh = (meta && meta.origH) || canvas.height;
+
+  /* Encajar sin deformar y centrar lo que sobre. */
+  const k = Math.min(canvas.width / ow, canvas.height / oh);
+  const ox = (canvas.width  - ow * k) / 2;
+  const oy = (canvas.height - oh * k) / 2;
+  const X = v => ox + v * k, Y = v => oy + v * k;
+
+  /* Solo los segmentos pintan; inicio y fin son marcadores. */
+  const segs = strokes.filter(e => e && e.tipo === 'seg' && e.de && e.a);
+  if (!segs.length) return card;
+
+  const fondo = () => { ctx.fillStyle = '#12121a'; ctx.fillRect(0, 0, canvas.width, canvas.height); };
+
+  /* Reproduce al RITMO REAL en que se dibujó, no a velocidad fija: por eso
+     antes se veía en cámara rápida. Dos ajustes para que siga siendo
+     mirable: los silencios largos entre trazos se recortan (igual que hace
+     comprimirGaps en la app), y si aun así dura demasiado se acelera por
+     igual, conservando las proporciones del trazo. */
+  const HUECO_MAX = 400;     /* ms: una pausa más larga se recorta aquí */
+  const DURACION_MAX = 14000;
+
+  let acum = 0, antes = null;
+  const linea = segs.map((e, idx) => {
+    const t = typeof e.t === 'number' ? e.t : null;
+    /* Avanzar según el índice, no según 'antes': si NINGÚN trazo trae
+       marca de tiempo, 'antes' nunca se asigna, el acumulado se queda en
+       cero y el dibujo entero se pinta en el primer cuadro. */
+    if (idx > 0) {
+      if (t !== null && antes !== null) acum += Math.min(Math.max(t - antes, 0), HUECO_MAX);
+      else acum += 16;                            /* sin marca: ~1 cuadro */
+    }
+    if (t !== null) antes = t;
+    return { e, ms: acum };
+  });
+  const total = linea[linea.length - 1].ms || 1;
+  const factor = total > DURACION_MAX ? DURACION_MAX / total : 1;
+  const ESPERA_MS = 2700;    /* el dibujo completo se queda quieto */
+
+  let i = 0, t0 = 0, finEn = 0, raf = 0;
+
+  function cuadro(ahora) {
+    if (!t0) t0 = ahora;
+    if (i >= linea.length) {
+      if (!finEn) finEn = ahora;
+      if (ahora - finEn > ESPERA_MS) { fondo(); i = 0; t0 = ahora; finEn = 0; }
+      raf = requestAnimationFrame(cuadro);
+      return;
+    }
+    const transcurrido = (ahora - t0);
+    while (i < linea.length && linea[i].ms * factor <= transcurrido) {
+      const e = linea[i].e;
+      ctx.strokeStyle = e.color || '#fff';
+      ctx.lineWidth = Math.max(0.5, (e.gw || 3) * k);
+      ctx.beginPath();
+      ctx.moveTo(X(e.de.x), Y(e.de.y));
+      ctx.lineTo(X(e.a.x),  Y(e.a.y));
+      ctx.stroke();
+      i++;
+    }
+    raf = requestAnimationFrame(cuadro);
+  }
+
+  /* Solo anima mientras se ve: varias tarjetas a la vez gastarían batería. */
+  let vivo = false;
+  new IntersectionObserver(es => es.forEach(en => {
+    /* t0 se resetea al volver a entrar: si no, al reaparecer el dibujo
+       saltaría al final por todo el tiempo transcurrido fuera de pantalla. */
+    if (en.isIntersecting && !vivo) { vivo = true; t0 = 0; raf = requestAnimationFrame(cuadro); }
+    else if (!en.isIntersecting && vivo) { vivo = false; cancelAnimationFrame(raf); }
+  }), { threshold: 0.15 }).observe(card);
+
+  return card;
+}
+
+/* ══ CARRUSEL AUTOMÁTICO ══
+   Se activa solo a partir de 5 tarjetas. Avanza despacio y se detiene
+   mientras el cursor está encima o el dedo tocando, para poder leer un
+   comentario o seguir un dibujo sin que se escape. */
+const UMBRAL_CARRUSEL = 5;
+
+function montarCarrusel(grid) {
+  if (!grid) return;
+  const suficientes = grid.children.length >= UMBRAL_CARRUSEL;
+  grid.classList.toggle('carrusel', suficientes);
+  if (grid._pararCarrusel) { grid._pararCarrusel(); grid._pararCarrusel = null; }
+  if (!suficientes) return;
+  /* Quien prefiere menos movimiento lo deja quieto, pero deslizable. */
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  let quieto = false, raf = 0, ultimo = 0;
+  /* La posición se lleva aparte en decimales: al leer scrollLeft el
+     navegador devuelve un entero, así que sumarle 0.4 px por fotograma
+     y releer siempre daba 0 y el carrusel no avanzaba nunca. */
+  let pos = 0;
+  const VELOCIDAD = 24;            /* píxeles por segundo */
+
+  const paso = (ahora) => {
+    if (!ultimo) ultimo = ahora;
+    const dt = Math.min((ahora - ultimo) / 1000, 0.1);   /* sin saltos al volver de otra pestaña */
+    ultimo = ahora;
+    if (!quieto && grid.scrollWidth > grid.clientWidth + 4) {
+      const fin = grid.scrollWidth - grid.clientWidth;
+      pos += VELOCIDAD * dt;
+      if (pos >= fin) pos = 0;      /* al final vuelve al principio */
+      grid.scrollLeft = pos;
+    }
+    raf = requestAnimationFrame(paso);
+  };
+
+  const parar  = () => { quieto = true; };
+  /* Retomar desde donde quedó si lo movieron a mano, no desde la
+     posición que creíamos tener. */
+  const seguir = () => { quieto = false; ultimo = 0; pos = grid.scrollLeft; };
+
+  grid.addEventListener('mouseenter', parar);
+  grid.addEventListener('mouseleave', seguir);
+  grid.addEventListener('touchstart', parar, { passive: true });
+  grid.addEventListener('touchend', seguir);
+  /* Arrastrar con el ratón también cuenta como mirar. */
+  grid.addEventListener('pointerdown', parar);
+  addEventListener('pointerup', seguir);
+
+  /* Fuera de pantalla no gasta nada. */
+  const obs = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { ultimo = 0; raf = requestAnimationFrame(paso); }
+    else cancelAnimationFrame(raf);
+  }), { threshold: 0.1 });
+  obs.observe(grid);
+
+  grid._pararCarrusel = () => {
+    cancelAnimationFrame(raf); obs.disconnect();
+    grid.removeEventListener('mouseenter', parar);
+    grid.removeEventListener('mouseleave', seguir);
+    grid.removeEventListener('touchstart', parar);
+    grid.removeEventListener('touchend', seguir);
+    grid.removeEventListener('pointerdown', parar);
+    removeEventListener('pointerup', seguir);
+    grid.classList.remove('carrusel');
+  };
+}
+
+/* ══ FIREBASE — sólo lectura, para el contador y la galería ══ */
+(function() {
+  const firebaseConfig = {
+    apiKey: 'AIzaSyBwsOO3je4iK63tid5KDDgYWeVHs0OanIc',
+    authDomain: 'sketchsend-d1976.firebaseapp.com',
+    projectId: 'sketchsend-d1976',
+    storageBucket: 'sketchsend-d1976.appspot.com',
+    messagingSenderId: '445386471766',
+    appId: '1:445386471766:web:6f8c0681a676d5a5b67ef7'
+  };
+
+  try {
+    const app = firebase.initializeApp(firebaseConfig, 'landing');
+    const db = firebase.firestore(app);
+
+    db.collection('stats').doc('global').onSnapshot(doc => {
+      const data = doc.data();
+      if (!data) return;
+      if (data.sketchesSent != null) actualizarContador(data.sketchesSent);
+      if (data.usuarios != null) actualizarCifra('users-counter', data.usuarios);
+      /* Se guardan zonas horarias, no países: se cuentan las distintas. */
+      if (data.zonas) actualizarCifra('paises-counter', Object.keys(data.zonas).length);
+    }, () => {});
+
+    /* Opiniones aprobadas, en vivo: marcar approved:true en la consola las
+       publica al instante. Sin orderBy a propósito — combinarlo con el
+       where exigiría un índice compuesto en Firestore; se ordena aquí. */
+    db.collection('landing_testimonials')
+      .where('approved', '==', true).limit(12)
+      .onSnapshot(snap => {
+        const grid = document.getElementById('reviews-grid');
+        const sec  = document.getElementById('reviews-section');
+        if (!grid || !sec) return;
+        const filas = [];
+        snap.forEach(d => { const x = d.data(); if (x && x.text) filas.push(x); });
+        if (!filas.length) { sec.style.display = 'none'; return; }
+        filas.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        grid.innerHTML = '';
+        filas.slice(0, 6).forEach(x => {
+          const autor = String(x.author || '');
+          const card = document.createElement('div');
+          card.className = 'review-card';
+          const txt = document.createElement('div');
+          txt.className = 'review-text';
+          txt.textContent = '“' + String(x.text).slice(0, 280) + '”';
+          const who = document.createElement('div');
+          who.className = 'review-who';
+          const av = avatarDe(autor, x.photoURL);
+          av.className = 'review-av';
+          const nm = document.createElement('div');
+          nm.className = 'review-name';
+          nm.textContent = '@' + autor;
+          who.append(av, nm); card.append(txt, who);
+          grid.appendChild(card);
+        });
+        sec.style.display = '';
+        montarCarrusel(grid);
+      }, () => {});
+
+    /* Solo los aprobados, y en vivo como las opiniones: marcar approved
+       en la consola los publica al instante. Sin orderBy junto al where
+       para no exigir un índice compuesto; se ordena aquí. */
+    db.collection('landing_gallery').where('approved', '==', true).limit(12)
+      .onSnapshot(snap => {
+      const grid = document.getElementById('gallery-grid');
+      const sec = document.getElementById('gallery-section');
+      if (!grid || !sec) return;
+      const filas = [];
+      snap.forEach(doc => { const d = doc.data(); if (d && d.strokes) filas.push(d); });
+      if (!filas.length) { sec.classList.remove('ready'); return; }
+      filas.sort((a, b) => (b.sharedAt?.seconds || 0) - (a.sharedAt?.seconds || 0));
+      /* Vaciar antes de repintar: onSnapshot vuelve a disparar con cada
+         cambio y si no, las tarjetas se duplicarían. */
+      grid.innerHTML = '';
+      filas.slice(0, 8).forEach(d => {
+        const card = createGalleryCard(d.strokes, d.author, d.photoURL);
+        grid.appendChild(card);
+        observar(card);
+      });
+      sec.classList.add('ready');
+      montarCarrusel(grid);
+    }, () => {});
+
+  } catch(e) { /* sin Firebase el contador y la galería quedan ocultos */ }
+})();
+
+/* ══ SPLASH — el logo vuela al hero ══ */
+(function() {
+  const splash = document.getElementById('landing-splash');
+  if (!splash) return;
+  setTimeout(() => {
+    const heroLogo = document.querySelector('.hero-logo');
+    const splashLogo = document.getElementById('landing-splash-logo');
+    if (!heroLogo || !splashLogo) { splash.remove(); return; }
+    const from = splashLogo.getBoundingClientRect();
+    const to = heroLogo.getBoundingClientRect();
+    if (from.width === 0 || to.width === 0) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 500); return; }
+    const clone = splashLogo.cloneNode(true);
+    /* No fijar font-family ni letter-spacing aquí: .ss-logo los gobierna. */
+    clone.style.cssText = 'position:fixed;z-index:10000;left:' + from.left + 'px;top:' + from.top + 'px;width:' + from.width + 'px;font-size:' + getComputedStyle(splashLogo).fontSize + ';transition:left 0.7s cubic-bezier(0.4,0,0.2,1),top 0.7s cubic-bezier(0.4,0,0.2,1),font-size 0.7s cubic-bezier(0.4,0,0.2,1),width 0.7s cubic-bezier(0.4,0,0.2,1);pointer-events:none;';
+    document.body.appendChild(clone);
+    splashLogo.style.visibility = 'hidden';
+    splash.style.opacity = '0';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        clone.style.left = to.left + 'px';
+        clone.style.top = to.top + 'px';
+        clone.style.fontSize = getComputedStyle(heroLogo).fontSize;
+        clone.style.width = to.width + 'px';
+      });
+    });
+    setTimeout(() => { heroLogo.style.visibility = 'visible'; clone.remove(); splash.remove(); }, 1200);
+  }, 2000);
+})();
+
+/* ══ ACORDEÓN: solo una pregunta abierta a la vez ══ */
+(function() {
+  const faqs = [...document.querySelectorAll('details.faq')];
+  faqs.forEach(d => d.addEventListener('toggle', () => {
+    if (!d.open) return;
+    faqs.forEach(o => { if (o !== d) o.open = false; });
+  }));
+})();
+
+/* ══ REPLAY ANIMADO en el marco del teléfono ══
+   Muestra el dibujo apareciendo trazo a trazo, que es lo que la sección
+   promete: una imagen fija no lo demuestra. */
+(function() {
+  const cv = document.getElementById('replay-canvas');
+  if (!cv) return;
+  const W = 585, H = 1266, ctx = cv.getContext('2d');
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  /* Mismo gato que la captura de la app, en coordenadas de este lienzo. */
+  const cx = W / 2, cy = H * 0.46, pts = [];
+  let sid = 0;
+  const arco = (ox, oy, r, a0, a1, n, sq) => {
+    const p = [];
+    for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n;
+      p.push([ox + Math.cos(a) * r, oy + Math.sin(a) * r * (sq || 1)]); }
+    return p;
+  };
+  const jit = v => v + (Math.random() - 0.5) * 2.4;
+  function trazo(p, gw) {
+    sid++;
+    pts.push({ corte: true });
+    p.forEach((q, i) => pts.push({ x: jit(q[0]), y: jit(q[1]), gw, primero: i === 0 }));
+  }
+  const R = 108;
+  trazo(arco(cx, cy - 16, R, 0, Math.PI * 2, 54), 9);
+  trazo([[cx - R * 0.82, cy - R * 0.76], [cx - R * 0.92, cy - R * 1.44], [cx - R * 0.3, cy - R * 1.02]], 9);
+  trazo([[cx + R * 0.82, cy - R * 0.76], [cx + R * 0.92, cy - R * 1.44], [cx + R * 0.3, cy - R * 1.02]], 9);
+  trazo(arco(cx - 40, cy - 34, 15, 0, Math.PI * 2, 18), 8);
+  trazo(arco(cx + 40, cy - 34, 15, 0, Math.PI * 2, 18), 8);
+  trazo([[cx - 11, cy + 10], [cx, cy + 22], [cx + 11, cy + 10]], 8);
+  trazo(arco(cx - 22, cy + 25, 22, 0, Math.PI * 0.9, 16), 7);
+  trazo(arco(cx + 22, cy + 25, 22, Math.PI * 0.1, Math.PI, 16), 7);
+  [[-1, 3], [-1, 19], [1, 3], [1, 19]].forEach(([s, dy]) =>
+    trazo([[cx + s * 64, cy + dy], [cx + s * 124, cy + dy - 10]], 5.5));
+  const hx = cx + 124, hy = cy - 176;
+  trazo([...arco(hx - 14, hy, 14, Math.PI, Math.PI * 2, 14),
+         ...arco(hx + 14, hy, 14, Math.PI, Math.PI * 2, 14),
+         [hx + 28, hy + 6], [hx, hy + 40], [hx - 28, hy + 6]], 7);
+
+  let i = 0, hue = 0, pausa = 0, prev = null;
+  const VEL = 2.2, ESPERA = 95;   /* fotogramas que el dibujo queda completo */
+
+  function paso() {
+    if (i >= pts.length) {
+      if (++pausa > ESPERA) { ctx.clearRect(0, 0, W, H); i = 0; pausa = 0; prev = null; }
+      return requestAnimationFrame(paso);
+    }
+    for (let k = 0; k < VEL && i < pts.length; k++, i++) {
+      const p = pts[i];
+      if (p.corte) { prev = null; continue; }
+      if (p.primero || !prev) { prev = p; continue; }
+      hue = (hue + 1.3) % 360;
+      ctx.strokeStyle = `hsl(${hue},100%,58%)`;
+      ctx.lineWidth = p.gw;
+      ctx.beginPath(); ctx.moveTo(prev.x, prev.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+      prev = p;
+    }
+    requestAnimationFrame(paso);
+  }
+  /* No gastar batería mientras no se ve. */
+  let corriendo = false;
+  new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting && !corriendo) { corriendo = true; paso(); }
+  }), { threshold: 0.2 }).observe(cv);
+})();
+
+/* ══ EL LOGO DEL HERO VIAJA AL NAV AL HACER SCROLL ══
+   El logo grande se encoge y se desplaza hasta ocupar el sitio del logo
+   de la barra; cuando llega, el del nav toma el relevo. */
+(function() {
+  const hero = document.querySelector('.hero-logo');
+  const nav  = document.querySelector('.nav-logo');
+  if (!hero || !nav || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  let desde = null, hasta = null, escala = 1, recorrido = 400, activo = false;
+
+  function medir() {
+    /* Medir con el scroll arriba y sin transformar, para partir de la
+       posición natural del logo. */
+    const y = window.scrollY;
+    hero.style.transform = 'none';
+    hero.style.position = '';
+    const h = hero.getBoundingClientRect();
+    const n = nav.getBoundingClientRect();
+    if (!h.width || !n.width) return false;
+    desde = { x: h.left, y: h.top + y, w: h.width, h: h.height };
+    hasta = { x: n.left, y: n.top };
+    escala = n.height / h.height;
+    recorrido = Math.max(240, desde.y + desde.h);
+    return true;
+  }
+
+  function pintar() {
+    if (!desde) return;
+    const t = Math.min(1, Math.max(0, window.scrollY / recorrido));
+    if (t >= 1) {
+      hero.style.opacity = '0';
+      nav.style.opacity = '1';
+      return;
+    }
+    nav.style.opacity = '0';
+    hero.style.opacity = '1';
+    hero.style.position = 'fixed';
+    /* Por encima del nav (500): si no, a mitad de viaje se mete debajo de
+       la franja y desaparece justo antes de aterrizar. */
+    hero.style.zIndex = '600';
+    hero.style.left = desde.x + 'px';
+    /* Anclado a su posición inicial en pantalla, NO al scroll: si sigue al
+       scroll se escapa por arriba antes de que la animación lo traiga al
+       nav, y a media bajada se ve cortado. Así va en línea recta. */
+    hero.style.top  = desde.y + 'px';
+    hero.style.margin = '0';
+    hero.style.transformOrigin = 'left top';
+    const s = 1 + (escala - 1) * t;
+    hero.style.transform =
+      `translate(${(hasta.x - desde.x) * t}px, ${(hasta.y - desde.y) * t}px) scale(${s})`;
+  }
+
+  function arrancar() {
+    /* El hueco que deja el logo al pasar a fixed lo ocupa un espaciador,
+       si no el hero da un salto. */
+    if (!medir()) return;
+    if (!hero.previousElementSibling?.classList.contains('hero-logo-gap')) {
+      const gap = document.createElement('div');
+      gap.className = 'hero-logo-gap';
+      gap.style.cssText = `height:${desde.h}px;margin-bottom:8px;pointer-events:none`;
+      hero.parentNode.insertBefore(gap, hero);
+    }
+    activo = true;
+    pintar();
+  }
+
+  /* Esperar a que el splash aterrice: antes de eso el logo está oculto. */
+  const t0 = setInterval(() => {
+    if (getComputedStyle(hero).visibility === 'visible') { clearInterval(t0); arrancar(); }
+  }, 150);
+  setTimeout(() => clearInterval(t0), 8000);
+
+  addEventListener('scroll', () => { if (activo) pintar(); }, { passive: true });
+  addEventListener('resize', () => {
+    if (!activo) return;
+    document.querySelector('.hero-logo-gap')?.remove();
+    hero.style.cssText = hero.style.cssText.replace(/position[^;]*;|left[^;]*;|top[^;]*;|transform[^;]*;|margin[^;]*;/g, '');
+    arrancar();
+  });
+})();
+
+/* ══ SOLO EN LA VISTA PREVIA ══
+   Con ?demo=1 se inyectan datos de muestra para poder ver el carrusel y
+   las cifras antes de que existan de verdad. Este bloque NO va en la
+   landing publicada: vive solo en preview/carrusel/. */
+(function() {
+  if (!/[?&]demo=1/.test(location.search)) return;
+
+  const aviso = document.createElement('div');
+  aviso.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#b45309;' +
+    'color:#fff;font:600 12px/1.4 system-ui,sans-serif;padding:7px 14px;text-align:center';
+  aviso.textContent = 'MODO DEMOSTRACIÓN — datos de muestra, no reales';
+  document.body.appendChild(aviso);
+  document.body.style.paddingTop = '28px';
+
+  const dibujoFalso = (semilla) => {
+    const segs = [{ tipo:'inicio', x:0, y:0, sid:1, origW:300, origH:300, t:0 }];
+    let t = 0;
+    for (let a = 0; a < Math.PI * 2; a += 0.09) {
+      t += 28;
+      const r = 70 + Math.sin(a * (2 + semilla % 3)) * 26;
+      const r2 = 70 + Math.sin((a + 0.09) * (2 + semilla % 3)) * 26;
+      segs.push({ tipo:'seg',
+        de:{ x:150 + Math.cos(a) * r,        y:150 + Math.sin(a) * r },
+        a: { x:150 + Math.cos(a + 0.09) * r2, y:150 + Math.sin(a + 0.09) * r2 },
+        color:`hsl(${(a * 57 + semilla * 40) % 360},100%,58%)`, gw:5, sid:1, t });
+    }
+    segs.push({ tipo:'fin', sid:1, t });
+    return segs;
+  };
+
+  const frases = [
+    'Es como mandar notas de papel, pero animadas.',
+    'Mi hija y yo nos enviamos dibujos todos los días.',
+    'El pincel arcoíris engancha, no puedo parar.',
+    'Lo uso con mi pareja. Dice más que un mensaje.',
+    'Simplísimo. Abres, dibujas, envías.',
+    'Me gusta que desaparezcan. Quita la presión.',
+  ];
+
+  addEventListener('load', () => setTimeout(() => {
+    const gal = document.getElementById('gallery-grid');
+    const rev = document.getElementById('reviews-grid');
+    const sGal = document.getElementById('gallery-section');
+    const sRev = document.getElementById('reviews-section');
+
+    if (gal && typeof createGalleryCard === 'function') {
+      gal.innerHTML = '';
+      for (let i = 0; i < 6; i++) {
+        const c = createGalleryCard(dibujoFalso(i), 'persona' + (i + 1), null);
+        gal.appendChild(c);
+        if (typeof observar === 'function') observar(c);
+      }
+      sGal && sGal.classList.add('ready');
+      if (typeof montarCarrusel === 'function') montarCarrusel(gal);
+    }
+
+    if (rev) {
+      rev.innerHTML = '';
+      frases.forEach((txt, i) => {
+        const card = document.createElement('div');
+        card.className = 'review-card';
+        const t1 = document.createElement('div');
+        t1.className = 'review-text'; t1.textContent = '“' + txt + '”';
+        const who = document.createElement('div'); who.className = 'review-who';
+        const av = (typeof avatarDe === 'function')
+          ? avatarDe('persona' + (i + 1), null) : document.createElement('img');
+        av.className = 'review-av';
+        const nm = document.createElement('div');
+        nm.className = 'review-name'; nm.textContent = '@persona' + (i + 1);
+        who.append(av, nm); card.append(t1, who); rev.appendChild(card);
+      });
+      sRev && (sRev.style.display = '');
+      if (typeof montarCarrusel === 'function') montarCarrusel(rev);
+    }
+
+    if (typeof actualizarContador === 'function') actualizarContador(1247);
+    if (typeof actualizarCifra === 'function') {
+      actualizarCifra('users-counter', 93);
+      actualizarCifra('paises-counter', 7);
+    }
+  }, 4200));
+})();
+</script>
+</body>
+</html>
