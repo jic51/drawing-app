@@ -177,13 +177,27 @@ section {
 /* ══ CONTADOR (odómetro) ══
    Oculto hasta que Firestore entregue un número: un "0" mientras carga
    se lee como "nadie usa esto". */
-.counter-section { padding: 30px 16px 60px; text-align: center; display: none; }
+/* Franja clara a propósito: rompe el fondo oscuro para que las cifras
+   se vean al pasar, en vez de disolverse con el resto de la página. */
+.counter-section {
+  padding: 56px 16px; text-align: center; display: none;
+  background: linear-gradient(180deg, #f4f4fb 0%, #e9e9f6 100%);
+}
 .counter-section.ready { display: block; }
+.cifras-titulo {
+  font-size: clamp(1.3rem, 4vw, 1.9rem); font-weight: 800;
+  color: #1a1a2e; margin-bottom: 26px; letter-spacing: -0.02em;
+}
+.cifras {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 16px;
+}
 .counter-wrap {
   display: inline-flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 30px 54px; border-radius: 20px;
-  background: var(--surface); border: 1px solid var(--border);
+  padding: 26px 40px; border-radius: 20px; min-width: 190px;
+  background: #ffffff; border: 1px solid #d8d8e8;
+  box-shadow: 0 6px 20px rgba(26,26,46,0.07);
 }
+.counter-section .counter-label { color: #5a5a7a; }
 .odometer {
   display: flex; justify-content: center;
   font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 900;
@@ -279,6 +293,34 @@ section {
 .gallery-section.ready { display: block; }
 /* ══ OPINIONES ══ */
 .reviews-section { padding: 72px clamp(16px,4vw,40px); max-width: 1100px; margin: 0 auto; }
+/* ══ CARRUSEL ══
+   Con pocas tarjetas una rejilla centrada se ve mejor que un carrusel:
+   mover cuatro cosas parece que falta contenido. A partir de cinco sí
+   compensa, y entonces la rejilla pasa a fila deslizante. Se detiene al
+   pasar el cursor o al tocarla, para poder leer o mirar un dibujo. */
+.carrusel {
+  display: flex !important;
+  grid-template-columns: none !important;
+  justify-content: flex-start !important;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  /* Sin scroll-snap: con 'mandatory' el navegador devuelve cada avance de
+     menos de un píxel al punto de anclaje, así que el carrusel se quedaba
+     clavado en cero. El arrastre manual se siente bien igualmente. */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 4px;
+}
+.carrusel::-webkit-scrollbar { display: none; }
+.carrusel > * {
+  flex: 0 0 auto;
+}
+.gallery-grid.carrusel > * { width: 230px; }
+.reviews-grid.carrusel > * { width: 300px; }
+/* El hover crece la tarjeta: dentro del carrusel la recortaría el
+   desbordamiento, así que ahí se queda quieta. */
+.gallery-grid.carrusel .gallery-card:hover { transform: none; }
+
 .reviews-grid {
   display: grid; gap: 16px;
   grid-template-columns: repeat(auto-fit, minmax(250px, 330px));
@@ -464,9 +506,20 @@ footer {
 
 <!-- ══ CONTADOR ══ -->
 <section class="counter-section" id="counter-section">
-  <div class="counter-wrap">
-    <div class="odometer" id="drawings-counter"></div>
-    <div class="counter-label" data-i18n="counter_label">drawings sent and counting</div>
+  <h2 class="cifras-titulo" data-i18n="cifras_titulo">SketchSend so far</h2>
+  <div class="cifras">
+    <div class="counter-wrap">
+      <div class="odometer" id="drawings-counter"></div>
+      <div class="counter-label" data-i18n="counter_label">drawings sent and counting</div>
+    </div>
+    <div class="counter-wrap" id="users-wrap" style="display:none;">
+      <div class="odometer" id="users-counter"></div>
+      <div class="counter-label" data-i18n="users_label">people drawing</div>
+    </div>
+    <div class="counter-wrap" id="paises-wrap" style="display:none;">
+      <div class="odometer" id="paises-counter"></div>
+      <div class="counter-label" data-i18n="paises_label">countries</div>
+    </div>
   </div>
 </section>
 
@@ -664,6 +717,7 @@ const I18N = {
     try_cta: 'Create your account',
     gallery_title: 'Community drawings', gallery_subtitle: 'Shared by our artists',
     reviews_title: 'What people say',
+    cifras_titulo: 'SketchSend so far', users_label: 'people drawing', paises_label: 'countries',
     faq_title: 'Common questions',
     faq_q1: 'Is it free?',
     faq_a1: 'Completely. There\'s no cost to create an account and no ads while you draw.',
@@ -705,6 +759,7 @@ const I18N = {
     try_cta: 'Crea tu cuenta',
     gallery_title: 'Dibujos de la comunidad', gallery_subtitle: 'Compartidos por nuestros artistas',
     reviews_title: 'Lo que dicen las personas',
+    cifras_titulo: 'SketchSend hasta hoy', users_label: 'personas dibujando', paises_label: 'países',
     faq_title: 'Preguntas frecuentes',
     faq_q1: '¿Es gratis?',
     faq_a1: 'Del todo. Crear la cuenta no cuesta nada y no hay anuncios mientras dibujas.',
@@ -942,6 +997,20 @@ function actualizarContador(valor) {
   renderOdometro(el, valor);
 }
 
+/* Usuarios y países. Cada cifra solo aparece si tiene algo que contar:
+   un "0 países" dice menos que no decir nada. */
+const odOtros = {};
+function actualizarCifra(id, valor) {
+  if (!(valor > 0) || odOtros[id] === valor) return;
+  odOtros[id] = valor;
+  const el = document.getElementById(id);
+  const caja = el && el.closest('.counter-wrap');
+  if (!el || !caja) return;
+  caja.style.display = '';
+  document.getElementById('counter-section')?.classList.add('ready');
+  renderOdometro(el, valor);
+}
+
 /* ══ GALERÍA ══ */
 /* Copia exacta de genAvatar() de la app: el avatar de alguien debe verse
    igual aquí que allá. Si cambias uno, cambia el otro. */
@@ -1072,6 +1141,73 @@ function createGalleryCard(strokes, author, photoURL) {
   return card;
 }
 
+/* ══ CARRUSEL AUTOMÁTICO ══
+   Se activa solo a partir de 5 tarjetas. Avanza despacio y se detiene
+   mientras el cursor está encima o el dedo tocando, para poder leer un
+   comentario o seguir un dibujo sin que se escape. */
+const UMBRAL_CARRUSEL = 5;
+
+function montarCarrusel(grid) {
+  if (!grid) return;
+  const suficientes = grid.children.length >= UMBRAL_CARRUSEL;
+  grid.classList.toggle('carrusel', suficientes);
+  if (grid._pararCarrusel) { grid._pararCarrusel(); grid._pararCarrusel = null; }
+  if (!suficientes) return;
+  /* Quien prefiere menos movimiento lo deja quieto, pero deslizable. */
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+  let quieto = false, raf = 0, ultimo = 0;
+  /* La posición se lleva aparte en decimales: al leer scrollLeft el
+     navegador devuelve un entero, así que sumarle 0.4 px por fotograma
+     y releer siempre daba 0 y el carrusel no avanzaba nunca. */
+  let pos = 0;
+  const VELOCIDAD = 24;            /* píxeles por segundo */
+
+  const paso = (ahora) => {
+    if (!ultimo) ultimo = ahora;
+    const dt = Math.min((ahora - ultimo) / 1000, 0.1);   /* sin saltos al volver de otra pestaña */
+    ultimo = ahora;
+    if (!quieto && grid.scrollWidth > grid.clientWidth + 4) {
+      const fin = grid.scrollWidth - grid.clientWidth;
+      pos += VELOCIDAD * dt;
+      if (pos >= fin) pos = 0;      /* al final vuelve al principio */
+      grid.scrollLeft = pos;
+    }
+    raf = requestAnimationFrame(paso);
+  };
+
+  const parar  = () => { quieto = true; };
+  /* Retomar desde donde quedó si lo movieron a mano, no desde la
+     posición que creíamos tener. */
+  const seguir = () => { quieto = false; ultimo = 0; pos = grid.scrollLeft; };
+
+  grid.addEventListener('mouseenter', parar);
+  grid.addEventListener('mouseleave', seguir);
+  grid.addEventListener('touchstart', parar, { passive: true });
+  grid.addEventListener('touchend', seguir);
+  /* Arrastrar con el ratón también cuenta como mirar. */
+  grid.addEventListener('pointerdown', parar);
+  addEventListener('pointerup', seguir);
+
+  /* Fuera de pantalla no gasta nada. */
+  const obs = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting) { ultimo = 0; raf = requestAnimationFrame(paso); }
+    else cancelAnimationFrame(raf);
+  }), { threshold: 0.1 });
+  obs.observe(grid);
+
+  grid._pararCarrusel = () => {
+    cancelAnimationFrame(raf); obs.disconnect();
+    grid.removeEventListener('mouseenter', parar);
+    grid.removeEventListener('mouseleave', seguir);
+    grid.removeEventListener('touchstart', parar);
+    grid.removeEventListener('touchend', seguir);
+    grid.removeEventListener('pointerdown', parar);
+    removeEventListener('pointerup', seguir);
+    grid.classList.remove('carrusel');
+  };
+}
+
 /* ══ FIREBASE — sólo lectura, para el contador y la galería ══ */
 (function() {
   const firebaseConfig = {
@@ -1089,7 +1225,11 @@ function createGalleryCard(strokes, author, photoURL) {
 
     db.collection('stats').doc('global').onSnapshot(doc => {
       const data = doc.data();
-      if (data && data.sketchesSent != null) actualizarContador(data.sketchesSent);
+      if (!data) return;
+      if (data.sketchesSent != null) actualizarContador(data.sketchesSent);
+      if (data.usuarios != null) actualizarCifra('users-counter', data.usuarios);
+      /* Se guardan zonas horarias, no países: se cuentan las distintas. */
+      if (data.zonas) actualizarCifra('paises-counter', Object.keys(data.zonas).length);
     }, () => {});
 
     /* Opiniones aprobadas, en vivo: marcar approved:true en la consola las
@@ -1124,6 +1264,7 @@ function createGalleryCard(strokes, author, photoURL) {
           grid.appendChild(card);
         });
         sec.style.display = '';
+        montarCarrusel(grid);
       }, () => {});
 
     /* Solo los aprobados, y en vivo como las opiniones: marcar approved
@@ -1147,6 +1288,7 @@ function createGalleryCard(strokes, author, photoURL) {
         observar(card);
       });
       sec.classList.add('ready');
+      montarCarrusel(grid);
     }, () => {});
 
   } catch(e) { /* sin Firebase el contador y la galería quedan ocultos */ }
