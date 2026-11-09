@@ -261,6 +261,46 @@ visor de código abierto. Mide el interés real sin construir infraestructura.
 
 ---
 
+## 📣 PLAN DE DISTRIBUCIÓN (sesión 2026-11-09)
+
+> Nace de analizar un video de "Vibecodingiseasy" sobre qué es valioso ahora
+> que cualquiera puede construir apps. **La cifra que muestra es real y está
+> verificada**: Sensor Tower contó ~560.000 apps nuevas en la App Store en el
+> primer semestre de 2026, casi tantas como en todo 2025, confirmado por
+> 9to5Mac, TechCrunch y medios europeos por separado.
+>
+> **El dato que el video omite y que importa más:** las apps se duplicaron
+> pero las descargas solo subieron un 2% (17.600 millones en el semestre).
+> La oferta explotó, la demanda no. Construir dejó de ser el foso.
+>
+> **Lo que del método NO aplica a SketchSend:** el video enseña a vender un
+> infoproducto a un nicho con un problema que la gente busca. Nadie busca
+> "cómo mandar dibujos a mis amigos". SketchSend se muestra, no se explica.
+>
+> **La ventaja que sí tenemos:** cada dibujo enviado ya es una pieza de
+> contenido. El del video tiene que fabricar un consejo diario; nosotros
+> producimos material cada vez que alguien usa la app.
+
+| # | Qué | Por qué | Estado |
+|---|-----|---------|--------|
+| D1 | **Video vertical compartible** — el replay de un dibujo como video 9:16 de ~10 s con marca y @usuario, listo para TikTok, Reels o Shorts | El modelo TikTok: cada pieza compartida es publicidad gratis. Ya existe el motor de replay y la descarga de video; falta el formato vertical con marca | 🔴 Primero |
+| D2 | **Captar correos desde la landing** | Hoy quien visita y no se registra se pierde para siempre. Una lista es tuya; los seguidores de una red no | 🟡 Segundo |
+| D3 | **Reto semanal** — un tema por semana ("dibuja tu desayuno"), los mejores a la galería | Da razón para volver, produce contenido solo y es compartible por naturaleza. El equivalente al "consejo diario" del video, pero el trabajo lo hace el usuario | 🟡 Tercero |
+
+**Lo que NO hacer todavía:** ProductHunt, prensa o cualquier empujón de
+tráfico mientras la app siga rota en Safari. Una oleada de visitantes se
+encontraría con un login que no funciona, y esa primera impresión no se
+repite.
+
+**Cómo verificar un video así la próxima vez:** (1) ¿hay una cifra concreta
+con fuente nombrada, o solo "los expertos dicen"? (2) ¿lo confirma alguien
+que no sea quien lo cuenta? (3) ¿qué omite? — lo omitido suele ser lo más
+revelador. Aquí omitió las descargas estancadas, que es el dato más fuerte,
+y que quien lo cuenta vende cursos de esto.
+
+
+---
+
 ## 🔗 LINKS
 
 - **App en vivo:** https://jic51.github.io/drawing-app/
