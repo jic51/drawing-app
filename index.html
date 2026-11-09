@@ -470,12 +470,68 @@
       object-fit:cover; flex-shrink:0;
     }
     .inbox-card-info { flex:1; min-width:0; }
-    .inbox-card-name { font-weight:600; font-size:0.9rem; }
+    /* El @usuario en el color de acento, no en blanco: es el dato que
+       identifica a la persona, no una etiqueta más. Al pasar por encima
+       recorre los colores del logo. */
+    .inbox-card-name {
+      font-weight:600; font-size:0.9rem; color:var(--accent2);
+      width:fit-content;
+    }
+    .inbox-quien:hover .inbox-card-name {
+      background:linear-gradient(90deg,#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000);
+      background-size:200% auto; -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent; background-clip:text;
+      animation:mover 2.5s linear infinite;
+    }
     .inbox-card-sub { font-size:0.75rem; color:var(--muted); margin-top:2px; }
     .inbox-card-timer {
       font-size:0.72rem; font-weight:600; color:#ef4444;
       background:rgba(239,68,68,0.1); padding:4px 10px;
       border-radius:16px; white-space:nowrap; flex-shrink:0;
+    }
+    /* ── Fila de la bandeja ──
+       Mitad para quién lo envió, y la otra mitad repartida: un tercio
+       para el tiempo que queda y dos tercios para el enlace, que se
+       copia de un toque. La ✕ borra sin tener que abrir el dibujo. */
+    .inbox-mitad { flex:1 1 50%; min-width:0; display:flex; align-items:center; gap:10px; }
+    .inbox-quien { display:flex; align-items:center; gap:10px; min-width:0; cursor:pointer;
+                   border-radius:10px; padding:3px; margin:-3px; transition:background .15s; }
+    .inbox-quien:hover { background:var(--surface2); }
+    .inbox-otra  { flex:1 1 50%; display:flex; align-items:center; gap:8px; min-width:0; }
+    /* El reloj: los colores van EN los números, no detrás. */
+    .inbox-reloj {
+      flex:0 0 33%; min-width:0; text-align:center;
+      font-family:var(--display); font-weight:800; font-size:0.84rem;
+      font-variant-numeric:tabular-nums; white-space:nowrap;
+      background:linear-gradient(90deg,#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000);
+      background-size:200% auto; -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent; background-clip:text;
+      animation:mover 2.5s linear infinite;
+      width:fit-content; margin-inline:auto;
+    }
+    .inbox-enlace {
+      flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:6px;
+      background:var(--surface2); border:1px solid var(--border); border-radius:9px;
+      padding:5px 8px; cursor:pointer; transition:border-color .15s;
+    }
+    .inbox-enlace:hover { border-color:var(--accent); }
+    .inbox-enlace span {
+      flex:1; min-width:0; font-size:0.66rem; color:var(--muted);
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+    .inbox-borrar {
+      flex-shrink:0; width:28px; height:28px; border-radius:50%;
+      background:transparent; border:1px solid var(--border); color:var(--muted);
+      cursor:pointer; font-size:0.78rem; line-height:1;
+      display:flex; align-items:center; justify-content:center; transition:all .15s;
+    }
+    .inbox-borrar:hover { border-color:var(--danger); color:var(--danger); }
+    @media (max-width:560px) {
+      /* En pantalla estrecha la fila se parte en dos pisos, o el enlace
+         quedaría en dos caracteres. */
+      .inbox-card { flex-wrap:wrap; }
+      .inbox-mitad, .inbox-otra { flex:1 1 100%; }
+      .inbox-reloj { flex:0 0 auto; margin-inline:0; }
     }
     .inbox-card-new {
       width:10px; height:10px; border-radius:50%; background:var(--accent2);
@@ -786,7 +842,8 @@
       text-align:center; width:100%; box-sizing:border-box;
     }
     .share-code-row { display:flex; gap:8px; align-items:center; margin-top:8px; }
-    #share-qr-canvas { display:block; border-radius:10px; width:180px; height:180px; margin:8px auto 0; }
+    /* El QR vive en una caja blanca con margen: los lectores necesitan
+       esa zona de silencio alrededor, y además se ve limpio. */
     .settings-name { font-weight:600; font-size:1rem; }
     .settings-email { font-size:0.8rem; color:var(--muted); }
 
@@ -1167,11 +1224,22 @@
           <input type="file" id="photo-file-input" accept="image/*" style="display:none;">
         </div>
         <div style="flex:1;min-width:0;">
-          <div class="settings-name" id="settings-name">—</div>
+          <!-- El @usuario manda: es con lo que te buscan y te agregan. El
+               nombre real es una etiqueta, y vive dentro de Editar perfil. -->
+          <div class="settings-name" id="settings-username-display">—</div>
           <div class="settings-email" id="settings-email" style="font-size:0.75rem;color:var(--muted);margin-top:2px;"></div>
-          <div id="settings-username-display" style="font-size:0.78rem;color:var(--accent2);margin-top:3px;"></div>
+          <div id="settings-name" style="display:none;"></div>
         </div>
       </div>
+      <!-- Editar perfil: nombre, @usuario y correo en un solo sitio -->
+      <div class="settings-row" id="perfil-toggle" style="cursor:pointer;">
+        <div>
+          <div class="settings-row-label" id="lbl-edit-profile">Editar perfil</div>
+          <div class="settings-row-sub" id="lbl-edit-profile-sub">Nombre, @usuario y correo</div>
+        </div>
+        <button class="settings-row-action" id="perfil-toggle-btn">▸</button>
+      </div>
+      <div id="perfil-panel" style="display:none;">
       <!-- Cambiar nombre inline -->
       <div class="settings-row" id="rename-view-row">
         <div>
@@ -1203,6 +1271,15 @@
           <button class="settings-row-action" id="uname-cancel-btn">Cancelar</button>
         </div>
       </div>
+      <!-- El correo se muestra, no se edita: cambiarlo en Firebase Auth es
+           otro flujo, con verificación del nuevo correo. -->
+      <div class="settings-row">
+        <div>
+          <div class="settings-row-label" id="lbl-email-row">Correo</div>
+          <div class="settings-row-sub" id="perfil-email">—</div>
+        </div>
+      </div>
+      </div>
     </div>
 
     <div class="settings-section">
@@ -1218,7 +1295,10 @@
           <button class="share-toggle-btn" id="share-tab-link">🔗 Link</button>
         </div>
         <div class="share-content" id="share-content-qr" style="text-align:center;">
-          <canvas id="share-qr-canvas" width="200" height="200" style="border-radius:10px;max-width:200px;"></canvas>
+          <div id="share-qr-caja" style="background:#fff;border-radius:14px;padding:10px;width:196px;
+               margin:8px auto 0;display:flex;align-items:center;justify-content:center;min-height:196px;">
+            <img id="share-qr-img" alt="" width="176" height="176" style="display:block;width:176px;height:176px;">
+          </div>
           <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;" id="lbl-qr-hint">Escanea para agregar automáticamente</div>
           <div id="shortcode-display" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;padding:8px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;">
             <span style="font-size:0.78rem;color:var(--muted);" id="lbl-your-code">Your code:</span>
@@ -1438,8 +1518,12 @@ const I18N = {
     save_sks: '📦 Proyecto (.SKS)', cancel: 'Cancelar',
     inbox_title: '✉️ Dibujos recibidos', inbox_close: 'Cerrar',
     inbox_empty: 'No tienes dibujos nuevos', inbox_sent_you: 'Te envió un dibujo',
+    inbox_del: 'Borrar sin verlo',
+    inbox_del_warn: '¿Borrar el dibujo de <b>{name}</b> sin verlo?<br><br>No se puede recuperar.',
     inbox_empty_hint: 'Dibuja algo y envíalo: cuando te respondan, aparecerá aquí.',
     no_friends_hint: 'Comparte tu enlace para que te agreguen →',
+    edit_profile: 'Editar perfil', edit_profile_sub: 'Nombre, @usuario y correo',
+    email_row: 'Correo',
     close: 'Cerrar',
     del_account: 'Borrar mi cuenta',
     del_warn: '¿Borrar tu cuenta para siempre?<br><br>Se eliminan tu perfil, tus amistades y tus dibujos. <b>No se puede deshacer.</b><br><br>Los dibujos que ya enviaste seguirán en la bandeja de quien los recibió hasta que caduquen, y lo que compartiste en la galería pública debes pedirnos que lo quitemos.',
@@ -1551,8 +1635,12 @@ const I18N = {
     save_sks: '📦 Project (.SKS)', cancel: 'Cancel',
     inbox_title: '✉️ Received drawings', inbox_close: 'Close',
     inbox_empty: 'No new drawings', inbox_sent_you: 'sent you a drawing',
+    inbox_del: 'Delete without viewing',
+    inbox_del_warn: 'Delete <b>{name}</b>\'s drawing without seeing it?<br><br>It cannot be recovered.',
     inbox_empty_hint: 'Draw something and send it — replies will show up here.',
     no_friends_hint: 'Share your link so people can add you →',
+    edit_profile: 'Edit profile', edit_profile_sub: 'Name, @username and email',
+    email_row: 'Email',
     close: 'Close',
     del_account: 'Delete my account',
     del_warn: 'Delete your account for good?<br><br>Your profile, your friendships and your drawings are removed. <b>This cannot be undone.</b><br><br>Drawings you already sent stay in the recipient\'s inbox until they expire, and anything shared to the public gallery has to be removed by asking us.',
@@ -1737,6 +1825,9 @@ function applyLang() {
   set('lbl-replay-self', 'replay_self'); set('lbl-replay-self-sub', 'replay_self_sub');
   set('lbl-review', 'review_label'); set('lbl-review-sub', 'review_sub');
   set('lbl-viewer-report', 'report');
+  set('lbl-edit-profile', 'edit_profile');
+  set('lbl-edit-profile-sub', 'edit_profile_sub');
+  set('lbl-email-row', 'email_row');
   set('settings-delete-account', 'del_account');
   set('lbl-privacy', 'privacy');
   set('lbl-terms', 'terms');
@@ -3329,6 +3420,36 @@ function actualizarBadge() {
   });
 }
 
+/* Cuenta atrás como hh:mm:ss. Un "3h 20m" quieto no transmite urgencia;
+   los segundos moviéndose sí. */
+function formatoCuenta(expira) {
+  const rem = Math.max(0, (expira || 0) - Date.now());
+  const h = Math.floor(rem / 3600000);
+  const m = Math.floor((rem % 3600000) / 60000);
+  const sg = Math.floor((rem % 60000) / 1000);
+  const dd = n => String(n).padStart(2, '0');
+  return `${dd(h)}:${dd(m)}:${dd(sg)}`;
+}
+
+/* Un solo intervalo para toda la bandeja: uno por fila multiplicaría
+   temporizadores sin motivo. Se detiene cuando ya no hay relojes. */
+let _relojBandeja = null;
+function arrancarRelojes() {
+  clearInterval(_relojBandeja);
+  const tic = () => {
+    const relojes = document.querySelectorAll('.inbox-reloj[data-exp]');
+    if (!relojes.length) { clearInterval(_relojBandeja); _relojBandeja = null; return; }
+    relojes.forEach(el => {
+      const exp = +el.dataset.exp || 0;
+      el.textContent = formatoCuenta(exp);
+      /* Caducado: queda en cero en vez de contar hacia atrás sin fin. */
+      if (exp && exp - Date.now() <= 0) el.removeAttribute('data-exp');
+    });
+  };
+  tic();
+  _relojBandeja = setInterval(tic, 1000);
+}
+
 function renderInbox() {
   inboxBody.innerHTML = '';
 
@@ -3359,11 +3480,9 @@ function renderInbox() {
     const card = document.createElement('div');
     card.className = 'inbox-card';
 
-    /* Tiempo restante formateado */
-    const rem = Math.max(0, msg.expiresAt - Date.now());
-    const hrs = Math.floor(rem/3600000);
-    const mins = Math.floor((rem%3600000)/60000);
-    const timerText = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+    /* Horas:minutos:segundos, con los segundos corriendo. Ver bajar el
+       contador es lo que comunica que el dibujo se va de verdad. */
+    const timerText = formatoCuenta(msg.expiresAt);
 
     /* Hace cuánto llegó */
     const ago = Date.now() - msg.receivedAt;
@@ -3372,30 +3491,60 @@ function renderInbox() {
       ? (lang === 'es' ? `hace ${agoMins}m` : `${agoMins}m ago`)
       : (lang === 'es' ? `hace ${Math.floor(agoMins/60)}h` : `${Math.floor(agoMins/60)}h ago`);
 
+    const enlace = getBaseUrl() + '?view=' + msg.id;
     card.innerHTML = `
-      ${!msg.visto ? '<div class="inbox-card-new"></div>' : ''}
-      <img class="inbox-card-av" src="${esc(safeUrl(genAvatar(msg.sender)))}" alt="${esc(msg.sender)}">
-      <div class="inbox-card-info">
-        <div class="inbox-card-name">${esc(msg.sender)}</div>
-        <div class="inbox-card-sub">${lang === 'es' ? 'Te envió un dibujo' : 'Sent you a drawing'} · ${esc(agoText)}</div>
+      <div class="inbox-mitad">
+        ${!msg.visto ? '<div class="inbox-card-new"></div>' : ''}
+        <div class="inbox-quien" title="${esc(t('prof_open'))}">
+          <img class="inbox-card-av" src="${esc(safeUrl(genAvatar(msg.sender)))}" alt="${esc(msg.sender)}">
+          <div class="inbox-card-info">
+            <div class="inbox-card-name">@${esc(msg.sender)}</div>
+            <div class="inbox-card-sub">${esc(t('inbox_sent_you'))} · ${esc(agoText)}</div>
+          </div>
+        </div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
-        <div class="inbox-card-timer">⏱ ${esc(timerText)}</div>
-        <button class="inbox-share-btn" data-id="${esc(msg.id)}" title="Compartir link">🔗</button>
-        <button class="inbox-report-btn" data-id="${esc(msg.id)}" title="${esc(t('report'))}">⚑</button>
+      <div class="inbox-otra">
+        <div class="inbox-reloj" data-exp="${esc(String(msg.expiresAt || 0))}">${esc(timerText)}</div>
+        <div class="inbox-enlace" title="${esc(t('link_copied'))}">
+          <span>${esc(enlace.replace(/^https?:\/\//, ''))}</span>📋
+        </div>
+        <button class="inbox-report-btn" title="${esc(t('report'))}">⚑</button>
+        <button class="inbox-borrar" title="${esc(t('inbox_del'))}">✕</button>
       </div>`;
 
-    /* Denunciar este dibujo — tampoco abre el replay */
+    /* Tocar a la persona abre su perfil, no el dibujo: antes cualquier
+       toque abría el replay y no había forma de ver quién era. */
+    card.querySelector('.inbox-quien').addEventListener('click', e => {
+      e.stopPropagation();
+      abrirPerfilAmigo(
+        { id: msg.senderId || msg.id, nombre: msg.sender, username: msg.senderUsername || '', photoURL: '' },
+        () => toast(t('friend_removed')));
+    });
+
+    /* El enlace se copia de un toque. */
+    card.querySelector('.inbox-enlace').addEventListener('click', async e => {
+      e.stopPropagation();
+      try { await navigator.clipboard.writeText(enlace); toast(t('link_copied')); }
+      catch (_) { toast(enlace); }
+    });
+
     card.querySelector('.inbox-report-btn').addEventListener('click', e => {
       e.stopPropagation();
       denunciar('sketch', msg.id, msg.sender);
     });
 
-    /* Botón compartir — no abre el replay */
-    card.querySelector('.inbox-share-btn').addEventListener('click', e => {
+    /* Borrar sin abrirlo: a veces solo quieres que desaparezca. */
+    card.querySelector('.inbox-borrar').addEventListener('click', async e => {
       e.stopPropagation();
-      const shareUrl = getBaseUrl() + '?view=' + msg.id;
-      compartirEnlace(t('share_sent_you').replace('{name}', msg.sender), shareUrl);
+      if (!await ssConfirm(t('inbox_del_warn').replace('{name}', esc(msg.sender)))) return;
+      card.remove();
+      const i = bandejaEntrada.indexOf(msg);
+      if (i >= 0) bandejaEntrada.splice(i, 1);
+      actualizarBadge();
+      if (!bandejaEntrada.length) renderInbox();
+      if (firebaseReady && msg.id) {
+        db.collection('sketches').doc(msg.id).delete().catch(err => logRemoteError('borrarSketch', err));
+      }
     });
 
     card.addEventListener('click', () => {
@@ -3408,6 +3557,8 @@ function renderInbox() {
 
     inboxBody.appendChild(card);
   });
+
+  arrancarRelojes();
 }
 
 function abrirInbox() {
@@ -4233,8 +4384,14 @@ const settingsFriends = document.getElementById('settings-friends');
 function abrirSettings() {
   /* Actualizar datos del perfil */
   document.getElementById('settings-avatar').src = genAvatar(usuario || '?');
-  document.getElementById('settings-name').textContent = usuario || '—';
-  document.getElementById('settings-email').textContent = auth?.currentUser?.email || auth?.currentUser?.displayName || '';
+  /* Cuentas creadas antes de que el @usuario fuera obligatorio pueden no
+     tenerlo. Mostrar un hueco vacío sería peor que caer al correo. */
+  const correo = auth?.currentUser?.email || '';
+  document.getElementById('settings-username-display').textContent =
+    usuario ? '@' + usuario : (correo.split('@')[0] || '—');
+  document.getElementById('settings-email').textContent = correo || auth?.currentUser?.displayName || '';
+  const pe = document.getElementById('perfil-email');
+  if (pe) pe.textContent = correo || '—';
 
   /* Cargar shortCode y email desde Firestore.
      Si el usuario no tiene shortCode (cuenta antigua), generar uno ahora. */
@@ -4250,9 +4407,14 @@ function abrirSettings() {
         }
         document.getElementById('user-shortcode').textContent = code;
         document.getElementById('shortcode-value').textContent = code;
-        document.getElementById('settings-email').textContent = auth.currentUser.email || '';
-        document.getElementById('settings-name').textContent = d.displayName || usuario;
-        document.getElementById('settings-username-display').textContent = d.username ? '@' + d.username : '';
+        const mail = auth.currentUser.email || '';
+        document.getElementById('settings-email').textContent = mail;
+        const pe2 = document.getElementById('perfil-email');
+        if (pe2) pe2.textContent = mail || '—';
+        /* El nombre real sigue guardándose, pero vive en el panel. */
+        document.getElementById('settings-name').textContent = d.displayName || usuario || '';
+        document.getElementById('settings-username-display').textContent =
+          d.username ? '@' + d.username : (mail.split('@')[0] || '—');
         const invUrl = getBaseUrl() + '?add=' + code;
         document.getElementById('invite-link-text').textContent = invUrl;
         if (window._reloadShareQR) window._reloadShareQR();
@@ -4397,6 +4559,21 @@ async function borrarCuenta() {
   }
 }
 document.getElementById('settings-delete-account').addEventListener('click', borrarCuenta);
+
+/* Editar perfil: un panel que se despliega. Fuera solo se ven @usuario,
+   correo y avatar; el nombre real es una etiqueta y vive aquí dentro. */
+(function() {
+  const fila  = document.getElementById('perfil-toggle');
+  const panel = document.getElementById('perfil-panel');
+  const flecha = document.getElementById('perfil-toggle-btn');
+  if (!fila || !panel) return;
+  fila.addEventListener('click', () => {
+    const abierto = panel.style.display !== 'none';
+    panel.style.display = abierto ? 'none' : '';
+    if (flecha) flecha.textContent = abierto ? '▸' : '▾';
+  });
+})();
+
 
 function abrirPerfilAmigo(amigo, alEliminar) {
   const foto = safeUrl(amigo.photoURL) || genAvatar(amigo.nombre);
@@ -4559,7 +4736,9 @@ document.getElementById('rename-inp').addEventListener('keydown', e => { if (e.k
 /* ── Cambiar @usuario inline ── */
 let _vigilaUnameAjustes = false;
 document.getElementById('settings-change-username').addEventListener('click', () => {
-  const cur = document.getElementById('settings-username-display').textContent.replace('@','');
+  /* De la variable, no del texto de la cabecera: ahí puede haber el
+     respaldo del correo si la cuenta aún no tiene @usuario. */
+  const cur = usuario || '';
   const inp = document.getElementById('uname-inp');
   inp.value = cur;
   document.getElementById('uname-edit-error').style.display = 'none';
@@ -4638,15 +4817,12 @@ document.getElementById('invite-copy-btn').addEventListener('click', () => {
     if (!code || code === '——') return; /* shortcode not loaded yet — _reloadShareQR called again when settings opens */
     qrLoaded = true;
     const appUrl = encodeURIComponent(getBaseUrl() + '?add=' + code);
-    const qrCanvas = document.getElementById('share-qr-canvas');
-    qrCanvas.width = 200; qrCanvas.height = 200;
-    const ctx2 = qrCanvas.getContext('2d');
-    ctx2.fillStyle = '#ccc'; ctx2.fillRect(0,0,200,200); /* placeholder while loading */
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${appUrl}`;
-    img.onload = () => { qrCanvas.width=400; qrCanvas.height=400; qrCanvas.getContext('2d').drawImage(img,0,0); };
-    img.onerror = () => { qrLoaded = false; }; /* allow retry */
+    const img = document.getElementById('share-qr-img');
+    if (!img) return;
+    /* Se pide al doble de tamaño del que se muestra para que se vea nítido
+       en pantallas de alta densidad. */
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=352x352&margin=0&data=${appUrl}`;
+    img.onerror = () => { qrLoaded = false; };
   }
   function activate(idx) {
     tabs.forEach((t, i) => {
