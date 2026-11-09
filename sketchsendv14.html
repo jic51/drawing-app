@@ -477,6 +477,50 @@
       background:rgba(239,68,68,0.1); padding:4px 10px;
       border-radius:16px; white-space:nowrap; flex-shrink:0;
     }
+    /* ── Fila de la bandeja ──
+       Mitad para quién lo envió, y la otra mitad repartida: un tercio
+       para el tiempo que queda y dos tercios para el enlace, que se
+       copia de un toque. La ✕ borra sin tener que abrir el dibujo. */
+    .inbox-mitad { flex:1 1 50%; min-width:0; display:flex; align-items:center; gap:10px; }
+    .inbox-quien { display:flex; align-items:center; gap:10px; min-width:0; cursor:pointer;
+                   border-radius:10px; padding:3px; margin:-3px; transition:background .15s; }
+    .inbox-quien:hover { background:var(--surface2); }
+    .inbox-otra  { flex:1 1 50%; display:flex; align-items:center; gap:8px; min-width:0; }
+    /* El reloj: los colores van EN los números, no detrás. */
+    .inbox-reloj {
+      flex:0 0 33%; min-width:0; text-align:center;
+      font-family:var(--display); font-weight:800; font-size:0.84rem;
+      font-variant-numeric:tabular-nums; white-space:nowrap;
+      background:linear-gradient(90deg,#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000);
+      background-size:200% auto; -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent; background-clip:text;
+      animation:mover 2.5s linear infinite;
+      width:fit-content; margin-inline:auto;
+    }
+    .inbox-enlace {
+      flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:6px;
+      background:var(--surface2); border:1px solid var(--border); border-radius:9px;
+      padding:5px 8px; cursor:pointer; transition:border-color .15s;
+    }
+    .inbox-enlace:hover { border-color:var(--accent); }
+    .inbox-enlace span {
+      flex:1; min-width:0; font-size:0.66rem; color:var(--muted);
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+    .inbox-borrar {
+      flex-shrink:0; width:28px; height:28px; border-radius:50%;
+      background:transparent; border:1px solid var(--border); color:var(--muted);
+      cursor:pointer; font-size:0.78rem; line-height:1;
+      display:flex; align-items:center; justify-content:center; transition:all .15s;
+    }
+    .inbox-borrar:hover { border-color:var(--danger); color:var(--danger); }
+    @media (max-width:560px) {
+      /* En pantalla estrecha la fila se parte en dos pisos, o el enlace
+         quedaría en dos caracteres. */
+      .inbox-card { flex-wrap:wrap; }
+      .inbox-mitad, .inbox-otra { flex:1 1 100%; }
+      .inbox-reloj { flex:0 0 auto; margin-inline:0; }
+    }
     .inbox-card-new {
       width:10px; height:10px; border-radius:50%; background:var(--accent2);
       flex-shrink:0; animation:pulso 2s ease-in-out infinite;
@@ -1458,6 +1502,8 @@ const I18N = {
     save_sks: '📦 Proyecto (.SKS)', cancel: 'Cancelar',
     inbox_title: '✉️ Dibujos recibidos', inbox_close: 'Cerrar',
     inbox_empty: 'No tienes dibujos nuevos', inbox_sent_you: 'Te envió un dibujo',
+    inbox_del: 'Borrar sin verlo',
+    inbox_del_warn: '¿Borrar el dibujo de <b>{name}</b> sin verlo?<br><br>No se puede recuperar.',
     inbox_empty_hint: 'Dibuja algo y envíalo: cuando te respondan, aparecerá aquí.',
     no_friends_hint: 'Comparte tu enlace para que te agreguen →',
     edit_profile: 'Editar perfil', edit_profile_sub: 'Nombre, @usuario y correo',
@@ -1573,6 +1619,8 @@ const I18N = {
     save_sks: '📦 Project (.SKS)', cancel: 'Cancel',
     inbox_title: '✉️ Received drawings', inbox_close: 'Close',
     inbox_empty: 'No new drawings', inbox_sent_you: 'sent you a drawing',
+    inbox_del: 'Delete without viewing',
+    inbox_del_warn: 'Delete <b>{name}</b>\'s drawing without seeing it?<br><br>It cannot be recovered.',
     inbox_empty_hint: 'Draw something and send it — replies will show up here.',
     no_friends_hint: 'Share your link so people can add you →',
     edit_profile: 'Edit profile', edit_profile_sub: 'Name, @username and email',
@@ -3356,6 +3404,36 @@ function actualizarBadge() {
   });
 }
 
+/* Cuenta atrás como hh:mm:ss. Un "3h 20m" quieto no transmite urgencia;
+   los segundos moviéndose sí. */
+function formatoCuenta(expira) {
+  const rem = Math.max(0, (expira || 0) - Date.now());
+  const h = Math.floor(rem / 3600000);
+  const m = Math.floor((rem % 3600000) / 60000);
+  const sg = Math.floor((rem % 60000) / 1000);
+  const dd = n => String(n).padStart(2, '0');
+  return `${dd(h)}:${dd(m)}:${dd(sg)}`;
+}
+
+/* Un solo intervalo para toda la bandeja: uno por fila multiplicaría
+   temporizadores sin motivo. Se detiene cuando ya no hay relojes. */
+let _relojBandeja = null;
+function arrancarRelojes() {
+  clearInterval(_relojBandeja);
+  const tic = () => {
+    const relojes = document.querySelectorAll('.inbox-reloj[data-exp]');
+    if (!relojes.length) { clearInterval(_relojBandeja); _relojBandeja = null; return; }
+    relojes.forEach(el => {
+      const exp = +el.dataset.exp || 0;
+      el.textContent = formatoCuenta(exp);
+      /* Caducado: queda en cero en vez de contar hacia atrás sin fin. */
+      if (exp && exp - Date.now() <= 0) el.removeAttribute('data-exp');
+    });
+  };
+  tic();
+  _relojBandeja = setInterval(tic, 1000);
+}
+
 function renderInbox() {
   inboxBody.innerHTML = '';
 
@@ -3386,11 +3464,9 @@ function renderInbox() {
     const card = document.createElement('div');
     card.className = 'inbox-card';
 
-    /* Tiempo restante formateado */
-    const rem = Math.max(0, msg.expiresAt - Date.now());
-    const hrs = Math.floor(rem/3600000);
-    const mins = Math.floor((rem%3600000)/60000);
-    const timerText = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+    /* Horas:minutos:segundos, con los segundos corriendo. Ver bajar el
+       contador es lo que comunica que el dibujo se va de verdad. */
+    const timerText = formatoCuenta(msg.expiresAt);
 
     /* Hace cuánto llegó */
     const ago = Date.now() - msg.receivedAt;
@@ -3399,30 +3475,60 @@ function renderInbox() {
       ? (lang === 'es' ? `hace ${agoMins}m` : `${agoMins}m ago`)
       : (lang === 'es' ? `hace ${Math.floor(agoMins/60)}h` : `${Math.floor(agoMins/60)}h ago`);
 
+    const enlace = getBaseUrl() + '?view=' + msg.id;
     card.innerHTML = `
-      ${!msg.visto ? '<div class="inbox-card-new"></div>' : ''}
-      <img class="inbox-card-av" src="${esc(safeUrl(genAvatar(msg.sender)))}" alt="${esc(msg.sender)}">
-      <div class="inbox-card-info">
-        <div class="inbox-card-name">${esc(msg.sender)}</div>
-        <div class="inbox-card-sub">${lang === 'es' ? 'Te envió un dibujo' : 'Sent you a drawing'} · ${esc(agoText)}</div>
+      <div class="inbox-mitad">
+        ${!msg.visto ? '<div class="inbox-card-new"></div>' : ''}
+        <div class="inbox-quien" title="${esc(t('prof_open'))}">
+          <img class="inbox-card-av" src="${esc(safeUrl(genAvatar(msg.sender)))}" alt="${esc(msg.sender)}">
+          <div class="inbox-card-info">
+            <div class="inbox-card-name">${esc(msg.sender)}</div>
+            <div class="inbox-card-sub">${esc(t('inbox_sent_you'))} · ${esc(agoText)}</div>
+          </div>
+        </div>
       </div>
-      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
-        <div class="inbox-card-timer">⏱ ${esc(timerText)}</div>
-        <button class="inbox-share-btn" data-id="${esc(msg.id)}" title="Compartir link">🔗</button>
-        <button class="inbox-report-btn" data-id="${esc(msg.id)}" title="${esc(t('report'))}">⚑</button>
+      <div class="inbox-otra">
+        <div class="inbox-reloj" data-exp="${esc(String(msg.expiresAt || 0))}">${esc(timerText)}</div>
+        <div class="inbox-enlace" title="${esc(t('link_copied'))}">
+          <span>${esc(enlace.replace(/^https?:\/\//, ''))}</span>📋
+        </div>
+        <button class="inbox-report-btn" title="${esc(t('report'))}">⚑</button>
+        <button class="inbox-borrar" title="${esc(t('inbox_del'))}">✕</button>
       </div>`;
 
-    /* Denunciar este dibujo — tampoco abre el replay */
+    /* Tocar a la persona abre su perfil, no el dibujo: antes cualquier
+       toque abría el replay y no había forma de ver quién era. */
+    card.querySelector('.inbox-quien').addEventListener('click', e => {
+      e.stopPropagation();
+      abrirPerfilAmigo(
+        { id: msg.senderId || msg.id, nombre: msg.sender, username: msg.senderUsername || '', photoURL: '' },
+        () => toast(t('friend_removed')));
+    });
+
+    /* El enlace se copia de un toque. */
+    card.querySelector('.inbox-enlace').addEventListener('click', async e => {
+      e.stopPropagation();
+      try { await navigator.clipboard.writeText(enlace); toast(t('link_copied')); }
+      catch (_) { toast(enlace); }
+    });
+
     card.querySelector('.inbox-report-btn').addEventListener('click', e => {
       e.stopPropagation();
       denunciar('sketch', msg.id, msg.sender);
     });
 
-    /* Botón compartir — no abre el replay */
-    card.querySelector('.inbox-share-btn').addEventListener('click', e => {
+    /* Borrar sin abrirlo: a veces solo quieres que desaparezca. */
+    card.querySelector('.inbox-borrar').addEventListener('click', async e => {
       e.stopPropagation();
-      const shareUrl = getBaseUrl() + '?view=' + msg.id;
-      compartirEnlace(t('share_sent_you').replace('{name}', msg.sender), shareUrl);
+      if (!await ssConfirm(t('inbox_del_warn').replace('{name}', esc(msg.sender)))) return;
+      card.remove();
+      const i = bandejaEntrada.indexOf(msg);
+      if (i >= 0) bandejaEntrada.splice(i, 1);
+      actualizarBadge();
+      if (!bandejaEntrada.length) renderInbox();
+      if (firebaseReady && msg.id) {
+        db.collection('sketches').doc(msg.id).delete().catch(err => logRemoteError('borrarSketch', err));
+      }
     });
 
     card.addEventListener('click', () => {
@@ -3435,6 +3541,8 @@ function renderInbox() {
 
     inboxBody.appendChild(card);
   });
+
+  arrancarRelojes();
 }
 
 function abrirInbox() {
