@@ -291,6 +291,30 @@ section {
    obra en construcción. */
 .gallery-section { text-align: center; display: none; }
 .gallery-section.ready { display: block; }
+/* ══ LISTA DE CORREO ══ */
+.lista-section { padding: 64px clamp(16px,4vw,40px); }
+.lista-caja {
+  max-width: 560px; margin: 0 auto; text-align: center;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 20px; padding: 38px clamp(20px,5vw,40px);
+}
+.lista-titulo { font-size: clamp(1.25rem,3.6vw,1.75rem); font-weight: 800; letter-spacing: -.02em; }
+.lista-sub { color: var(--muted); font-size: .92rem; margin: 10px 0 22px; line-height: 1.55; }
+.lista-form { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.lista-form input {
+  flex: 1 1 240px; min-width: 0; padding: 13px 16px; border-radius: 12px;
+  background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+  font-family: var(--sans); font-size: .95rem; outline: none;
+}
+.lista-form input:focus { border-color: var(--accent); }
+.lista-form button {
+  flex: 0 0 auto; padding: 13px 26px; border-radius: 12px; border: 0; cursor: pointer;
+  background: var(--accent); color: #fff; font-family: var(--sans);
+  font-size: .95rem; font-weight: 700;
+}
+.lista-form button:disabled { opacity: .55; cursor: default; }
+.lista-msg { min-height: 20px; margin-top: 14px; font-size: .86rem; }
+
 /* ══ OPINIONES ══ */
 .reviews-section { padding: 72px clamp(16px,4vw,40px); max-width: 1100px; margin: 0 auto; }
 /* ══ CARRUSEL ══
@@ -604,6 +628,23 @@ footer {
   <div><a href="./" target="_blank" class="cta-btn" style="font-size:1rem;padding:14px 34px;" data-i18n="try_cta">Create your account</a></div>
 </section>
 
+
+<!-- ══ LISTA DE CORREO ══
+     Quien visita y no se registra hoy se pierde para siempre. Esto es lo
+     único de la página que se queda contigo aunque cambien las redes. -->
+<section class="lista-section reveal" id="lista-section">
+  <div class="lista-caja">
+    <h2 class="lista-titulo" data-i18n="lista_titulo">A drawing prompt every week</h2>
+    <p class="lista-sub" data-i18n="lista_sub">One idea to draw, every Monday. No spam, leave whenever you like.</p>
+    <form class="lista-form" id="lista-form" novalidate>
+      <input type="email" id="lista-email" required autocomplete="email"
+             data-i18n-ph="lista_ph" placeholder="your@email.com">
+      <button type="submit" id="lista-btn" data-i18n="lista_btn">Sign me up</button>
+    </form>
+    <div class="lista-msg" id="lista-msg" role="status"></div>
+  </div>
+</section>
+
 <!-- ══ GALERÍA ══ -->
 <section class="gallery-section" id="gallery-section">
   <div class="section-head">
@@ -717,6 +758,12 @@ const I18N = {
     try_cta: 'Create your account',
     gallery_title: 'Community drawings', gallery_subtitle: 'Shared by our artists',
     reviews_title: 'What people say',
+    lista_titulo: 'A drawing prompt every week',
+    lista_sub: 'One idea to draw, every Monday. No spam, leave whenever you like.',
+    lista_ph: 'your@email.com', lista_btn: 'Sign me up',
+    lista_enviando: 'Sending…', lista_ok: 'You are in. See you Monday.',
+    lista_mal: 'That email does not look right.',
+    lista_fail: "Couldn't sign you up. Try again in a moment.",
     cifras_titulo: 'SketchSend so far', users_label: 'people drawing', paises_label: 'countries',
     faq_title: 'Common questions',
     faq_q1: 'Is it free?',
@@ -759,6 +806,12 @@ const I18N = {
     try_cta: 'Crea tu cuenta',
     gallery_title: 'Dibujos de la comunidad', gallery_subtitle: 'Compartidos por nuestros artistas',
     reviews_title: 'Lo que dicen las personas',
+    lista_titulo: 'Un reto de dibujo cada semana',
+    lista_sub: 'Una idea para dibujar, cada lunes. Sin spam, te sales cuando quieras.',
+    lista_ph: 'tu@correo.com', lista_btn: 'Apúntame',
+    lista_enviando: 'Enviando…', lista_ok: 'Listo. Nos vemos el lunes.',
+    lista_mal: 'Ese correo no parece válido.',
+    lista_fail: 'No se pudo apuntar. Inténtalo en un momento.',
     cifras_titulo: 'SketchSend hasta hoy', users_label: 'personas dibujando', paises_label: 'países',
     faq_title: 'Preguntas frecuentes',
     faq_q1: '¿Es gratis?',
@@ -786,6 +839,11 @@ function setLang(l) {
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.getAttribute('data-i18n');
     if (I18N[l][key]) el.textContent = I18N[l][key];
+  });
+  /* El marcador del campo de correo también se traduce. */
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const key = el.getAttribute('data-i18n-ph');
+    if (I18N[l][key]) el.placeholder = I18N[l][key];
   });
   document.querySelectorAll('[data-i18n-alt]').forEach(el => {
     const key = el.getAttribute('data-i18n-alt');
@@ -1208,6 +1266,56 @@ function montarCarrusel(grid) {
   };
 }
 
+/* ══ LISTA DE CORREO ══
+   Guarda el correo en Firestore. Dos cuidados: el botón se bloquea
+   mientras escribe para que un doble toque no cree dos filas, y si falla
+   se muestra el motivo en vez de dejar al visitante sin saber qué pasó. */
+(function() {
+  const form = document.getElementById('lista-form');
+  if (!form) return;
+  const inp = document.getElementById('lista-email');
+  const btn = document.getElementById('lista-btn');
+  const msg = document.getElementById('lista-msg');
+
+  const decir = (texto, ok) => {
+    msg.textContent = texto;
+    msg.style.color = ok ? 'var(--ok, #22c55e)' : 'var(--danger, #ef4444)';
+  };
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const correo = (inp.value || '').trim().toLowerCase();
+    /* Validación mínima: comprobar de verdad si existe es imposible desde
+       aquí, así que solo se descarta lo que claramente no es un correo. */
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo)) {
+      decir(T('lista_mal'), false); inp.focus(); return;
+    }
+    if (!window.__db) { decir(T('lista_fail'), false); return; }
+
+    btn.disabled = true;
+    const antes = btn.textContent;
+    btn.textContent = T('lista_enviando');
+    try {
+      /* El id es el propio correo: apuntarse dos veces no crea dos filas. */
+      await window.__db.collection('landing_emails').doc(correo).set({
+        email: correo,
+        lang: typeof lang !== 'undefined' ? lang : 'en',
+        createdAt: window.__ts ? window.__ts() : null,
+      }, { merge: true });
+      form.style.display = 'none';
+      decir(T('lista_ok'), true);
+    } catch (err) {
+      btn.disabled = false; btn.textContent = antes;
+      decir(T('lista_fail'), false);
+    }
+  });
+
+  function T(k) {
+    try { return (I18N[lang] && I18N[lang][k]) || I18N.en[k] || k; }
+    catch (e) { return k; }
+  }
+})();
+
 /* ══ FIREBASE — sólo lectura, para el contador y la galería ══ */
 (function() {
   const firebaseConfig = {
@@ -1222,6 +1330,9 @@ function montarCarrusel(grid) {
   try {
     const app = firebase.initializeApp(firebaseConfig, 'landing');
     const db = firebase.firestore(app);
+    /* El formulario de correo vive fuera de este bloque. */
+    window.__db = db;
+    window.__ts = () => firebase.firestore.FieldValue.serverTimestamp();
 
     db.collection('stats').doc('global').onSnapshot(doc => {
       const data = doc.data();
