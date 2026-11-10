@@ -288,7 +288,15 @@ visor de código abierto. Mide el interés real sin construir infraestructura.
 |---|-----|---------|--------|
 | D1 | **Video vertical compartible** — el replay de un dibujo como video 9:16 de ~10 s con marca y @usuario, listo para TikTok, Reels o Shorts | El modelo TikTok: cada pieza compartida es publicidad gratis. Ya existe el motor de replay y la descarga de video; falta el formato vertical con marca | 🔴 **Desbloqueado 2026-11-10**: el lienzo ya es 9:16 en todos los dispositivos, así que el dibujo llena el marco sin recortes. Falta el video en sí |
 | D2 | **Captar correos desde la landing** | Hoy quien visita y no se registra se pierde para siempre. Una lista es tuya; los seguidores de una red no | ✅ Hecho — formulario en la landing escribe en `landing_emails`. Las reglas impiden leer la lista desde el cliente, así que se exporta desde la consola |
-| D3 | **Reto semanal** — un tema por semana ("dibuja tu desayuno"), el mismo para todos | Da razón para volver, produce contenido solo y es compartible por naturaleza. El equivalente al "consejo diario" del video, pero el trabajo lo hace el usuario | 🔵 En curso 2026-11-10 |
+| D3 | **Reto semanal** — un tema por semana, el mismo para todos | Da razón para volver, produce contenido solo y es compartible por naturaleza | ✅ **Primera mitad hecha 2026-11-10.** 20 retos que rotan. No hay backend: el reto se CALCULA de la fecha en UTC, así que es el mismo en todo el planeta y cambia a la vez (lunes 00:00 UTC). Insignia en la cabecera (en móvil se oculta: salía cortada) y primera sugerencia sobre el lienzo, también al limpiar. **Falta la segunda mitad:** marcar los dibujos con el reto y la galería de los mejores — ver R1 |
+
+### Pendiente del reto semanal
+
+| # | Qué | Detalle |
+|---|-----|---------|
+| R1 | Marcar el dibujo con el reto de esa semana | Añadiría un campo `reto` al documento del dibujo. **Antes hay que mirar las reglas de Firestore**: no están en el repo, solo en la consola. Si validan los campos con `hasOnly([...])`, un campo nuevo haría fallar TODOS los envíos, no solo los del reto. Comprobarlo antes de tocar nada |
+| R2 | Galería de los mejores del reto | Depende de R1: sin la marca no hay por dónde filtrar |
+| R3 | Avisar del reto nuevo | Los lunes. Reutilizar las notificaciones push que ya funcionan |
 
 **Lo que NO hacer todavía:** ProductHunt, prensa o cualquier empujón de
 tráfico mientras la app siga rota en Safari. Una oleada de visitantes se

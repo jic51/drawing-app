@@ -198,6 +198,21 @@
       border:1px solid var(--border); background:var(--surface2); color:var(--accent2); white-space:nowrap;
     }
 
+    /* Reto de la semana. Mismo molde que la insignia de temporada, pero con
+       el color de acento para que se distinga de un vistazo. En pantallas
+       estrechas se recorta en vez de empujar al resto de la fila. */
+    .reto-badge {
+      font-size:0.68rem; font-weight:600; padding:3px 9px; border-radius:20px;
+      border:1px solid var(--accent); background:var(--surface2); color:var(--accent2);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:42vw;
+    }
+    .reto-badge:empty { display:none; }
+    /* En móvil la fila de cabecera no da de sí y el reto salía cortado a la
+       mitad, que es peor que no ponerlo. Ahí el canal es la sugerencia sobre
+       el lienzo, que aparece entera y justo cuando estás decidiendo qué
+       dibujar. */
+    @media (max-width: 768px) { .reto-badge { display:none; } }
+
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
     body {
@@ -1221,6 +1236,7 @@
          title="SketchSend" style="visibility:hidden;text-decoration:none;">SketchSend ✏️</a>
       <div class="hdr-sep"></div>
       <span class="season-badge" id="season-badge"></span>
+      <span class="reto-badge" id="reto-badge"></span>
       <!-- Desktop only: buttons and user here -->
       <button class="hbtn" id="guardar-btn">💾 <span class="hbtn-text">Guardar</span></button>
       <button class="hbtn danger" id="limpiar-btn">🗑️ <span class="hbtn-text">Limpiar</span></button>
@@ -1751,6 +1767,8 @@ const I18N = {
     photo_too_large: '⚠️ La imagen debe pesar menos de 5 MB',
     downloading_img: '🖼️ Descargando imagen...',
     anonymous: 'Anónimo',
+    reto_titulo: 'Reto de la semana — el mismo para todo el mundo',
+    reto_prompt: '🎯 Reto de la semana: dibuja ',
     sin_senal: 'Sin conexión',
     senal_vuelve: 'Conexión restablecida',
     viewer_drawing_by: 'Dibujo de', viewer_tagline: 'Cada mensaje es un dibujo', viewer_cta: '✏️ Envía tu propio dibujo', viewer_hint: 'Crea una cuenta gratis y empieza a dibujar. ¡Es rápido!', viewer_loading: 'Cargando dibujo... ✏️', viewer_expired: '⏳ Este dibujo expiró o no existe.',
@@ -1871,6 +1889,8 @@ const I18N = {
     photo_too_large: '⚠️ Image must be under 5 MB',
     downloading_img: '🖼️ Downloading image...',
     anonymous: 'Anonymous',
+    reto_titulo: 'Challenge of the week — the same for everyone',
+    reto_prompt: '🎯 Challenge of the week: draw ',
     sin_senal: 'No connection',
     senal_vuelve: 'Back online',
     viewer_drawing_by: 'Drawing by', viewer_tagline: 'Every message is a drawing', viewer_cta: '✏️ Send your own drawing', viewer_hint: 'Create a free account and start drawing. It\'s quick!', viewer_loading: 'Loading drawing... ✏️', viewer_expired: '⏳ This drawing has expired or doesn\'t exist.',
@@ -1901,6 +1921,7 @@ function applyLang() {
   const ph  = (id, key) => { const el = q(id); if (el) el.placeholder = t(key); };
 
   if (typeof pintarSenal === 'function') pintarSenal();
+  if (typeof pintarReto === 'function') pintarReto();
 
   // ── WebView banner ──
   set('wb-title', 'wb_title'); set('wb-body', 'wb_body'); set('wb-hint', 'wb_hint');
@@ -2030,6 +2051,7 @@ function applyLang() {
 
   document.documentElement.lang = lang;
   if (typeof applySeason === 'function') applySeason();
+  if (typeof pintarReto === 'function') pintarReto();
 }
 
 function getBaseUrl() {
@@ -2144,6 +2166,66 @@ function fondoCanvas(targetCtx, w, h) {
 modoOscuro.addEventListener('change', () => redibujar());
 
 /* ── TEMAS ESTACIONALES ── */
+/* ══════════════════════════════════════════════════════
+   RETO SEMANAL — el mismo para todo el mundo
+   ────────────────────────────────────────────────────
+   No hace falta backend ni sincronizar nada: el reto se CALCULA a partir
+   de la fecha, así que dos personas en continentes distintos sacan el
+   mismo sin hablar entre ellas.
+
+   La cuenta va en UTC a propósito. Con la hora local, alguien en Tokio
+   cambiaría de reto medio día antes que alguien en Los Ángeles y durante
+   unas horas no estarían en el mismo. En UTC el cambio ocurre en el mismo
+   instante para todos: el lunes a las 00:00 UTC.
+══════════════════════════════════════════════════════ */
+const RETOS = [
+  { es:'tu desayuno',                 en:'your breakfast' },
+  { es:'tu animal favorito',          en:'your favourite animal' },
+  { es:'cómo te sientes hoy',         en:'how you feel today' },
+  { es:'tu lugar favorito',           en:'your favourite place' },
+  { es:'un monstruo simpático',       en:'a friendly monster' },
+  { es:'lo que ves por la ventana',   en:'what you see out the window' },
+  { es:'tu comida favorita',          en:'your favourite food' },
+  { es:'un robot',                    en:'a robot' },
+  { es:'a quien le mandas esto',      en:'whoever you are sending this to' },
+  { es:'tu canción favorita',         en:'your favourite song' },
+  { es:'algo que te dio risa',        en:'something that made you laugh' },
+  { es:'tu casa',                     en:'your house' },
+  { es:'un superhéroe inventado',     en:'a superhero you invent' },
+  { es:'el tiempo que hace',          en:'the weather right now' },
+  { es:'tu planta o tu mascota',      en:'your plant or your pet' },
+  { es:'algo imposible',              en:'something impossible' },
+  { es:'tu taza favorita',            en:'your favourite mug' },
+  { es:'el mejor día de tu semana',   en:'the best day of your week' },
+  { es:'un dinosaurio con sombrero',  en:'a dinosaur wearing a hat' },
+  { es:'lo primero que se te ocurra', en:'the first thing that comes to mind' },
+];
+
+/* Lunes 00:00 UTC. Desde aquí se cuentan las semanas. */
+const RETO_EPOCA = Date.UTC(2024, 0, 1);
+
+function semanaActual(ahora) {
+  const ms = (ahora || Date.now()) - RETO_EPOCA;
+  return Math.floor(ms / (7 * 24 * 60 * 60 * 1000));
+}
+
+function retoDeLaSemana(ahora) {
+  const i = ((semanaActual(ahora) % RETOS.length) + RETOS.length) % RETOS.length;
+  return RETOS[i];
+}
+
+function textoReto() {
+  const r = retoDeLaSemana();
+  return r[lang] || r.en;
+}
+
+function pintarReto() {
+  const b = document.getElementById('reto-badge');
+  if (!b) return;
+  b.textContent = '🎯 ' + textoReto();
+  b.title = t('reto_titulo');
+}
+
 const SEASONS = [
   { months:[2,3,4],  es:'🌸 Primavera', en:'🌸 Spring', cls:'season-spring' },
   { months:[5,6,7],  es:'☀️ Verano',    en:'☀️ Summer', cls:'season-summer' },
@@ -3233,13 +3315,23 @@ let currentPromptIdx = Math.floor(Math.random() * PROMPTS_ES.length);
 
 function getPrompts() { return lang === 'en' ? PROMPTS_EN : PROMPTS_ES; }
 
+let retoYaSugerido = false;
+
 function mostrarPrompt() {
   const el = document.getElementById('drawing-prompts');
   const txt = document.getElementById('prompt-text');
   if (!el || !txt) return;
-  const prompts = getPrompts();
-  currentPromptIdx = (currentPromptIdx + 1) % prompts.length;
-  txt.textContent = prompts[currentPromptIdx];
+  /* La primera sugerencia es el reto de la semana: es la que vale algo,
+     porque es la misma para todos y da de qué hablar. Luego ya rotan las
+     sueltas de siempre. */
+  if (!retoYaSugerido) {
+    retoYaSugerido = true;
+    txt.textContent = t('reto_prompt') + textoReto();
+  } else {
+    const prompts = getPrompts();
+    currentPromptIdx = (currentPromptIdx + 1) % prompts.length;
+    txt.textContent = prompts[currentPromptIdx];
+  }
   el.style.opacity = '1';
   el.style.pointerEvents = 'none';
   promptVisible = true;
@@ -3342,6 +3434,9 @@ function limpiarCanvas() {
   const w = cv.width/DPR, h = cv.height/DPR;
   ctx.clearRect(0, 0, w, h); fondoCanvas(ctx, w, h);
   actualizarBotones(); toast(t('canvas_cleared'));
+  /* Limpiar es "quiero empezar otra cosa": el mejor momento para volver a
+     proponer el reto de la semana en vez de una sugerencia suelta. */
+  retoYaSugerido = false;
   setTimeout(mostrarPrompt, 1000);
 }
 
@@ -5192,6 +5287,7 @@ document.querySelectorAll('.store-soon').forEach(btn => {
    ya existe. Ejecutamos directamente.
 ══════════════════════════════════════════════════════ */
 applySeason();
+pintarReto();
 applyLang();
 /* Si Firebase está activo, onAuthStateChanged gestiona login/logout.
    Si no, checkLogin() usa localStorage. En ambos casos arrancamos en login. */
