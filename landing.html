@@ -12,7 +12,100 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<script>
+/* Descubre el logo cuando Syne esté lista.
+
+   Va DETRÁS del <link> a propósito: un script en línea espera a que cargue la
+   hoja anterior, así que aquí las reglas @font-face ya existen. Puesto antes,
+   document.fonts.load('Syne') no encontraría ninguna cara y resolvería al
+   instante, destapando el logo con la fuente de reserva.
+
+   Y no sirve document.fonts.check(): devuelve true hasta para una familia
+   inventada, porque una familia desconocida cae en las del sistema.
+
+   El temporizador garantiza que el logo aparece aunque la fuente no llegue
+   nunca (red caída, Google bloqueado, navegador sin document.fonts). */
+(function () {
+  var hecho = false;
+  function descubrir() {
+    if (hecho) return; hecho = true;
+    document.documentElement.classList.add('fuentes-listas');
+  }
+  setTimeout(descubrir, 1200);
+  try {
+    if (document.fonts && document.fonts.load) {
+      Promise.all([
+        document.fonts.load('800 3rem Syne'),
+        document.fonts.load('400 1rem Inter')
+      ]).then(descubrir, descubrir);
+    } else { descubrir(); }
+  } catch (e) { descubrir(); }
+})();
+</script>
 <style>
+/* ── Reserva con las métricas de Inter ──────────────────────────────
+   Mientras Inter viaja, el texto se pinta con la fuente del sistema. Si esa
+   reserva ocupa otro tamaño, al llegar la real todo se recoloca. Los números
+   salen de medir en el navegador con document.fonts.ready, no de estimar:
+   Inter ocupa 104,94%–110,42% del ancho de Arial regular según el peso, y su
+   caja es ascenso 97 / descenso 24 del em (Arial: 91 / 21).
+   ascent-override se divide entre size-adjust porque size-adjust escala
+   también las métricas, no solo los trazos. */
+@font-face {
+  font-family: 'Inter respaldo';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  font-weight: 400;
+  size-adjust: 104.94%;
+  ascent-override: 92.43%;
+  descent-override: 22.87%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Inter respaldo';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  font-weight: 500;
+  size-adjust: 105.93%;
+  ascent-override: 91.57%;
+  descent-override: 22.66%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Inter respaldo';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  font-weight: 600;
+  size-adjust: 106.91%;
+  ascent-override: 90.73%;
+  descent-override: 22.45%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Inter respaldo';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  font-weight: 700;
+  size-adjust: 107.89%;
+  ascent-override: 89.91%;
+  descent-override: 22.24%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Inter respaldo';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  font-weight: 800;
+  size-adjust: 109.10%;
+  ascent-override: 88.91%;
+  descent-override: 22.00%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Inter respaldo';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  font-weight: 900;
+  size-adjust: 110.42%;
+  ascent-override: 87.85%;
+  descent-override: 21.74%;
+  line-gap-override: 0%;
+}
+
 :root {
   --bg: #0e0e14;
   --surface: #1a1a2e;
@@ -24,7 +117,7 @@
   --border: #2a2a40;
   --rainbow: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #9400d3, #ff0000);
   --glow: rgba(124,58,237,0.3);
-  --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --sans: 'Inter', 'Inter respaldo', -apple-system, BlinkMacSystemFont, sans-serif;
   --nav-h: 60px;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -58,7 +151,16 @@ img { max-width: 100%; height: auto; display: block; }
      solo alcanza a mostrar un color: el arcoíris se pierde. */
   width: fit-content;
   margin-inline: auto;
+
+  /* Syne 800 es casi un 70% más ancha que cualquier fuente del sistema, así
+     que una reserva estirada para que cuadre dejaría unas letras enormes. En
+     vez de eso el logo no se pinta hasta que Syne está lista. Nunca se queda
+     invisible: un temporizador lo descubre aunque la fuente no llegue. */
+  opacity: 0;
+  transition: opacity .22s ease;
 }
+html.fuentes-listas .ss-logo { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .ss-logo { transition: none; } }
 @keyframes mover { from{background-position:0% center} to{background-position:200% center} }
 
 /* ══ NAV FIJO ══ */
@@ -1417,17 +1519,33 @@ function montarCarrusel(grid) {
     const to = heroLogo.getBoundingClientRect();
     if (from.width === 0 || to.width === 0) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 500); return; }
     const clone = splashLogo.cloneNode(true);
+    /* El clon lleva el mismo id que el original: dos elementos con el mismo
+       id y getElementById puede devolver el que no es. */
+    clone.removeAttribute('id');
     /* No fijar font-family ni letter-spacing aquí: .ss-logo los gobierna. */
-    clone.style.cssText = 'position:fixed;z-index:10000;left:' + from.left + 'px;top:' + from.top + 'px;width:' + from.width + 'px;font-size:' + getComputedStyle(splashLogo).fontSize + ';transition:left 0.7s cubic-bezier(0.4,0,0.2,1),top 0.7s cubic-bezier(0.4,0,0.2,1),font-size 0.7s cubic-bezier(0.4,0,0.2,1),width 0.7s cubic-bezier(0.4,0,0.2,1);pointer-events:none;';
+
+    /* El vuelo se hace con transform, no con left/top/font-size/width.
+       Animar esas cuatro obliga al navegador a recalcular la maquetación en
+       cada fotograma: iba a tirones y además el navegador lo contaba como
+       29 saltos de maquetación seguidos. transform se resuelve en el
+       compositor y, por definición, no es un salto. */
+    const dx = to.left - from.left;
+    const dy = to.top  - from.top;
+    const k  = to.width / from.width;   /* mismo texto y misma fuente: la
+                                           razón de anchos es la de escala */
+    clone.style.cssText =
+      'position:fixed;z-index:10000;pointer-events:none;' +
+      'left:' + from.left + 'px;top:' + from.top + 'px;width:' + from.width + 'px;' +
+      'font-size:' + getComputedStyle(splashLogo).fontSize + ';' +
+      'transform-origin:left top;will-change:transform;' +
+      'transition:transform 0.7s cubic-bezier(0.4,0,0.2,1);';
     document.body.appendChild(clone);
     splashLogo.style.visibility = 'hidden';
     splash.style.opacity = '0';
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        clone.style.left = to.left + 'px';
-        clone.style.top = to.top + 'px';
-        clone.style.fontSize = getComputedStyle(heroLogo).fontSize;
-        clone.style.width = to.width + 'px';
+        clone.style.transform =
+          'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')';
       });
     });
     setTimeout(() => { heroLogo.style.visibility = 'visible'; clone.remove(); splash.remove(); }, 1200);
