@@ -1524,6 +1524,7 @@ const I18N = {
     no_friends_hint: 'Comparte tu enlace para que te agreguen →',
     edit_profile: 'Editar perfil', edit_profile_sub: 'Nombre, @usuario y correo',
     email_row: 'Correo',
+    safari_usa_correo: 'Safari bloquea ese camino. Entra con tu correo, justo abajo.',
     close: 'Cerrar',
     del_account: 'Borrar mi cuenta',
     del_warn: '¿Borrar tu cuenta para siempre?<br><br>Se eliminan tu perfil, tus amistades y tus dibujos. <b>No se puede deshacer.</b><br><br>Los dibujos que ya enviaste seguirán en la bandeja de quien los recibió hasta que caduquen, y lo que compartiste en la galería pública debes pedirnos que lo quitemos.',
@@ -1641,6 +1642,7 @@ const I18N = {
     no_friends_hint: 'Share your link so people can add you →',
     edit_profile: 'Edit profile', edit_profile_sub: 'Name, @username and email',
     email_row: 'Email',
+    safari_usa_correo: 'Safari blocks that route. Sign in with your email, just below.',
     close: 'Close',
     del_account: 'Delete my account',
     del_warn: 'Delete your account for good?<br><br>Your profile, your friendships and your drawings are removed. <b>This cannot be undone.</b><br><br>Drawings you already sent stay in the recipient\'s inbox until they expire, and anything shared to the public gallery has to be removed by asking us.',
@@ -2543,6 +2545,26 @@ if (esWebView) {
 
 /* ── Google Sign-In ── */
 /* Detectar iOS Safari: usa redirect porque los popups suelen estar bloqueados por defecto */
+/* Qué hacer con el usuario que devuelve Google: si no tiene documento,
+   pedirle un @usuario; si lo tiene, entrar. Lo comparten el camino de
+   Safari y el del resto, para que no se separen con el tiempo. */
+async function manejarLoginGoogle(user) {
+  if (!user) return;
+  try {
+    const doc = await db.collection('users').doc(user.uid).get();
+    if (!doc.exists) {
+      const nombre = user.displayName || user.email?.split('@')[0] || 'Usuario';
+      mostrarPantallaUsername(nombre, user.photoURL);
+    } else {
+      const d = doc.data();
+      finalizarLogin(d.username, d.displayName, user.photoURL || d.photoURL);
+    }
+  } catch (e) {
+    const nombre = user.displayName || user.email?.split('@')[0] || 'Usuario';
+    finalizarLogin(nombre, nombre, user.photoURL);
+  }
+}
+
 const esIosSafari = /iPhone|iPad|iPod/.test(ua) && /WebKit/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
 
 document.getElementById('google-btn').addEventListener('click', async () => {
@@ -2556,13 +2578,22 @@ document.getElementById('google-btn').addEventListener('click', async () => {
   const provider = new firebase.auth.GoogleAuthProvider();
   if (window.posthog) posthog.capture('login_started', { method: 'google' });
 
-  /* iOS Safari: popup suele estar bloqueado → usar redirect */
+  /* En Safari el redirect NO sirve: la sesión se guarda en el dominio de
+     Firebase y, al volver, la protección antirrastreo impide leerla, así
+     que el usuario aterriza otra vez en el login. Se repetía sin fin.
+     El popup sí funciona porque nace de un clic y no cambia de origen. */
   if (esIosSafari) {
     try {
-      await auth.signInWithRedirect(provider);
-    } catch(e) {
-      logRemoteError('signInWithRedirect', e);
-      toast('⚠️ Error con Google: ' + e.message);
+      const r = await auth.signInWithPopup(provider);
+      if (r && r.user) manejarLoginGoogle(r.user);
+    } catch (e) {
+      /* Si el navegador bloqueó la ventana, el redirect tampoco serviría:
+         se ofrece el correo, que en Safari sí completa. */
+      const bloqueado = e && /popup-blocked|popup-closed|cancelled-popup/.test(e.code || '');
+      if (!bloqueado) logRemoteError('signInWithPopup-ios', e);
+      toast('✉️ ' + t('safari_usa_correo'));
+      const det = document.getElementById('email-login-details');
+      if (det) { det.open = true; det.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
     }
     return;
   }
@@ -2573,20 +2604,7 @@ document.getElementById('google-btn').addEventListener('click', async () => {
     /* Si onAuthStateChanged no dispara (race condition en algunos navegadores),
        forzar la navegación manualmente con el usuario del resultado */
     if (result && result.user && !document.getElementById('app').style.display) {
-      const user = result.user;
-      try {
-        const doc = await db.collection('users').doc(user.uid).get();
-        if (!doc.exists) {
-          const nombre = user.displayName || user.email?.split('@')[0] || 'Usuario';
-          mostrarPantallaUsername(nombre, user.photoURL);
-        } else {
-          const d = doc.data();
-          finalizarLogin(d.username, d.displayName, user.photoURL || d.photoURL);
-        }
-      } catch(e2) {
-        const nombre = user.displayName || user.email?.split('@')[0] || 'Usuario';
-        finalizarLogin(nombre, nombre, user.photoURL);
-      }
+      await manejarLoginGoogle(result.user);
     }
   } catch(e) {
     if (e.code === 'auth/popup-closed-by-user') return;
