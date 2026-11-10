@@ -2,7 +2,7 @@
 
 > Este archivo es la fuente de verdad del proyecto.
 > Se actualiza en cada sesión de trabajo con Claude.
-> Última actualización: 2026-10-29
+> Última actualización: 2026-11-10
 >
 > **Orden de trabajo acordado (2026-11-04):**
 > 1. 🔴 Safari — la app está rota para la mayoría de iPhones
@@ -125,7 +125,7 @@
 | F3 | Colores premium + selector libre | Tienda en-app, modelo freemium | 🟢 Baja |
 | F4 | Pinceles especiales (acuarela, neón, caligrafía, pixel) | Tienda en-app | 🟢 Baja |
 | F5 | Dibujo colaborativo en tiempo real | Firestore onSnapshot bidireccional, 2 personas dibujando a la vez | 🟢 Planificado |
-| F6 | **Feed público / "states" + board público** | (1) Estados de dibujos visibles a contactos (como Stories). (2) Board público donde todos ven los dibujos de todos y pueden dar like. (3) Concursos: el dibujo más votado hasta una fecha gana premios (colores/pinceles gratis). Verificar que solo se pueda votar una vez por dibujo. | 🟢 Planificado |
+| F6 | **Estados (stories) + board público** | **Pedido por el usuario 2026-11-10 — anotado, NO construir todavía.** (1) El usuario sube un dibujo a su *estado*, en vez de enviarlo a una persona. (2) Ve los estados de sus amigos en una fila arriba, estilo stories. (3) **Los estados de usuarios Pro de pago son visibles para todos**, no solo para sus amigos — ese es el gancho de pago: alcance, no funciones. (4) Board público donde todos ven los dibujos de todos y pueden dar like. (5) Concursos: el dibujo más votado hasta una fecha gana premios (colores/pinceles gratis). Verificar que solo se pueda votar una vez por dibujo. **Pendiente de decidir antes de construir:** cuánto dura un estado (¿las mismas 24 h?), si se puede responder a un estado con otro dibujo, y sobre todo la moderación — un estado Pro lo ve cualquiera, así que necesita denuncia y retirada rápida antes de abrirlo, no después. Reusa el motor de replay y el `_reports` que ya existen. | 🟢 Planificado |
 | F7 | Lanzamiento ProductHunt | Después de push notifications y onboarding | 🟢 Planificado |
 | F8 | BetaList / r/alphaandbetausers | Para conseguir early adopters y testers externos | 🟢 Planificado |
 | F9 | **Dominio propio (sketchsend.app o similar)** | Mover de `jic51.github.io/drawing-app` a dominio propio. ~$12/año. Da credibilidad profesional. Mismo código, solo cambia hosting. Hacer cuando haya ~500-1000 usuarios activos. | 🟢 Planificado |
@@ -286,9 +286,9 @@ visor de código abierto. Mide el interés real sin construir infraestructura.
 
 | # | Qué | Por qué | Estado |
 |---|-----|---------|--------|
-| D1 | **Video vertical compartible** — el replay de un dibujo como video 9:16 de ~10 s con marca y @usuario, listo para TikTok, Reels o Shorts | El modelo TikTok: cada pieza compartida es publicidad gratis. Ya existe el motor de replay y la descarga de video; falta el formato vertical con marca | 🔴 Primero |
-| D2 | **Captar correos desde la landing** | Hoy quien visita y no se registra se pierde para siempre. Una lista es tuya; los seguidores de una red no | 🟡 Segundo |
-| D3 | **Reto semanal** — un tema por semana ("dibuja tu desayuno"), los mejores a la galería | Da razón para volver, produce contenido solo y es compartible por naturaleza. El equivalente al "consejo diario" del video, pero el trabajo lo hace el usuario | 🟡 Tercero |
+| D1 | **Video vertical compartible** — el replay de un dibujo como video 9:16 de ~10 s con marca y @usuario, listo para TikTok, Reels o Shorts | El modelo TikTok: cada pieza compartida es publicidad gratis. Ya existe el motor de replay y la descarga de video; falta el formato vertical con marca | 🔴 **Desbloqueado 2026-11-10**: el lienzo ya es 9:16 en todos los dispositivos, así que el dibujo llena el marco sin recortes. Falta el video en sí |
+| D2 | **Captar correos desde la landing** | Hoy quien visita y no se registra se pierde para siempre. Una lista es tuya; los seguidores de una red no | ✅ Hecho — formulario en la landing escribe en `landing_emails`. Las reglas impiden leer la lista desde el cliente, así que se exporta desde la consola |
+| D3 | **Reto semanal** — un tema por semana ("dibuja tu desayuno"), el mismo para todos | Da razón para volver, produce contenido solo y es compartible por naturaleza. El equivalente al "consejo diario" del video, pero el trabajo lo hace el usuario | 🔵 En curso 2026-11-10 |
 
 **Lo que NO hacer todavía:** ProductHunt, prensa o cualquier empujón de
 tráfico mientras la app siga rota en Safari. Una oleada de visitantes se

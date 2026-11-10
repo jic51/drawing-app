@@ -262,6 +262,38 @@
     .tsep { width:26px; height:1px; background:var(--border); margin:3px 0; }
 
     /* ZONA DE CANVAS */
+    /* Aviso de conexión: una franja fina bajo la cabecera. Se nota —baja
+       deslizándose y el punto late— pero no tapa nada ni pide que la
+       cierres, porque el usuario no puede hacer nada al respecto. */
+    .senal {
+      flex:0 0 auto; overflow:hidden;
+      max-height:0; opacity:0;
+      transition: max-height .28s ease, opacity .28s ease;
+      background:var(--surface2);
+    }
+    .senal.visible { max-height:34px; opacity:1; }
+    .senal-fila {
+      display:flex; align-items:center; justify-content:center; gap:7px;
+      height:33px; font-size:12.5px; letter-spacing:.2px; color:var(--muted);
+      border-bottom:1px solid var(--border);   /* dentro del recorte, no se ve al cerrar */
+      box-sizing:border-box;
+    }
+    .senal-punto {
+      width:7px; height:7px; border-radius:50%;
+      background:var(--muted); flex:0 0 auto;
+      animation:senal-late 1.8s ease-in-out infinite;
+    }
+    .senal.ok .senal-punto { background:var(--ok); animation:none; }
+    .senal.ok .senal-fila  { color:var(--ok); }
+    @keyframes senal-late {
+      0%,100% { opacity:.35; transform:scale(1); }
+      50%     { opacity:1;   transform:scale(1.25); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .senal { transition:none; }
+      .senal-punto { animation:none; opacity:.8; }
+    }
+
     .czone { flex:1; display:flex; flex-direction:column; overflow:hidden; }
     .carea {
       flex:1; display:flex; align-items:center; justify-content:center;
@@ -1117,6 +1149,11 @@
     </div>
   </header>
 
+  <!-- Aviso de conexión (oculto mientras haya señal) -->
+  <div class="senal" id="senal" role="status" aria-live="polite">
+    <div class="senal-fila"><span class="senal-punto"></span><span id="senal-texto"></span></div>
+  </div>
+
   <div class="body">
     <!-- Toolbar lateral (solo desktop) -->
     <aside class="toolbar" id="desktop-toolbar">
@@ -1615,6 +1652,8 @@ const I18N = {
     photo_too_large: '⚠️ La imagen debe pesar menos de 5 MB',
     downloading_img: '🖼️ Descargando imagen...',
     anonymous: 'Anónimo',
+    sin_senal: 'Sin conexión',
+    senal_vuelve: 'Conexión restablecida',
     viewer_drawing_by: 'Dibujo de', viewer_tagline: 'Cada mensaje es un dibujo', viewer_cta: '✏️ Envía tu propio dibujo', viewer_hint: 'Crea una cuenta gratis y empieza a dibujar. ¡Es rápido!', viewer_loading: 'Cargando dibujo... ✏️', viewer_expired: '⏳ Este dibujo expiró o no existe.',
   },
   en: {
@@ -1732,6 +1771,8 @@ const I18N = {
     photo_too_large: '⚠️ Image must be under 5 MB',
     downloading_img: '🖼️ Downloading image...',
     anonymous: 'Anonymous',
+    sin_senal: 'No connection',
+    senal_vuelve: 'Back online',
     viewer_drawing_by: 'Drawing by', viewer_tagline: 'Every message is a drawing', viewer_cta: '✏️ Send your own drawing', viewer_hint: 'Create a free account and start drawing. It\'s quick!', viewer_loading: 'Loading drawing... ✏️', viewer_expired: '⏳ This drawing has expired or doesn\'t exist.',
   }
 };
@@ -1758,6 +1799,8 @@ function applyLang() {
   const q = id => document.getElementById(id);
   const set = (id, key) => { const el = q(id); if (el) el.textContent = t(key); };
   const ph  = (id, key) => { const el = q(id); if (el) el.placeholder = t(key); };
+
+  if (typeof pintarSenal === 'function') pintarSenal();
 
   // ── WebView banner ──
   set('wb-title', 'wb_title'); set('wb-body', 'wb_body'); set('wb-hint', 'wb_hint');
@@ -2651,6 +2694,65 @@ document.getElementById('google-btn').addEventListener('click', async () => {
 /* ══════════════════════════════════════════════════════
    CANVAS CON HiDPI — sin pixelación al exportar
 ══════════════════════════════════════════════════════ */
+/* ── Aviso de conexión ───────────────────────────────────────────────────
+   navigator.onLine miente en un sentido: puede decir true estando sin
+   internet (wifi sin salida). En el otro no: si dice false, de verdad no
+   hay red. Así que solo avisamos cuando dice false, que es el caso que al
+   usuario le importa: acaba de dibujar y el envío no va a salir.
+   Al volver la señal se enseña un momento en verde y se retira sola. */
+let senalTimer = null;
+let senalEstado = 'ok';   /* 'ok' | 'sin' | 'vuelve' */
+
+function pintarSenal() {
+  const bar = document.getElementById('senal');
+  const txt = document.getElementById('senal-texto');
+  if (!bar || !txt) return;
+  if (senalEstado === 'sin') {
+    txt.textContent = t('sin_senal');
+    bar.classList.remove('ok');
+    bar.classList.add('visible');
+  } else if (senalEstado === 'vuelve') {
+    txt.textContent = t('senal_vuelve');
+    bar.classList.add('ok', 'visible');
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+
+function marcarSenal(hayRed) {
+  if (hayRed) {
+    /* Solo celebramos la vuelta si antes se avisó de la caída; si no, la
+       franja aparecería sin motivo al abrir la app. */
+    if (senalEstado !== 'sin') { senalEstado = 'ok'; pintarSenal(); return; }
+    senalEstado = 'vuelve'; pintarSenal();
+    clearTimeout(senalTimer);
+    senalTimer = setTimeout(() => {
+      if (senalEstado === 'vuelve') { senalEstado = 'ok'; pintarSenal(); }
+    }, 2600);
+  } else {
+    clearTimeout(senalTimer);
+    senalEstado = 'sin'; pintarSenal();
+  }
+}
+
+function vigilarSenal() {
+  window.addEventListener('online',  () => marcarSenal(true));
+  window.addEventListener('offline', () => marcarSenal(false));
+  /* La franja ocupa alto real, así que al abrirse o cerrarse el área de
+     dibujo cambia de tamaño y el lienzo hay que re-encajarlo; si no, se
+     sale por abajo y queda recortado. */
+  const bar = document.getElementById('senal');
+  if (bar) bar.addEventListener('transitionend', e => {
+    /* Se comprueba que el área tenga tamaño en vez de si hay sesión: es la
+       condición que de verdad importa, porque con la app oculta el área
+       mide 0 y setupCanvas dejaría el lienzo en 0x0. */
+    if (e.propertyName !== 'max-height') return;
+    if (carea && carea.getBoundingClientRect().height > 0) setupCanvas();
+  });
+  if (navigator.onLine === false) marcarSenal(false);
+}
+vigilarSenal();
+
 function setupCanvas() {
   const r = carea.getBoundingClientRect();
   const pad = window.innerWidth <= 768 ? 12 : 28;
