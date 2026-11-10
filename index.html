@@ -2655,17 +2655,15 @@ function setupCanvas() {
   const r = carea.getBoundingClientRect();
   const pad = window.innerWidth <= 768 ? 12 : 28;
 
-  let w, h;
-  if (window.innerWidth <= 768) {
-    /* En móvil: el canvas ocupa todo el espacio disponible */
-    w = r.width - pad;
-    h = r.height - pad;
-  } else {
-    /* En desktop: mantiene ratio 16:10 */
-    w = r.width - pad;
-    h = w / (16/10);
-    if (h > r.height - pad) { h = r.height - pad; w = h * (16/10); }
-  }
+  /* Misma proporción en todos los dispositivos: 9:16, la del teléfono y la
+     del video compartible. Antes el escritorio dibujaba en 16:10 apaisado,
+     así que ese dibujo no cabía en un marco vertical sin recortarlo o
+     encogerlo. Con una sola proporción, lo que dibujes donde sea encaja
+     tal cual. Se ajusta al hueco disponible sin deformarse. */
+  const RATIO = 9 / 16;
+  const dispW = r.width - pad, dispH = r.height - pad;
+  let w = dispH * RATIO, h = dispH;
+  if (w > dispW) { w = dispW; h = w / RATIO; }
 
   const cw = Math.floor(w), ch = Math.floor(h);
   cv.style.width  = cw + 'px';
