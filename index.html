@@ -267,6 +267,20 @@
       flex:1; display:flex; align-items:center; justify-content:center;
       position:relative; background:var(--bg); padding:18px; overflow:hidden;
     }
+    /* Safari muestra el menú de selección de texto al dejar el dedo
+       quieto, y pinta media pantalla de azul encima del lienzo. Se apaga
+       en el armazón de la app; los campos y el enlace lo recuperan abajo. */
+    body, .hdr, #canvas-area, .toolbar, #carousel, #inbox-overlay,
+    #replay-overlay, #settings-overlay, .inbox-card, .settings-row {
+      -webkit-user-select: none; user-select: none;
+      -webkit-touch-callout: none;
+    }
+    /* Donde sí hace falta poder seleccionar y copiar. */
+    input, textarea, [contenteditable],
+    #invite-link-text, #shortcode-value, .inbox-enlace span, #perfil-email {
+      -webkit-user-select: text; user-select: text;
+      -webkit-touch-callout: default;
+    }
     #canvas {
       touch-action:none; border-radius:5px; cursor:crosshair; display:block;
       box-shadow:0 0 0 1px var(--border),0 14px 40px rgba(0,0,0,0.4);
@@ -1185,7 +1199,11 @@
     <p>¿En qué formato?</p>
     <button class="btn btn-p" id="png-btn">⬇️ Imagen (.PNG)</button>
     <button class="btn btn-s" id="vid-btn">🎬 Video replay (.WEBM)</button>
-    <button class="btn btn-s" id="sks-btn">📦 Proyecto (.SKS)</button>
+    <!-- Oculto: el .SKS guarda los trazos en crudo, pero la app aún no
+         sabe abrirlo de vuelta ni hay nada que lo consuma, así que para
+         el usuario es un botón sin destino. El generador sigue en el
+         código porque el formato es la base del plan de plataforma. -->
+    <button class="btn btn-s" id="sks-btn" style="display:none;">📦 Proyecto (.SKS)</button>
     <button class="btn btn-s" id="gal-btn">🖼️ Compartir en la galería</button>
     <button class="btn-g" id="cerrar-btn" style="text-align:center;margin-top:2px">Cancelar</button>
   </div>
@@ -4357,8 +4375,17 @@ function volarAlHeader() {
   const fantasma = document.getElementById('splash-titulo') || document.getElementById('titulo-fantasma');
   if (!ph || !fantasma) return;
 
+  /* Que el logo se vea es lo importante; que vuele es un adorno. Antes
+     solo se mostraba dentro del transitionend, así que si la animación no
+     arrancaba —ancho cero mientras carga la fuente— o Safari no disparaba
+     ese evento, el logo quedaba invisible hasta recargar. */
+  const mostrarLogoHeader = () => {
+    ph.style.visibility = 'visible';
+    if (!ph.style.animation) ph.style.animation = 'mover 2.5s linear infinite';
+  };
+
   const rf = fantasma.getBoundingClientRect();
-  if (rf.width === 0) return;
+  if (rf.width === 0) { mostrarLogoHeader(); return; }
   fantasma.style.visibility = 'hidden';
   const fsSrc = getComputedStyle(fantasma).fontSize;
   volador.style.transition = 'none';
@@ -4377,9 +4404,12 @@ function volarAlHeader() {
   volador.style.fontSize = fs;
   volador.style.top = r.top + 'px';
   volador.style.left = r.left + 'px';
+  /* Red de seguridad: si transitionend no llega, el logo aparece igual. */
+  const salvavidas = setTimeout(() => { mostrarLogoHeader(); volador.style.opacity = '0'; }, 1200);
+
   volador.addEventListener('transitionend', () => {
-    ph.style.animation = 'mover 2.5s linear infinite';
-    ph.style.visibility = 'visible';
+    clearTimeout(salvavidas);
+    mostrarLogoHeader();
     volador.style.opacity = '0';
     setTimeout(() => {
       const pos = getComputedStyle(ph).backgroundPosition;
