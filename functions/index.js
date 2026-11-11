@@ -29,7 +29,7 @@ exports.sendSketchNotification = onDocumentCreated('sketches/{sketchId}', async 
       sketchId: String(event.params.sketchId || '')
     },
     webpush: {
-      fcmOptions: { link: 'https://jic51.github.io/drawing-app/' }
+      fcmOptions: { link: 'https://sketch-send.com/' }
     }
   };
 

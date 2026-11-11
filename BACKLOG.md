@@ -128,7 +128,7 @@
 | F6 | **Estados (stories) + board público** | **Pedido por el usuario 2026-11-10 — anotado, NO construir todavía.** (1) El usuario sube un dibujo a su *estado*, en vez de enviarlo a una persona. (2) Ve los estados de sus amigos en una fila arriba, estilo stories. (3) **Los estados de usuarios Pro de pago son visibles para todos**, no solo para sus amigos — ese es el gancho de pago: alcance, no funciones. (4) Board público donde todos ven los dibujos de todos y pueden dar like. (5) Concursos: el dibujo más votado hasta una fecha gana premios (colores/pinceles gratis). Verificar que solo se pueda votar una vez por dibujo. **Pendiente de decidir antes de construir:** cuánto dura un estado (¿las mismas 24 h?), si se puede responder a un estado con otro dibujo, y sobre todo la moderación — un estado Pro lo ve cualquiera, así que necesita denuncia y retirada rápida antes de abrirlo, no después. Reusa el motor de replay y el `_reports` que ya existen. | 🟢 Planificado |
 | F7 | Lanzamiento ProductHunt | Después de push notifications y onboarding | 🟢 Planificado |
 | F8 | BetaList / r/alphaandbetausers | Para conseguir early adopters y testers externos | 🟢 Planificado |
-| F9 | **Dominio propio (sketchsend.app o similar)** | Mover de `jic51.github.io/drawing-app` a dominio propio. ~$12/año. Da credibilidad profesional. Mismo código, solo cambia hosting. Hacer cuando haya ~500-1000 usuarios activos. | 🟢 Planificado |
+| F9 | **Dominio propio** | ✅ `sketch-send.com` comprado el 2026-11-11. En el código ya está en todas partes (metaetiquetas, enlace de la notificación, correo de contacto, CNAME). **Falta el DNS y activarlo en los ajustes del repo** — ver abajo. Los enlaces compartidos no hacía falta tocarlos: se arman con `getBaseUrl()` desde `location.origin` | 🟡 A medias |
 | F10 | **Google Play Store (TWA)** | Envolver la PWA en Trusted Web Activity para publicar en Play Store. Mismo código web empaquetado como APK. Costo: $25 una vez. Hacer cuando usuarios pidan "¿por qué no está en la tienda?". Mejora: push al 100%, descubrimiento en tienda. | 🟢 Planificado |
 | F11 | **Apple App Store (Capacitor/TWA)** | Wrapper con Capacitor o similar. Costo: $99/año. Apple cobra 30% de pagos in-app. Hacer después de Google Play. Mejora: push nativo en iOS, acceso a contactos, haptics. | 🟢 Planificado |
 | F12 | **Landing page pública** | Página que explique qué es SketchSend, cómo funciona, qué datos se recopilan, screenshots/demo animada. Necesaria para tiendas, ProductHunt y credibilidad. | 🟢 Pre-lanzamiento |
@@ -200,8 +200,54 @@
 | **Variaciones del pincel rainbow** | Explorar: (1) Glow momentáneo al dibujar que desaparece. (2) Dibujo que se vuelve blanco/negro y vuelve a colores periódicamente. (3) Animación de colores que pasa por el dibujo completo (colores se mueven por los trazos). (4) Colores que se mueven por detrás del trazo. Para versiones premium/futuras del pincel. | Sesión 2026-11-02 | Pendiente |
 | **Landing page: guardar dibujo del mini-canvas** | Guardar el dibujo del visitante en localStorage y cargarlo después del login/registro, para que no pierda su primer dibujo. | Sesión 2026-11-02 | Pendiente |
 | **Eliminar duplicado sketchsendv14.html** | index.html y sketchsendv14.html son el mismo archivo. Mantener solo index.html como fuente y eliminar el duplicado. | Sesión 2026-11-02 | Deuda técnica |
-| Dominio temporal: usar `iamjosecastro.com` hasta conseguir dominio de SketchSend | Usuario tiene este dominio disponible. sketchsend.com está ocupado. Buscar alternativas: sketchsend.app, sketchsend.io, etc. | Pendiente |
+| Dominio temporal: usar `iamjosecastro.com` hasta conseguir dominio de SketchSend | Usuario tiene este dominio disponible. sketch-send.com está ocupado. Buscar alternativas: sketch-send.com, sketchsend.io, etc. | Pendiente |
 | **Prioridades competitivas (SIEMPRE PRESENTES):** (1) Retención: streaks, notificaciones in-app. (2) Onboarding que impresione en 30s. (3) Board público + concursos (nadie lo tiene). (4) Replay timing perfecto. (5) Monetización inteligente (no repetir errores de Zynga). (6) Nicho primero, mainstream después. | Análisis competitivo | Estrategia — aplicar en cada decisión de diseño y desarrollo |
+
+---
+
+## 🌐 PONER EN MARCHA sketch-send.com
+
+El código ya está listo. Falta lo de fuera, y **el orden importa**: en cuanto
+`CNAME` llegue a `main`, GitHub Pages empieza a redirigir
+`jic51.github.io/drawing-app` al dominio nuevo. Si el DNS no responde
+todavía, la app queda caída hasta que responda.
+
+**1. DNS primero** (donde compraste el dominio). Cuatro registros A en la
+raíz (`@`), que son los de GitHub Pages:
+
+```
+185.199.108.153
+185.199.109.153
+185.199.110.153
+185.199.111.153
+```
+
+Y uno CNAME para `www` → `jic51.github.io`
+
+**2. Esperar** a que responda. Comprobar con `dig sketch-send.com +short`:
+tiene que devolver esas cuatro direcciones.
+
+**3. Fusionar la rama a `main`.** El despliegue sube el `CNAME` y GitHub
+toma el dominio. En Settings → Pages, marcar **Enforce HTTPS** en cuanto
+deje (el certificado tarda unos minutos en emitirse).
+
+**4. Después del cambio**, dos cosas que hay que hacer aparte:
+   - **Volver a desplegar la función** (`firebase deploy --only functions`):
+     el enlace que abre la notificación ya apunta al dominio nuevo, pero
+     hasta que no se despliegue sigue corriendo la versión vieja.
+   - **Firebase Auth → Settings → Authorized domains**: añadir
+     `sketch-send.com`. Si no, el login con Google falla en el dominio
+     nuevo con `auth/unauthorized-domain`.
+
+**Lo que NO se rompe:** los enlaces que ya mandaste
+(`jic51.github.io/drawing-app/?view=...`) siguen funcionando, porque GitHub
+los redirige al dominio nuevo.
+
+**Antes de fiarte del correo:** comprar el dominio no da buzón. Para que
+`hello@sketch-send.com` reciba de verdad hace falta un servicio de correo
+(Zoho y el reenvío de Cloudflare son gratis; Google Workspace es de pago).
+Está puesto en privacy.html y terms.html, así que conviene que funcione:
+un correo de contacto que no recibe es peor que no poner ninguno.
 
 ---
 
@@ -335,6 +381,6 @@ y que quien lo cuenta vende cursos de esto.
 
 ## 🔗 LINKS
 
-- **App en vivo:** https://jic51.github.io/drawing-app/
+- **App en vivo:** https://sketch-send.com/
 - **Repositorio:** https://github.com/jic51/drawing-app
 - **Firebase Console:** https://console.firebase.google.com/project/sketchsend-d1976

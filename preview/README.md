@@ -4,7 +4,7 @@ Cada subcarpeta sirve una versión en pruebas desde la web real, con su
 Firebase real, **sin tocar la app publicada**. La app en vivo sigue siendo
 `/index.html`; esto cuelga aparte y no está enlazado desde ningún sitio.
 
-    https://jic51.github.io/drawing-app/preview/<nombre>/
+    https://sketch-send.com/preview/<nombre>/
 
 ## Añadir una
 
