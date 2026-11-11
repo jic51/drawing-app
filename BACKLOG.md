@@ -2,7 +2,7 @@
 
 > Este archivo es la fuente de verdad del proyecto.
 > Se actualiza en cada sesión de trabajo con Claude.
-> Última actualización: 2026-11-10
+> Última actualización: 2026-11-11
 >
 > **Orden de trabajo acordado (2026-11-04):**
 > 1. 🔴 Safari — la app está rota para la mayoría de iPhones
@@ -205,6 +205,27 @@
 
 ---
 
+## 🔴 SEGURIDAD — hallazgos en las reglas de Firestore (2026-11-11)
+
+Revisadas las reglas que me pasaste. Lo primero está **comprobado en vivo**,
+sin iniciar sesión, desde fuera.
+
+| # | Qué | Gravedad | Arreglo |
+|---|-----|----------|---------|
+| S1 | **Cualquiera puede descargar el correo de todos los usuarios.** `match /users/{userId} { allow read: if true }` y los documentos guardan `email` y `fcmToken`. La clave de API es pública por diseño (está en el HTML), así que basta una URL. Verificado: devuelve `email` y `fcmToken` de usuarios reales sin autenticarse | 🔴 Alta — datos personales, y con el RGPD por medio | **Una línea, ya**: `allow read: if request.auth != null`. Comprobado que nada sin sesión lee `users`: el visor público saca el nombre del propio dibujo (`fromName`), y la landing no toca la colección. Cierra la descarga anónima |
+| S2 | Aun con S1 arreglado, cualquiera que se registre puede leer el correo de todos | 🟡 Media | Mover `email` y `fcmToken` a `users/{uid}/privado/datos` con `allow read: if request.auth.uid == uid`. La función en la nube usa el Admin SDK, así que se salta las reglas y la sigue leyendo; solo hay que cambiarle la ruta. Necesita migrar los usuarios que ya existen |
+| S3 | `friendships`: `allow read, write: if request.auth != null`. Cualquiera con cuenta puede **borrar o inventar amistades ajenas**, no solo las suyas | 🟡 Media | Exigir que el uid esté en el documento: `request.auth.uid in resource.data.uids` |
+| S4 | `stats`: `allow write: if request.auth != null`. Cualquiera puede poner el contador de la landing en lo que quiera | 🟡 Media | Permitir solo incrementos, o escribirlo desde la función en la nube |
+| S5 | `fcmTokens`: `allow read, write: if request.auth != null`. Cualquiera con cuenta lee y **sobrescribe** los tokens de los demás, y les deja sin avisos. (La colección parece sin usar: los tokens viven en `users`) | 🟡 Media | Si no se usa, borrar el bloque |
+| S6 | `landing_testimonials` y `landing_gallery` están **declarados dos veces**. El segundo bloque dice `allow write: if false`, pero Firestore une los bloques con OR: basta que uno permita. O sea que ese segundo bloque no protege nada, solo despista | 🟢 Baja | Borrar los bloques duplicados |
+| S7 | `landing_emails` permite `update` sin sesión, así que cualquiera puede sobrescribir la fila de un correo ajeno | 🟢 Baja | Dejar solo `create` |
+| S8 | `sketches` `allow update` deja al destinatario cambiar **cualquier** campo, incluidos los trazos | 🟢 Baja | Limitarlo a `viewed` |
+
+**No es un fallo:** `sketches` `allow get: if true` es a propósito y está bien
+pensado — el ID tiene 20 caracteres aleatorios y `list` sí exige ser parte.
+
+---
+
 ## 🔧 DEUDA TÉCNICA
 
 | Tarea | Detalle |
@@ -294,7 +315,7 @@ visor de código abierto. Mide el interés real sin construir infraestructura.
 
 | # | Qué | Detalle |
 |---|-----|---------|
-| R1 | Marcar el dibujo con el reto de esa semana | Añadiría un campo `reto` al documento del dibujo. **Antes hay que mirar las reglas de Firestore**: no están en el repo, solo en la consola. Si validan los campos con `hasOnly([...])`, un campo nuevo haría fallar TODOS los envíos, no solo los del reto. Comprobarlo antes de tocar nada |
+| R1 | Marcar el dibujo con el reto de esa semana | ✅ Hecho 2026-11-11. Las reglas NO validan con `hasOnly`, así que añadir el campo es seguro. Se guarda el **número de semana**, no el texto: el texto cambia con el idioma de quien envía y no se podría agrupar |
 | R2 | Galería de los mejores del reto | Depende de R1: sin la marca no hay por dónde filtrar |
 | R3 | Avisar del reto nuevo | Los lunes. Reutilizar las notificaciones push que ya funcionan |
 

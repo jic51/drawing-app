@@ -1567,6 +1567,16 @@
         <a class="settings-row-action" href="privacy.html" target="_blank" rel="noopener"
            style="text-decoration:none;">↗</a>
       </div>
+      <!-- Avisos. Tiene que ser un BOTÓN: Safari de iOS solo abre el diálogo
+           de permiso si la petición sale de un toque. -->
+      <div class="settings-row" id="notif-row">
+        <div>
+          <div class="settings-row-label" id="lbl-notif">Avisos</div>
+          <div class="settings-row-sub" id="lbl-notif-sub">Cuando te llega un dibujo</div>
+        </div>
+        <button class="settings-row-action" id="notif-btn">Activar</button>
+      </div>
+
       <div class="settings-row">
         <div class="settings-row-label" id="lbl-terms">Términos</div>
         <a class="settings-row-action" href="terms.html" target="_blank" rel="noopener"
@@ -1767,6 +1777,19 @@ const I18N = {
     photo_too_large: '⚠️ La imagen debe pesar menos de 5 MB',
     downloading_img: '🖼️ Descargando imagen...',
     anonymous: 'Anónimo',
+    notif_label: 'Avisos',
+    notif_sub_off: 'Cuando te llega un dibujo',
+    notif_sub_on: 'Activados en este dispositivo',
+    notif_sub_denied: 'Bloqueados por el navegador',
+    notif_sub_ios: 'Primero añade SketchSend a tu pantalla de inicio',
+    notif_sub_unsupported: 'Este navegador no los admite',
+    notif_btn_on: 'Activar',
+    notif_btn_done: 'Activados ✓',
+    notif_btn_how: '¿Cómo?',
+    notif_ios_help: 'En iPhone o iPad: toca Compartir ⬆️ y luego «Añadir a inicio». Abre SketchSend desde ese icono y vuelve a Ajustes.',
+    notif_denied_help_ios: 'iOS no vuelve a preguntar una vez rechazado. Borra el icono de SketchSend de la pantalla de inicio, vuelve a añadirlo y actívalos desde ahí.',
+    notif_denied_help: 'Los has bloqueado antes. Permítelos en los ajustes del navegador para este sitio y recarga.',
+    notif_ok: '🔔 Avisos activados',
     reto_titulo: 'Reto de la semana — el mismo para todo el mundo',
     reto_prompt: '🎯 Reto de la semana: dibuja ',
     sin_senal: 'Sin conexión',
@@ -1889,6 +1912,19 @@ const I18N = {
     photo_too_large: '⚠️ Image must be under 5 MB',
     downloading_img: '🖼️ Downloading image...',
     anonymous: 'Anonymous',
+    notif_label: 'Alerts',
+    notif_sub_off: 'When a drawing arrives',
+    notif_sub_on: 'On for this device',
+    notif_sub_denied: 'Blocked by the browser',
+    notif_sub_ios: 'First add SketchSend to your Home Screen',
+    notif_sub_unsupported: 'This browser does not support them',
+    notif_btn_on: 'Turn on',
+    notif_btn_done: 'On ✓',
+    notif_btn_how: 'How?',
+    notif_ios_help: 'On iPhone or iPad: tap Share ⬆️ then "Add to Home Screen". Open SketchSend from that icon and come back to Settings.',
+    notif_denied_help_ios: 'iOS never asks again once refused. Delete the SketchSend icon from your Home Screen, add it again, and turn them on from there.',
+    notif_denied_help: 'You blocked them earlier. Allow them in your browser settings for this site and reload.',
+    notif_ok: '🔔 Alerts on',
     reto_titulo: 'Challenge of the week — the same for everyone',
     reto_prompt: '🎯 Challenge of the week: draw ',
     sin_senal: 'No connection',
@@ -1922,6 +1958,7 @@ function applyLang() {
 
   if (typeof pintarSenal === 'function') pintarSenal();
   if (typeof pintarReto === 'function') pintarReto();
+  if (typeof pintarFilaNotif === 'function') pintarFilaNotif();
 
   // ── WebView banner ──
   set('wb-title', 'wb_title'); set('wb-body', 'wb_body'); set('wb-hint', 'wb_hint');
@@ -2310,39 +2347,124 @@ function iosSinInstalar() {
   return ios && !instalada;
 }
 
-async function solicitarNotificaciones() {
-  if (!messaging || !auth?.currentUser) return;
-  if (iosSinInstalar()) { toast('📲 ' + t('notif_ios')); return; }
+/* Guarda el token. No pide permiso: eso va aparte, porque pedirlo exige un
+   toque del usuario y esto se puede llamar solo. */
+async function refrescarTokenPush() {
+  if (!messaging || !auth?.currentUser) return false;
+  if (Notification.permission !== 'granted') return false;
   try {
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      if (window.posthog) posthog.capture('notifications_denied');
-      return;
-    }
     /* .ready ESPERA a que haya un service worker activo. getRegistration()
        devuelve undefined si aún no terminó de registrarse, y el `return`
        de antes abandonaba en silencio sin reintentar ni avisar. */
     const reg = await navigator.serviceWorker.ready;
-    if (!reg) { toast('⚠️ ' + t('notif_fail')); return; }
+    if (!reg) { toast('⚠️ ' + t('notif_fail')); return false; }
     const token = await messaging.getToken({
       vapidKey: 'BN2t-sQXDsXoEtQlv2RnXbl2SMmw6xb7DIBuQZ0HiHI5pb9hKPgJP9eoYXu0tX0NydkrwykSUn7Xd3GAAlU45M4',
       serviceWorkerRegistration: reg
     });
-    if (token) {
-      await db.collection('users').doc(auth.currentUser.uid).update({
-        fcmToken: token,
-        fcmUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      if (window.posthog) posthog.capture('notifications_enabled');
-    }
+    if (!token) return false;
+    await db.collection('users').doc(auth.currentUser.uid).update({
+      fcmToken: token,
+      fcmUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    if (window.posthog) posthog.capture('notifications_enabled');
+    return true;
   } catch(e) {
     /* Antes solo iba a la consola, así que un usuario que activaba las
        notificaciones y nunca recibía nada no tenía forma de saberlo. */
     console.warn('FCM token error:', e.message);
     toast('⚠️ ' + t('notif_fail'));
     logRemoteError('fcmToken', e);
+    return false;
   }
 }
+
+/* ESTO TIENE QUE SALIR DE UN TOQUE.
+
+   Safari de iOS solo abre el diálogo de permiso si la llamada ocurre dentro
+   del gesto del usuario. Antes se pedía desde un setTimeout de 3 s después
+   de entrar: en iOS eso no abre ningún diálogo y devuelve "denied" sin que
+   nadie vea nada. Peor aún, iOS no vuelve a preguntar nunca: hay que borrar
+   el icono de la pantalla de inicio y añadirlo otra vez.
+
+   Por eso no hay await antes de requestPermission: cualquier espera previa
+   consume el gesto y el diálogo ya no se abre. */
+async function activarNotificaciones() {
+  /* El permiso se pide aunque todavía no haya token que guardar: quien
+     guarda es refrescarTokenPush, que ya exige sesión. Así esta función
+     hace una sola cosa y se puede probar sin montar un login entero. */
+  if (!fcmDisponible()) return;
+  if (iosSinInstalar()) { ssAlert('<b>' + esc(t('notif_label')) + '</b><br><br>' + esc(t('notif_ios_help'))); return; }
+  let permiso;
+  try {
+    permiso = await Notification.requestPermission();
+  } catch(e) {
+    /* Safari viejo usa la forma con callback y la de promesa lanza. */
+    permiso = await new Promise(r => { try { Notification.requestPermission(r); } catch(_) { r('denied'); } });
+  }
+  pintarFilaNotif();
+  if (permiso !== 'granted') {
+    if (window.posthog) posthog.capture('notifications_denied');
+    ssAlert('<b>' + esc(t('notif_label')) + '</b><br><br>' + esc(esIos() ? t('notif_denied_help_ios') : t('notif_denied_help')));
+    return;
+  }
+  if (await refrescarTokenPush()) toast(t('notif_ok'));
+  pintarFilaNotif();
+}
+
+function fcmDisponible() { return !!messaging; }
+
+function esIos() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+/* La fila de Ajustes cuenta en qué estado está, que antes no se sabía. */
+function pintarFilaNotif() {
+  const fila = document.getElementById('notif-row');
+  const sub  = document.getElementById('lbl-notif-sub');
+  const btn  = document.getElementById('notif-btn');
+  const lbl  = document.getElementById('lbl-notif');
+  if (!fila || !btn) return;
+  lbl.textContent = t('notif_label');
+
+  /* El orden importa. En Safari de iOS sin añadir a inicio, Notification ni
+     siquiera existe, así que messaging queda nulo: si se mirara eso primero,
+     la fila diría "este navegador no los admite" justo en el único caso que
+     tiene arreglo y que hay que explicar. */
+  if (iosSinInstalar()) {
+    sub.textContent = t('notif_sub_ios');
+    btn.textContent = t('notif_btn_how'); btn.disabled = false; return;
+  }
+  if (!fcmDisponible() || !('Notification' in window)) {
+    sub.textContent = t('notif_sub_unsupported');
+    btn.textContent = t('notif_btn_on'); btn.disabled = true; return;
+  }
+  const p = Notification.permission;
+  if (p === 'granted') {
+    sub.textContent = t('notif_sub_on');
+    btn.textContent = t('notif_btn_done'); btn.disabled = true;
+  } else if (p === 'denied') {
+    sub.textContent = t('notif_sub_denied');
+    btn.textContent = t('notif_btn_how'); btn.disabled = false;
+  } else {
+    sub.textContent = t('notif_sub_off');
+    btn.textContent = t('notif_btn_on'); btn.disabled = false;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('notif-btn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    if (iosSinInstalar())                  { ssAlert('<b>' + esc(t('notif_label')) + '</b><br><br>' + esc(t('notif_ios_help'))); return; }
+    if (Notification.permission === 'denied') {
+      ssAlert('<b>' + esc(t('notif_label')) + '</b><br><br>' + esc(esIos() ? t('notif_denied_help_ios') : t('notif_denied_help'))); return;
+    }
+    activarNotificaciones();   /* sin await delante: el gesto sigue vivo */
+  });
+  pintarFilaNotif();
+});
 
 if (messaging) {
   messaging.onMessage(payload => {
@@ -2568,11 +2690,12 @@ function finalizarLogin(username, displayName, photoURL) {
   }, wait);
   if (window.posthog) posthog.identify(username, { displayName, hasPhoto: !!photoURL });
 
-  if (messaging && Notification.permission === 'granted') {
-    solicitarNotificaciones();
-  } else if (messaging && Notification.permission === 'default') {
-    setTimeout(() => solicitarNotificaciones(), 3000);
-  }
+  /* Si ya hay permiso solo se refresca el token, que no necesita gesto.
+     Si no lo hay NO se pide aquí: pedirlo desde un temporizador no abre
+     ningún diálogo en iOS y deja el permiso en "denied" para siempre. Se
+     pide desde el botón de Ajustes, que sí es un toque. */
+  if (messaging && Notification.permission === 'granted') refrescarTokenPush();
+  pintarFilaNotif();
 
   /* Manejar ?add=CODE en URL */
   const urlParams = new URLSearchParams(window.location.search);
@@ -3658,7 +3781,12 @@ async function enviarSketchFirestore(toUid) {
       strokes: trazos,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       expiresAt: new Date(Date.now() + 24*3600*1000),
-      viewed: false
+      viewed: false,
+      /* Número de semana del reto, no su texto: el texto cambia con el
+         idioma de quien lo envía y así no se podría agrupar. Las reglas de
+         Firestore no validan con hasOnly, así que añadir un campo no rompe
+         los envíos — comprobado contra las reglas de 2026-11-11. */
+      reto: semanaActual()
     });
     db.collection('stats').doc('global').set({ sketchesSent: firebase.firestore.FieldValue.increment(1) }, { merge: true }).catch(() => {});
     if (window.posthog) posthog.capture('sketch_sent', { strokeCount: trazos.length });
