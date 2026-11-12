@@ -3944,7 +3944,9 @@ function renderInbox() {
     return;
   }
 
-  bandejaEntrada.sort((a, b) => a.receivedAt - b.receivedAt);
+  /* El último que llega, arriba. Antes era al revés y un dibujo nuevo
+     aparecía al final de la lista, debajo de los que ya habías visto. */
+  bandejaEntrada.sort((a, b) => b.receivedAt - a.receivedAt);
   bandejaEntrada.forEach(msg => {
     const card = document.createElement('div');
     card.className = 'inbox-card';

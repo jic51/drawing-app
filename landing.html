@@ -442,6 +442,29 @@ section {
   flex: 0 0 auto;
 }
 .gallery-grid.carrusel > * { width: 230px; }
+
+/* Carrusel de DOS filas. Con una rejilla que fluye por columnas, cada
+   columna se llena de arriba abajo y el conjunto se desplaza de lado igual
+   que antes: montarCarrusel solo mueve scrollLeft, así que no se entera.
+   Hace falta !important porque .carrusel pone display:flex. */
+.gallery-grid.carrusel.doble {
+  display: grid !important;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(2, auto);
+  grid-auto-columns: 230px;
+  align-items: start;
+  /* Centrado cuando caben todas, y a desplazarse cuando no. Con
+     justify-content:center un contenedor que desborda recorta el principio
+     y no hay forma de llegar a él; esto no. */
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+@media (max-width: 768px) {
+  /* Dos filas de tarjetas grandes no caben de alto en un teléfono. */
+  .gallery-grid.carrusel.doble { grid-auto-columns: 158px; }
+  .gallery-grid.carrusel.doble > * { width: 158px; }
+}
 .reviews-grid.carrusel > * { width: 300px; }
 /* El hover crece la tarjeta: dentro del carrusel la recortaría el
    desbordamiento, así que ahí se queda quieta. */
@@ -1307,10 +1330,13 @@ function createGalleryCard(strokes, author, photoURL) {
    comentario o seguir un dibujo sin que se escape. */
 const UMBRAL_CARRUSEL = 5;
 
-function montarCarrusel(grid) {
+function montarCarrusel(grid, filas = 1) {
   if (!grid) return;
   const suficientes = grid.children.length >= UMBRAL_CARRUSEL;
   grid.classList.toggle('carrusel', suficientes);
+  /* Dos filas solo cuando hay carrusel: con pocas tarjetas la segunda fila
+     quedaría medio vacía y se ve peor que una sola. */
+  grid.classList.toggle('doble', suficientes && filas === 2);
   if (grid._pararCarrusel) { grid._pararCarrusel(); grid._pararCarrusel = null; }
   if (!suficientes) return;
   /* Quien prefiere menos movimiento lo deja quieto, pero deslizable. */
@@ -1495,13 +1521,13 @@ function montarCarrusel(grid) {
       /* Vaciar antes de repintar: onSnapshot vuelve a disparar con cada
          cambio y si no, las tarjetas se duplicarían. */
       grid.innerHTML = '';
-      filas.slice(0, 8).forEach(d => {
+      filas.slice(0, 12).forEach(d => {   /* dos filas admiten más */
         const card = createGalleryCard(d.strokes, d.author, d.photoURL);
         grid.appendChild(card);
         observar(card);
       });
       sec.classList.add('ready');
-      montarCarrusel(grid);
+      montarCarrusel(grid, 2);
     }, () => {});
 
   } catch(e) { /* sin Firebase el contador y la galería quedan ocultos */ }
