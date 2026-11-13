@@ -251,6 +251,33 @@ un correo de contacto que no recibe es peor que no poner ninguno.
 
 ---
 
+## 🐞 ENCONTRADO AL PROBAR (2026-11-12 / 13)
+
+| # | Qué | Estado |
+|---|-----|--------|
+| B1 | **La bandeja no se actualiza en vivo.** Hay que cerrarla y volver a abrirla para ver un dibujo nuevo. `cargarBandeja()` lee una vez con `.get()` en vez de escuchar con `onSnapshot`, así que nada avisa a la lista de que llegó algo | 🔴 Anotado, pendiente |
+| B2 | **El carrusel de dibujos se reinicia al llegar al final** en vez de seguir girando. Hoy `pos = 0` da un salto visible. Lo normal es duplicar las tarjetas y saltar a la mitad, que no se nota | 🟡 Anotado, pendiente |
+| B3 | El contador de la landing decía **2 usuarios habiendo 17**: solo subía al CREAR la cuenta, así que nadie anterior a ese código se contó | ✅ Arreglado — se cuenta la primera vez que cada cuenta entra y queda marcada, así converge sola |
+| B4 | **El logo de la barra se veía ~1 s y desaparecía** al recargar la landing. Estaba visible desde el principio y solo se ocultaba cuando arrancaba la animación de scroll, que espera a que el splash aterrice (~2,7 s) | ✅ Arreglado |
+| B5 | En la galería **cada dibujo salía como una tira estrecha**: la tarjeta era 4:3 fija y los dibujos son verticales (416x557 los reales). Usaban el 56% del ancho | ✅ Arreglado — cada tarjeta toma la proporción de su dibujo |
+| B6 | **Las 7 mejoras de la rama no estaban en main**, así que al probar no se veía ninguna: ni lienzo vertical, ni reto, ni aviso de red, ni bandeja al derecho, ni 2 filas | ⚠️ Falta fusionar |
+
+---
+
+## 📱 APP NATIVA — qué haría falta
+
+Hoy es una web instalable (PWA). Para estar en las tiendas:
+
+| Vía | Qué cambia en el código | Coste | Qué gana |
+|-----|------------------------|-------|----------|
+| **Google Play (TWA)** | Casi nada: se envuelve la web igual que está. Hace falta firmar la app y publicar un `assetlinks.json` en el dominio | 25 USD, una vez | Aparece en la tienda; las notificaciones suben al 100% |
+| **App Store (Capacitor)** | Más: notificaciones nativas en vez de FCM web, revisar que el lienzo responda al tacto como esperan, y Apple exige borrar cuenta (ya está) y política de privacidad (ya está) | 99 USD/año + 30% de los pagos | Notificaciones en iOS sin instalar a mano, contactos, vibración |
+
+Lo importante: **no hay que reescribir la app**. El motor de dibujo, el replay y
+Firebase se quedan igual. Lo que cambia es el envoltorio y las notificaciones.
+
+---
+
 ## 🔴 SEGURIDAD — hallazgos en las reglas de Firestore (2026-11-11)
 
 Revisadas las reglas que me pasaste. Lo primero está **comprobado en vivo**,

@@ -2629,7 +2629,11 @@ function mostrarPantallaUsername(nombre, fotoUrl) {
         email: auth.currentUser.email || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(), uid,
         shortCode: generarShortCode(),
-        usernameHistory: [raw]
+        usernameHistory: [raw],
+        /* Ya se cuenta aquí abajo: la marca evita que se vuelva a contar
+           la próxima vez que entre. */
+        contadoEnStats: true,
+        zona: paisAproximado() || ''
       });
       /* Contadores de la landing. Van en el mismo documento que los
          dibujos enviados; cada zona horaria se cuenta una vez para poder
@@ -2803,6 +2807,19 @@ if (firebaseReady && auth) {
         if (!d.shortCode) updates.shortCode = generarShortCode();
         if (user.photoURL && !d.photoURL) updates.photoURL = user.photoURL;
         if (!d.uid) updates.uid = user.uid;
+        /* El contador de la landing solo subía al CREAR la cuenta, así que
+           los usuarios anteriores a ese código nunca se contaron: la
+           landing decía 2 habiendo 17. Esto lo repara solo — cada cuenta
+           se cuenta la primera vez que entra y queda marcada, así que
+           converge al número real sin tocar la consola y sin contar a
+           nadie dos veces. */
+        if (!d.contadoEnStats) {
+          updates.contadoEnStats = true;
+          const zonaU = paisAproximado();
+          const st = { usuarios: firebase.firestore.FieldValue.increment(1) };
+          if (zonaU && !d.zona) { st.zonas = { [zonaU]: firebase.firestore.FieldValue.increment(1) }; updates.zona = zonaU; }
+          db.collection('stats').doc('global').set(st, { merge: true }).catch(() => {});
+        }
         if (Object.keys(updates).length > 0) {
           db.collection('users').doc(user.uid).update(updates).catch(() => {});
         }
