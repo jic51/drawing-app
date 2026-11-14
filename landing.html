@@ -1374,14 +1374,44 @@ function montarCarrusel(grid, filas = 1) {
   let pos = 0;
   const VELOCIDAD = 24;            /* píxeles por segundo */
 
+  /* Cuántas tarjetas forman una columna. Con dos filas, los elementos se
+     colocan de arriba abajo y luego a la derecha, así que los dos primeros
+     son la primera columna: hay que mover las dos a la vez o se desbarata
+     el emparejado. */
+  const porColumna = grid.classList.contains('doble') ? 2 : 1;
+
+  /* El paso de una columna a la siguiente, medido en vivo: ahora cada
+     tarjeta tiene su propio ancho, así que no hay un número fijo. */
+  const anchoColumna = () => {
+    const sig = grid.children[porColumna];
+    return sig ? sig.offsetLeft - grid.children[0].offsetLeft : 0;
+  };
+
   const paso = (ahora) => {
     if (!ultimo) ultimo = ahora;
     const dt = Math.min((ahora - ultimo) / 1000, 0.1);   /* sin saltos al volver de otra pestaña */
     ultimo = ahora;
     if (!quieto && grid.scrollWidth > grid.clientWidth + 4) {
-      const fin = grid.scrollWidth - grid.clientWidth;
       pos += VELOCIDAD * dt;
-      if (pos >= fin) pos = 0;      /* al final vuelve al principio */
+
+      /* Sin fin de verdad. Antes, al llegar al último se hacía pos = 0 y
+         todo pegaba un salto hacia atrás bien visible.
+
+         Ahora, cuando la primera columna termina de salir por la izquierda,
+         se MUEVE al final y se le resta su ancho a la posición: lo que se
+         ve en pantalla queda exactamente igual, así que el salto no existe.
+
+         Se mueven los elementos, no se clonan, a propósito: los dibujos se
+         están reproduciendo en sus lienzos y un clon saldría en blanco.
+         Moviéndolos son los mismos nodos, solo cambian de sitio, y siguen
+         animándose sin enterarse. */
+      let vueltas = 0;
+      while (vueltas++ < 10 && grid.children.length > porColumna) {
+        const salto = anchoColumna();
+        if (!salto || pos < salto) break;
+        for (let i = 0; i < porColumna; i++) grid.appendChild(grid.children[0]);
+        pos -= salto;
+      }
       grid.scrollLeft = pos;
     }
     raf = requestAnimationFrame(paso);

@@ -3864,10 +3864,13 @@ function cargarBandeja() {
   }
 
   const uid = auth.currentUser.uid;
-  const ahora = Date.now();
   db.collection('sketches')
     .where('to', '==', uid)
     .onSnapshot(snap => {
+      /* La hora se lee AQUÍ, no al montar la escucha: esto se ejecuta cada
+         vez que algo cambia, y con una sesión abierta un rato la de antes
+         se quedaba vieja y dejaba pasar dibujos ya caducados. */
+      const ahora = Date.now();
       bandejaEntrada = snap.docs
         .map(doc => {
           const d = doc.data();
@@ -3884,6 +3887,16 @@ function cargarBandeja() {
         })
         .filter(m => !m.viewed && m.expiresAt > ahora);
       actualizarBadge();
+      /* Y repintar la lista si está abierta. Antes la escucha solo
+         actualizaba los datos y el contador, así que un dibujo que llegaba
+         con la bandeja abierta no aparecía hasta cerrarla y volver a
+         abrirla, que es cuando se repinta. */
+      if (inboxOverlay && inboxOverlay.classList.contains('activo')) {
+        /* Conservar dónde estaba mirando: repintar lo manda al principio. */
+        const scroll = inboxBody ? inboxBody.scrollTop : 0;
+        renderInbox();
+        if (inboxBody) inboxBody.scrollTop = scroll;
+      }
     }, err => {
       console.warn('Error escuchando bandeja:', err.message);
     });
@@ -3938,6 +3951,8 @@ function arrancarRelojes() {
 
 function renderInbox() {
   inboxBody.innerHTML = '';
+  /* Si el usuario está mirando la bandeja, el numerito del icono sobra. */
+  try { navigator.clearAppBadge && navigator.clearAppBadge(); } catch (_) {}
 
   /* Eliminar expirados */
   bandejaEntrada = bandejaEntrada.filter(m => m.expiresAt > Date.now());
