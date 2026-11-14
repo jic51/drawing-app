@@ -95,7 +95,7 @@ if (fs.existsSync(cnamePath)) {
 
 /* ── 3. Las metaetiquetas que usan las vistas previas ─────────────── */
 console.log('\n— Vistas previas de los enlaces —');
-for (const f of ['index.html', 'sketchsendv14.html', 'landing.html']) {
+for (const f of ['app/index.html', 'app/sketchsendv14.html', 'index.html']) {
   const txt = fs.readFileSync(path.join(RAIZ, f), 'utf8');
   const m = [...txt.matchAll(/<meta\s+(?:property|name)="(og:image|twitter:image)"\s+content="([^"]+)"/g)];
   if (!m.length) { chk(false, f + ': no tiene og:image'); continue; }

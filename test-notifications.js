@@ -28,7 +28,7 @@ async function abrir(b, {ua, instalada, permiso, conMessaging=true} = {}) {
     Object.defineProperty(window.Notification, 'permission', { get:()=>perm, configurable:true });
     if (!cm) window.__sinMessaging = true;
   }, [instalada, permiso, conMessaging]);
-  await p.goto('file://' + process.cwd() + '/index.html');
+  await p.goto('file://' + process.cwd() + '/app/index.html');
   await p.waitForTimeout(3000);
   await p.evaluate(() => {
     document.querySelectorAll('#splash-screen,#auth-screen').forEach(e=>e.style.display='none');

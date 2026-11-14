@@ -21,7 +21,7 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
   const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
-  await p.goto('file://' + require('path').resolve(__dirname, 'index.html'));
+  await p.goto('file://' + require('path').resolve(__dirname, 'app/index.html'));
 
   await p.waitForTimeout(2800);
 

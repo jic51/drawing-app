@@ -54,7 +54,7 @@ const chk = (cond, msg, dato) => {
 /* ── 1. CLS de cada página en escritorio y móvil ───────────────────── */
 async function pruebaCLS(b) {
   console.log('— Saltos de maquetación al cargar —');
-  for (const pag of ['index.html', 'landing.html']) {
+  for (const pag of ['app/index.html', 'index.html']) {
     for (const [nombre, W, H] of [['escritorio', 1440, 900], ['móvil', 390, 844]]) {
       const p = await b.newPage({ viewport: { width: W, height: H } });
       await p.addInitScript(OBSERVADOR);
@@ -78,8 +78,8 @@ async function pruebaCLS(b) {
 async function pruebaReservas(b) {
   console.log('\n— La fuente de reserva mide igual que la real —');
   const casos = [
-    ['index.html',   'DM Sans', 'DM Sans respaldo', [400, 500, 600]],
-    ['landing.html', 'Inter',   'Inter respaldo',   [400, 500, 600, 700, 800, 900]],
+    ['app/index.html',   'DM Sans', 'DM Sans respaldo', [400, 500, 600]],
+    ['index.html', 'Inter',   'Inter respaldo',   [400, 500, 600, 700, 800, 900]],
   ];
   for (const [pag, real, reserva, pesos] of casos) {
     const p = await b.newPage();
@@ -124,7 +124,7 @@ async function pruebaReservas(b) {
 /* ── 3. El logo: nunca con la fuente equivocada, nunca invisible ────── */
 async function pruebaLogo(b) {
   console.log('\n— El logo espera a Syne, pero siempre aparece —');
-  const casos = [['index.html', 'splash-titulo'], ['landing.html', 'landing-splash-logo']];
+  const casos = [['app/index.html', 'splash-titulo'], ['index.html', 'landing-splash-logo']];
 
   for (const [pag, id] of casos) {
     /* (a) con fuentes: no debe verse nunca con el ancho de la reserva */
@@ -170,7 +170,7 @@ async function pruebaLogo(b) {
 async function pruebaIdioma(b) {
   console.log('\n— Sin textos a medio traducir —');
   const p = await b.newPage({ viewport: { width: 390, height: 844 } });
-  await p.goto(url('index.html'));
+  await p.goto(url('app/index.html'));
   await p.waitForTimeout(4000);
   const d = await p.evaluate(() => {
     const ES = /\b(tus|sus|dibujos?|privados?|eliminan|enviar|amigos?|cuenta|correo|contraseña|usuario|cargando|guardar|limpiar|bandeja|nombre|elige|ajustes|cerrar|sesión|borrar|aceptar|cancelar|siguiente|atrás|buscar|invitar|compartir|descargar|pincel|colores?|recibidos?|empieza|gratis|crea|pulsa|toca)\b/i;

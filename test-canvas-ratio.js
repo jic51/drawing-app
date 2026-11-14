@@ -8,7 +8,7 @@ const { chromium } = require('playwright');
 const path = require('path');
 
 const RATIO = 9 / 16;
-const ARCHIVO = 'file://' + path.resolve(__dirname, 'index.html');
+const ARCHIVO = 'file://' + path.resolve(__dirname, 'app/index.html');
 
 const TAMANOS = [
   ['escritorio 1440x900',  1440, 900],

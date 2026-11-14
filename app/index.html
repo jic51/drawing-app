@@ -12,7 +12,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SketchSend">
   <!-- Apple touch icon SVG inline -->
-  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="apple-touch-icon" href="../icon-192.png">
   <title>SketchSend</title>
 
   <!-- Open Graph — WhatsApp / iMessage / Telegram link preview -->
@@ -1232,7 +1232,7 @@
   <header class="hdr">
     <!-- Row 1: Logo + season badge (always visible) -->
     <div class="hdr-row1">
-      <a class="hdr-logo" id="hdr-logo-placeholder" href="landing.html" target="_blank" rel="noopener"
+      <a class="hdr-logo" id="hdr-logo-placeholder" href="../" target="_blank" rel="noopener"
          title="SketchSend" style="visibility:hidden;text-decoration:none;">SketchSend ✏️</a>
       <div class="hdr-sep"></div>
       <span class="season-badge" id="season-badge"></span>
@@ -1564,7 +1564,7 @@
       </div>
       <div class="settings-row">
         <div class="settings-row-label" id="lbl-privacy">Privacidad</div>
-        <a class="settings-row-action" href="privacy.html" target="_blank" rel="noopener"
+        <a class="settings-row-action" href="../privacy.html" target="_blank" rel="noopener"
            style="text-decoration:none;">↗</a>
       </div>
       <!-- Avisos. Tiene que ser un BOTÓN: Safari de iOS solo abre el diálogo
@@ -1579,7 +1579,7 @@
 
       <div class="settings-row">
         <div class="settings-row-label" id="lbl-terms">Términos</div>
-        <a class="settings-row-action" href="terms.html" target="_blank" rel="noopener"
+        <a class="settings-row-action" href="../terms.html" target="_blank" rel="noopener"
            style="text-decoration:none;">↗</a>
       </div>
       <div class="settings-row" id="web-row" style="cursor:pointer;">
@@ -1587,7 +1587,7 @@
           <div class="settings-row-label" id="lbl-web">Sitio web</div>
           <div class="settings-row-sub">sketch-send.com</div>
         </div>
-        <a class="settings-row-action" id="web-btn" href="landing.html" target="_blank" rel="noopener"
+        <a class="settings-row-action" id="web-btn" href="../" target="_blank" rel="noopener"
            style="text-decoration:none;">↗</a>
       </div>
       <div class="settings-row">
@@ -2470,7 +2470,7 @@ if (messaging) {
   messaging.onMessage(payload => {
     const { title, body, icon } = payload.notification || {};
     if (title && Notification.permission === 'granted') {
-      new Notification(title, { body, icon: icon || './og-preview.png' });
+      new Notification(title, { body, icon: icon || '../og-preview.png' });
     }
   });
 }

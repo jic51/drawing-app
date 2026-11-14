@@ -41,7 +41,7 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   const b = await chromium.launch();
   /* Estrecho a propósito para que el contenido desborde y el carrusel gire. */
   const p = await b.newPage({ viewport: { width: 560, height: 900 } });
-  await p.goto('file://' + path.resolve(__dirname, 'landing.html'));
+  await p.goto('file://' + path.resolve(__dirname, 'index.html'));
   await p.waitForTimeout(1200);
 
   await p.evaluate(({ formas, fuente }) => {
@@ -136,9 +136,16 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   const mueve = await p.evaluate(async () => {
     const cv = document.querySelector('#gallery-grid canvas');
     const foto = () => cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data.join(',').length;
+    /* El replay se queda QUIETO 2,7 s al terminar antes de repetir, así que
+       dos fotos cercanas pueden salir idénticas aunque todo funcione. Se
+       vigila una ventana más larga que esa pausa y basta con que cambie
+       una vez. */
     const a = foto();
-    await new Promise(r => setTimeout(r, 1200));
-    return a !== foto();
+    for (let i = 0; i < 24; i++) {
+      await new Promise(r => setTimeout(r, 250));
+      if (foto() !== a) return true;
+    }
+    return false;
   });
   chk(mueve, 'los dibujos siguen reproduciéndose tras la rotación (no son clones muertos)');
 

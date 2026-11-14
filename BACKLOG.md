@@ -251,6 +251,27 @@ un correo de contacto que no recibe es peor que no poner ninguno.
 
 ---
 
+## 🗂️ ESTRUCTURA DEL SITIO (2026-11-14)
+
+```
+/                  la landing
+/app/              la app        ← antes estaba en la raíz
+/app/sketchsendv14.html   fuente de la app (copiar a /app/index.html al editar)
+/admin.html        moderar
+/privacy.html /terms.html
+/landing.html      redirección a / (enlaces viejos)
+/sw.js /manifest.json      se QUEDAN: los usa quien ya instaló la app
+/app/sw.js /app/manifest.json   los de la estructura nueva
+```
+
+Lo delicado: hasta ahora la app vivía en la raíz, así que todos los enlaces
+compartidos apuntan ahí. La landing reenvía a `/app/` los que llevan
+`?view=`, `?add=`, `?u=` o los parámetros del login por correo, y también
+cuando se abre desde la app instalada, que arranca en la raíz. Sin eso,
+cada enlace ya enviado dejaría de funcionar. Lo vigila `test-routing.js`.
+
+---
+
 ## 🙋 AMISTADES Y AVISOS (pedido 2026-11-14 — anotado, sin construir)
 
 | # | Qué | Detalle |

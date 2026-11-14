@@ -13,8 +13,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const APP = path.join(__dirname, 'sketchsendv14.html');
-const LANDING = path.join(__dirname, 'landing.html');
+const APP = path.join(__dirname, 'app', 'sketchsendv14.html');
+const LANDING = path.join(__dirname, 'index.html');
 
 /* El gradiente canónico, tal como está en .titulo de la app. */
 const GRADIENT = '#ff0000,#ff7f00,#ffff00,#00ff00,#0000ff,#9400d3,#ff0000';
@@ -44,7 +44,7 @@ const tituloMatch = app.match(/\.titulo\s*\{([^}]*)\}/);
 check(
   'La app define .titulo',
   tituloMatch,
-  'No se encontró la regla .titulo en sketchsendv14.html'
+  'No se encontró la regla .titulo en app/sketchsendv14.html'
 );
 
 if (tituloMatch) {

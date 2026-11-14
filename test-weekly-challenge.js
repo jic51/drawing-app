@@ -13,7 +13,7 @@
 const { chromium } = require('playwright');
 const path = require('path');
 
-const ARCHIVO = 'file://' + path.resolve(__dirname, 'index.html');
+const ARCHIVO = 'file://' + path.resolve(__dirname, 'app/index.html');
 
 let fallos = 0;
 const chk = (cond, msg, dato) => {

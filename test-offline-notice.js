@@ -10,7 +10,7 @@
 const { chromium } = require('playwright');
 const path = require('path');
 
-const ARCHIVO = 'file://' + path.resolve(__dirname, 'index.html');
+const ARCHIVO = 'file://' + path.resolve(__dirname, 'app/index.html');
 const RATIO = 9 / 16;
 
 const MOSTRAR_APP = () => {
