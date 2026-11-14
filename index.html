@@ -4341,10 +4341,98 @@ pngBtn.addEventListener('click', () => {
   setTimeout(() => { _downloading = false; }, 1000);
 });
 
-/* ── VIDEO — tiempo real con compresión de gaps + progreso ── */
+/* ══════════════════════════════════════════════════════
+   VIDEO VERTICAL PARA COMPARTIR
+   ────────────────────────────────────────────────────
+   Un video listo para TikTok, Reels o Shorts sin tocar nada después.
+
+   Tres decisiones que son el motivo de que exista:
+
+   1. Tamaño FIJO 1080x1920, no el del lienzo en pantalla. Antes grababa
+      cv.width x cv.height, así que en un portátil estrecho salía un video
+      de 266x474 que ninguna red acepta como vertical.
+
+   2. Duración ACOTADA a 10 s. Un dibujo de dos minutos daba un video de
+      dos minutos que nadie mira entero; si es más largo se acelera por
+      igual, conservando el ritmo del trazo.
+
+   3. La marca va ABAJO, con el @usuario a la izquierda y el logo con los
+      colores en movimiento. Antes estaba arriba a la izquierda y repetía
+      lo que ya se ve en la app.
+══════════════════════════════════════════════════════ */
+const VIDEO_W = 1080, VIDEO_H = 1920;
+const VIDEO_MAX_MS = 10000;      /* lo que dura mirar sin aburrirse */
+const VIDEO_COLA_MS = 1300;      /* el dibujo terminado se queda quieto */
+const VIDEO_BANDA = 196;         /* alto de la franja de la marca */
+
+const ARCOIRIS = ['#ff0000','#ff7f00','#ffff00','#00ff00','#0000ff','#9400d3','#ff0000'];
+
+/* Texto con el arcoíris en movimiento, igual que el logo de la app.
+   Se pinta el texto y luego se recorta el degradado a su forma con
+   'source-in', que es lo que permite teñir letras sin perder el borde. */
+function textoArcoiris(ctx, texto, x, y, font, fase, alto) {
+  const m = (() => { ctx.save(); ctx.font = font; const w = ctx.measureText(texto).width; ctx.restore(); return w; })();
+  const cap = document.createElement('canvas');
+  cap.width = Math.ceil(m) + 8; cap.height = Math.ceil(alto);
+  const cc = cap.getContext('2d');
+  cc.font = font; cc.textBaseline = 'middle';
+  cc.fillStyle = '#000';
+  cc.fillText(texto, 0, alto / 2);
+  cc.globalCompositeOperation = 'source-in';
+  /* El degradado mide el doble que el texto y se desplaza: así los colores
+     recorren las letras en vez de quedarse clavados. */
+  const g = cc.createLinearGradient(-cap.width + fase * cap.width * 2, 0,
+                                     cap.width + fase * cap.width * 2, 0);
+  ARCOIRIS.forEach((c, i) => g.addColorStop(i / (ARCOIRIS.length - 1), c));
+  cc.fillStyle = g;
+  cc.fillRect(0, 0, cap.width, cap.height);
+  ctx.drawImage(cap, x, y - alto / 2);
+  return m;
+}
+
+/* La franja de marca del video. Va suelta y no dentro del grabador para
+   poder pintarla y mirarla sin grabar un video entero, que es la única
+   forma de comprobar que se ve bien. */
+function pintarMarcaVideo(tc, fase, oscuro, quien) {
+  const y0 = VIDEO_H - VIDEO_BANDA;
+  tc.save();
+  tc.fillStyle = oscuro ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.85)';
+  tc.fillRect(0, y0, VIDEO_W, VIDEO_BANDA);
+  tc.fillStyle = oscuro ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)';
+  tc.fillRect(0, y0, VIDEO_W, 2);
+
+  const x = 56;
+  /* @usuario a la izquierda, como se pidió. */
+  tc.font = '600 44px "DM Sans", sans-serif';
+  tc.textBaseline = 'middle';
+  tc.textAlign = 'left';
+  tc.fillStyle = oscuro ? 'rgba(255,255,255,0.92)' : 'rgba(20,20,30,0.92)';
+  tc.fillText('@' + (quien || ''), x, y0 + 66);
+
+  /* "Hecho con" + el logo con los colores moviéndose. Syne llega hasta 800:
+     pedir 900 no existe y el navegador lo falsea engordando el trazo. */
+  tc.font = '400 34px "DM Sans", sans-serif';
+  tc.fillStyle = oscuro ? 'rgba(255,255,255,0.55)' : 'rgba(20,20,30,0.55)';
+  const etiqueta = lang === 'es' ? 'Hecho con ' : 'Made with ';
+  tc.fillText(etiqueta, x, y0 + 134);
+  const anchoEtiqueta = tc.measureText(etiqueta).width;
+
+  /* El nombre va con el arcoíris, pero el lápiz NO: 'source-in' tiñe todo
+     lo que haya debajo, y el emoji salía de un solo color en vez del suyo.
+     En la app el lápiz es rojo, y el logo tiene que verse igual en todas
+     partes. Así que se pintan por separado. */
+  const fuenteLogo = '800 40px Syne, sans-serif';
+  const anchoNombre = textoArcoiris(tc, 'SketchSend', x + anchoEtiqueta, y0 + 134,
+                                    fuenteLogo, fase, 56);
+  tc.font = fuenteLogo;
+  tc.fillStyle = oscuro ? '#fff' : '#111';
+  tc.fillText(' ✏️', x + anchoEtiqueta + anchoNombre, y0 + 134);
+  tc.restore();
+}
+
+/* ── VIDEO — 1080x1920, duración acotada, marca abajo ── */
 vidBtn.addEventListener('click', async () => {
   if (_downloading) { toast('⏳ ' + (lang === 'es' ? 'Espera a que termine la descarga actual' : 'Wait for the current download to finish')); return; }
-  /* Bug 6: verificar soporte */
   if (typeof MediaRecorder === 'undefined' || !HTMLCanvasElement.prototype.captureStream) {
     toast(t('no_video_support'));
     modalEl.classList.remove('open'); return;
@@ -4354,96 +4442,113 @@ vidBtn.addEventListener('click', async () => {
   modalEl.classList.remove('open');
 
   const segs = trazos.filter(s => s.tipo === 'seg' && s.t !== undefined);
-  if (!segs.length) { toast(t('draw_to_export')); return; }
+  if (!segs.length) { toast(t('draw_to_export')); _downloading = false; return; }
 
   try {
-  const compressed = comprimirGaps(segs);
-  const duracionMs = compressed[compressed.length - 1].tRel;
-  const durSec = Math.ceil(duracionMs / 1000);
+    const comp = comprimirGaps(segs);
+    const msReal = comp[comp.length - 1].tRel || 1;
+    /* Si cabe en 10 s va a su ritmo; si no, se acelera por igual. */
+    const factor = msReal > VIDEO_MAX_MS ? VIDEO_MAX_MS / msReal : 1;
+    const msVideo = msReal * factor;
+    const durSec = Math.ceil((msVideo + VIDEO_COLA_MS) / 1000);
 
-  toast(`⏳ Grabando video (${durSec}s)...`);
+    /* El espacio del dibujo son las coordenadas en que se guardó, no el
+       lienzo de ahora: al repintar se transforma, así que los trazos
+       siguen en el espacio original. */
+    const meta = trazos.find(e => e.tipo === 'inicio' && e.origW);
+    const ow = (meta && meta.origW) || Math.round(cv.width / DPR);
+    const oh = (meta && meta.origH) || Math.round(cv.height / DPR);
 
-  const tmp = document.createElement('canvas');
-  tmp.width = cv.width; tmp.height = cv.height;
-  const tc = tmp.getContext('2d');
-  tc.scale(DPR, DPR); tc.lineCap = 'round'; tc.lineJoin = 'round';
-  const cw = cv.width / DPR, ch = cv.height / DPR;
-  tc.fillStyle = canvasBg(); tc.fillRect(0, 0, cw, ch);
+    const zonaH = VIDEO_H - VIDEO_BANDA;
+    const k = Math.min(VIDEO_W / ow, zonaH / oh);
+    const ox = (VIDEO_W - ow * k) / 2;
+    const oy = (zonaH - oh * k) / 2;
 
-  /* Safari soporta MediaRecorder pero NUNCA webm: solo MP4/H.264. La
-     cadena anterior era webm entera, así que las tres comprobaciones
-     fallaban, construía el grabador con un formato no soportado y el
-     video siempre daba error en iPhone. Se prueban los formatos en orden
-     y se usa el primero que el navegador acepte de verdad. */
-  const formatos = [
-    'video/webm; codecs=vp9',
-    'video/webm; codecs=vp8',
-    'video/webm',
-    'video/mp4; codecs=avc1.42E01E',   /* Safari */
-    'video/mp4'
-  ];
-  const mimeType = formatos.find(f => {
-    try { return MediaRecorder.isTypeSupported(f); } catch (e) { return false; }
-  });
-  if (!mimeType) {
-    toast(t('no_video_support'));
-    _downloading = false;
-    return;
-  }
-  /* La extensión debe coincidir con lo que realmente se grabó: un .webm
-     que por dentro es MP4 no abre en el visor de fotos de iOS. */
-  const ext = mimeType.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
-  const tipoBlob = ext === 'mp4' ? 'video/mp4' : 'video/webm';
+    const tmp = document.createElement('canvas');
+    tmp.width = VIDEO_W; tmp.height = VIDEO_H;
+    const tc = tmp.getContext('2d');
+    tc.lineCap = 'round'; tc.lineJoin = 'round';
 
-  const stream = tmp.captureStream(60);
-  const recorder = new MediaRecorder(stream, { mimeType });
-  const chunks = [];
-  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    const fondo = canvasBg();
+    const oscuro = esDark();
 
-  /* Firma animada: se actualiza cada frame usando performance.now() internamente */
-  let firmaLoop = null;
-  function animarFirma() {
-    dibujarFirma(tc, cw, ch, true);
-    firmaLoop = requestAnimationFrame(animarFirma);
-  }
-
-  /* Progreso visual */
-  let progInterval = null;
-  const startTime = Date.now();
-
-  return new Promise((resolve) => {
-    recorder.onstop = () => {
-      cancelAnimationFrame(firmaLoop);
-      clearInterval(progInterval);
-      const blob = new Blob(chunks, { type: tipoBlob });
-      descargar(blob, `sketchsend_${Date.now()}.${ext}`);
-      toast('🎬 Video descargado');
-      _downloading = false;
-      resolve();
-    };
-
-    recorder.start();
-    animarFirma(); /* iniciar animación del logo */
-
-    /* Mostrar progreso cada segundo */
-    progInterval = setInterval(() => {
-      const elapsed = Math.floor((Date.now() - startTime) / 1000);
-      const pct = Math.min(99, Math.floor((elapsed / (durSec + 1)) * 100));
-      toast(`⏳ Grabando... ${pct}% (~${durSec - elapsed}s)`);
-    }, 1000);
-
-    /* Dibujar cada segmento en su momento real comprimido */
-    compressed.forEach(seg => {
-      setTimeout(() => {
-        tc.beginPath(); tc.moveTo(seg.de.x, seg.de.y);
-        tc.strokeStyle = seg.color; tc.lineWidth = seg.gw;
-        tc.lineTo(seg.a.x, seg.a.y); tc.stroke();
-      }, seg.tRel);
+    const formatos = [
+      'video/webm; codecs=vp9',
+      'video/webm; codecs=vp8',
+      'video/webm',
+      'video/mp4; codecs=avc1.42E01E',   /* Safari nunca acepta webm */
+      'video/mp4'
+    ];
+    const mimeType = formatos.find(f => {
+      try { return MediaRecorder.isTypeSupported(f); } catch (e) { return false; }
     });
+    if (!mimeType) { toast(t('no_video_support')); _downloading = false; return; }
+    /* La extensión debe coincidir con lo grabado: un .webm que por dentro
+       es MP4 no abre en el visor de fotos de iOS. */
+    const ext = mimeType.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
+    const tipoBlob = ext === 'mp4' ? 'video/mp4' : 'video/webm';
 
-    /* Detener grabación 1s después del último trazo */
-    setTimeout(() => recorder.stop(), duracionMs + 1000);
-  });
+    /* 30 fps y no 60: a 1080x1920 el doble de cuadros dobla el trabajo sin
+       que se note en un replay de trazos, y en un teléfono se atraganta. */
+    const stream = tmp.captureStream(30);
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8000000 });
+    const chunks = [];
+    recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+
+    toast(`⏳ ${lang === 'es' ? 'Grabando video' : 'Recording video'} (${durSec}s)...`);
+
+    return new Promise(resolve => {
+      let raf = 0, siguiente = 0, t0 = 0, finEn = 0;
+
+      recorder.onstop = () => {
+        cancelAnimationFrame(raf);
+        const blob = new Blob(chunks, { type: tipoBlob });
+        descargar(blob, `sketchsend_${Date.now()}.${ext}`);
+        toast('🎬 ' + (lang === 'es' ? 'Video descargado' : 'Video downloaded'));
+        _downloading = false;
+        resolve();
+      };
+
+      /* Un bucle por cuadro en vez de un setTimeout por segmento: con 6000
+         segmentos eran 6000 temporizadores, y además así se puede acelerar
+         el conjunto con un solo factor. */
+      function cuadro(ahora) {
+        if (!t0) t0 = ahora;
+        const transcurrido = (ahora - t0) * (1 / factor);
+
+        tc.fillStyle = fondo;
+        tc.fillRect(0, 0, VIDEO_W, VIDEO_H - VIDEO_BANDA);
+
+        /* Se repinta todo lo dibujado hasta este instante. Repintar desde
+           cero cada cuadro evita que la franja o el fondo borren trazos. */
+        tc.save();
+        tc.translate(ox, oy);
+        tc.scale(k, k);
+        for (let i = 0; i < comp.length; i++) {
+          const sg = comp[i];
+          if (sg.tRel > transcurrido) break;
+          tc.beginPath();
+          tc.moveTo(sg.de.x, sg.de.y);
+          tc.lineTo(sg.a.x, sg.a.y);
+          tc.strokeStyle = sg.color;
+          tc.lineWidth = sg.gw;
+          tc.stroke();
+          siguiente = i + 1;
+        }
+        tc.restore();
+
+        pintarMarcaVideo(tc, (ahora / 2500) % 1, oscuro, usuario);
+
+        if (siguiente >= comp.length) {
+          if (!finEn) finEn = ahora;
+          if (ahora - finEn > VIDEO_COLA_MS) { recorder.stop(); return; }
+        }
+        raf = requestAnimationFrame(cuadro);
+      }
+
+      recorder.start();
+      raf = requestAnimationFrame(cuadro);
+    });
 
   } catch (err) {
     console.error('Video export error:', err);
