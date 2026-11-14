@@ -13,10 +13,27 @@ const path = require('path');
 
 const DOMINIO = 'sketch-send.com';
 const CORREO  = 'hello@' + DOMINIO;
+const VIEJO   = 'jic51.github.io/drawing-app';
+
+/* Dónde se sirve el sitio AHORA MISMO.
+
+   GitHub Pages solo toma el dominio propio si existe el archivo CNAME. Sin
+   él sigue sirviendo jic51.github.io/drawing-app, y entonces una og:image
+   que apunte al dominio nuevo da 404: la vista previa del enlace sale rota
+   y nadie se entera, porque la app funciona igual.
+
+   Así que lo que se comprueba no es "pone el dominio nuevo", sino la regla
+   que de verdad importa: las URL absolutas apuntan a donde el sitio está
+   servido. Vale en los dos estados, y sigue cazando una mezcla de ambos. */
+const CNAME_PATH = path.join(__dirname, 'CNAME');
+const CON_DOMINIO = fs.existsSync(CNAME_PATH);
+const BASE = CON_DOMINIO ? 'https://' + DOMINIO + '/' : 'https://' + VIEJO + '/';
 
 /* Cosas que NO pueden quedar en ningún archivo que se sirva. */
 const PROHIBIDO = [
-  [/jic51\.github\.io/,                    'dominio viejo de GitHub Pages'],
+  /* Mientras no exista el CNAME el sitio se sirve ahí, así que no es un
+     error encontrarlo: es lo correcto. */
+  ...(CON_DOMINIO ? [[/jic51\.github\.io/, 'dominio viejo de GitHub Pages']] : []),
   [/(?<![\w.-])sketchsend\.(com|app)/,     'dominio sin guion (no es el que compramos)'],
   [/joseisrael5101@gmail\.com/,            'correo personal en una página pública'],
 ];
@@ -62,8 +79,11 @@ chk(encontrados.length === 0, 'ningún archivo publicado trae una URL o correo v
 
 /* ── 2. El CNAME que necesita GitHub Pages ────────────────────────── */
 console.log('\n— GitHub Pages —');
-const cnamePath = path.join(RAIZ, 'CNAME');
-chk(fs.existsSync(cnamePath), 'existe el archivo CNAME');
+const cnamePath = CNAME_PATH;
+if (!CON_DOMINIO) {
+  console.log('ℹ️  Sin CNAME: el sitio se sirve en ' + VIEJO
+    + '. Las URL absolutas deben apuntar ahí (se comprueba abajo).');
+}
 if (fs.existsSync(cnamePath)) {
   const c = fs.readFileSync(cnamePath, 'utf8').trim();
   chk(c === DOMINIO, 'el CNAME contiene exactamente el dominio', c);
@@ -81,8 +101,8 @@ for (const f of ['index.html', 'sketchsendv14.html', 'landing.html']) {
   if (!m.length) { chk(false, f + ': no tiene og:image'); continue; }
   for (const [, prop, url] of m) {
     /* Tiene que ser absoluta: las redes no resuelven rutas relativas. */
-    chk(url.startsWith('https://' + DOMINIO + '/'),
-        f + ' ' + prop + ' apunta al dominio propio y es absoluta', url);
+    chk(url.startsWith(BASE),
+        f + ' ' + prop + ' apunta a donde se sirve el sitio y es absoluta', url);
   }
 }
 
@@ -97,8 +117,8 @@ for (const f of ['privacy.html', 'terms.html']) {
 console.log('\n— Función en la nube —');
 const fn = fs.readFileSync(path.join(RAIZ, 'functions', 'index.js'), 'utf8');
 const link = fn.match(/link:\s*'([^']+)'/);
-chk(link && link[1].includes(DOMINIO),
-    'la notificación abre el dominio propio', link ? link[1] : 'sin link');
+chk(link && link[1].startsWith(BASE),
+    'la notificación abre donde se sirve el sitio', link ? link[1] : 'sin link');
 
 console.log(fallos ? '\n❌ ' + fallos + ' fallo(s)' : '\n✅ Dominio correcto en todas partes');
 process.exit(fallos ? 1 : 0);
