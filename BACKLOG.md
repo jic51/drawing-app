@@ -265,8 +265,8 @@ un correo de contacto que no recibe es peor que no poner ninguno.
 
 | # | Qué | Estado |
 |---|-----|--------|
-| B1 | **La bandeja no se actualiza en vivo.** Hay que cerrarla y volver a abrirla para ver un dibujo nuevo. `cargarBandeja()` lee una vez con `.get()` en vez de escuchar con `onSnapshot`, así que nada avisa a la lista de que llegó algo | 🔴 Anotado, pendiente |
-| B2 | **El carrusel de dibujos se reinicia al llegar al final** en vez de seguir girando. Hoy `pos = 0` da un salto visible. Lo normal es duplicar las tarjetas y saltar a la mitad, que no se nota | 🟡 Anotado, pendiente |
+| B1 | **La bandeja no se actualizaba en vivo.** *(Mi diagnóstico anterior era falso: `cargarBandeja()` SÍ usa `onSnapshot`.)* Lo que pasaba es que la escucha actualizaba los datos y el contador pero **nunca repintaba la lista**, así que un dibujo que llegaba con la bandeja abierta no salía hasta cerrarla y volver a abrirla | ✅ Arreglado — repinta si está abierta, conservando el scroll. De paso, la hora de caducidad se lee en cada cambio y no una sola vez al montar la escucha |
+| B2 | **El carrusel se reiniciaba al llegar al final** en vez de seguir girando | ✅ Arreglado — la primera columna se MUEVE al final y se le resta su ancho a la posición, así que en pantalla no cambia nada. Se mueven los elementos en vez de clonarlos a propósito: un clon saldría con el lienzo en blanco, porque el dibujo se está reproduciendo en el original |
 | B3 | El contador de la landing decía **2 usuarios habiendo 17**: solo subía al CREAR la cuenta, así que nadie anterior a ese código se contó | ✅ Arreglado — se cuenta la primera vez que cada cuenta entra y queda marcada, así converge sola |
 | B4 | **El logo de la barra se veía ~1 s y desaparecía** al recargar la landing. Estaba visible desde el principio y solo se ocultaba cuando arrancaba la animación de scroll, que espera a que el splash aterrice (~2,7 s) | ✅ Arreglado |
 | B5 | En la galería **cada dibujo salía como una tira estrecha**: la tarjeta era 4:3 fija y los dibujos son verticales (416x557 los reales). Usaban el 56% del ancho | ✅ Arreglado — cada tarjeta toma la proporción de su dibujo |
