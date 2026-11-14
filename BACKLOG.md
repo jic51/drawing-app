@@ -251,6 +251,16 @@ un correo de contacto que no recibe es peor que no poner ninguno.
 
 ---
 
+## 🙋 AMISTADES Y AVISOS (pedido 2026-11-14 — anotado, sin construir)
+
+| # | Qué | Detalle |
+|---|-----|---------|
+| A1 | **Las amistades se aceptan, no se imponen** | Hoy añadir a alguien crea la amistad de golpe: el otro se entera porque aparece en su lista. Debe haber **solicitud → aceptar o rechazar**. Cambia el modelo: `friendships` pasa a tener `estado: 'pendiente' \| 'aceptada'` y quién la pidió. **Ojo con las reglas**: hoy son `allow read, write: if request.auth != null`, o sea que cualquiera con cuenta puede crear o borrar amistades ajenas (ver S3). Esto hay que arreglarlo A LA VEZ, porque si no, aceptar no significa nada: cualquiera podría escribir `aceptada` en la amistad de otro |
+| A2 | **Ventana al entrar: quién te agregó** | Al abrir la app, si hay solicitudes nuevas o amigos nuevos desde la última vez, una ventana emergente con **nombre y foto** de cada uno. Con solicitudes: botones aceptar/rechazar ahí mismo. Sin ellas: solo "te agregó", para enterarte de quién es. Hace falta guardar la última vez que se vio, para no repetir a los mismos. Reutiliza el avatar y el popup de perfil que ya existen |
+| A3 | **Correos a los usuarios** | (1) De bienvenida al registrarse. (2) De vez en cuando, cuando haya algo nuevo. **Firebase no envía correo** salvo los de login: hace falta un servicio (la extensión *Trigger Email* de Firebase con SendGrid o Mailgun, o Resend, que es lo más sencillo). Tres cosas antes de mandar el primero: hace falta **buzón de verdad** en `hello@sketch-send.com`; todo correo masivo necesita **enlace para darse de baja** (lo exigen la CAN-SPAM y el RGPD); y hay que registrar SPF/DKIM en el dominio o irá a spam. El correo ya está guardado en `users`, y los de la landing en `landing_emails` |
+
+---
+
 ## 🐞 ENCONTRADO AL PROBAR (2026-11-12 / 13)
 
 | # | Qué | Estado |
