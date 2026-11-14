@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Página interna: que no la indexe nadie. No va enlazada desde ningún
+     sitio de la app ni de la landing. No expone nada nuevo: la galería y los
+     testimonios ya son de lectura pública por las reglas de Firestore; esto
+     solo los PINTA, que es lo que la consola de Firebase no sabe hacer. -->
+<meta name="robots" content="noindex, nofollow">
+<title>Moderar SketchSend</title>
+<style>
+  :root {
+    --bg:#0f0f13; --surface:#1a1a24; --surface2:#22222f; --border:#2e2e40;
+    --text:#e8e8f0; --muted:#7070a0; --accent:#7c3aed; --ok:#22c55e; --danger:#ef4444;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body {
+    background:var(--bg); color:var(--text); padding:24px 20px 80px;
+    font:15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { font-size:1.4rem; margin-bottom:4px; }
+  .sub { color:var(--muted); font-size:.85rem; margin-bottom:28px; }
+  h2 { font-size:1.05rem; margin:34px 0 4px; }
+  h2 .cuenta {
+    font-size:.72rem; font-weight:600; color:var(--accent);
+    border:1px solid var(--accent); border-radius:20px; padding:2px 9px; margin-left:8px;
+    vertical-align:middle;
+  }
+  .ayuda { color:var(--muted); font-size:.82rem; margin-bottom:14px; }
+  .rejilla { display:flex; flex-wrap:wrap; gap:14px; align-items:flex-start; }
+  .ficha {
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    overflow:hidden; width:max-content; max-width:100%;
+  }
+  .ficha canvas { display:block; background:#12121a; }
+  .pie { padding:9px 11px; font-size:.78rem; }
+  .pie .quien { font-weight:600; }
+  .pie .cuando { color:var(--muted); font-size:.72rem; }
+  .id {
+    display:flex; align-items:center; gap:6px; margin-top:7px;
+    font:11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color:var(--muted);
+  }
+  .id code {
+    background:var(--surface2); border:1px solid var(--border); border-radius:5px;
+    padding:4px 6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:190px;
+  }
+  button {
+    background:var(--surface2); color:var(--text); border:1px solid var(--border);
+    border-radius:7px; padding:5px 9px; cursor:pointer; font-size:.74rem; font-family:inherit;
+  }
+  button:hover { border-color:var(--accent); }
+  .vacio { color:var(--muted); font-size:.85rem; padding:14px 0; }
+  .aviso {
+    background:var(--surface); border:1px solid var(--border); border-left:3px solid var(--accent);
+    border-radius:9px; padding:13px 15px; font-size:.83rem; margin:12px 0;
+  }
+  .aviso code, pre code { color:#c4b5fd; }
+  pre {
+    background:#0b0b10; border:1px solid var(--border); border-radius:8px;
+    padding:12px; overflow-x:auto; font-size:.74rem; margin-top:9px;
+  }
+  .opinion {
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:14px 16px; width:330px; max-width:100%;
+  }
+  .opinion p { font-size:.88rem; margin-bottom:9px; }
+  .buscador { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .buscador input {
+    flex:1; min-width:240px; background:var(--surface2); border:1px solid var(--border);
+    border-radius:8px; padding:9px 11px; color:var(--text); font-family:inherit; font-size:.85rem;
+  }
+  .buscador button { padding:9px 16px; font-size:.82rem; }
+</style>
+</head>
+<body>
+
+<h1>Moderar SketchSend</h1>
+<div class="sub">Lo que está esperando aprobación, pintado. La consola de Firebase
+guarda los trazos como una lista de números, así que ahí no se puede ver nada.</div>
+
+<h2>Dibujos pendientes <span class="cuenta" id="n-dibujos">…</span></h2>
+<div class="ayuda">Son los de <code>landing_gallery</code> con <code>approved: false</code>.
+Para publicar uno, copia su ID y pon <code>approved</code> en <code>true</code> en la consola.</div>
+<div class="rejilla" id="dibujos"><div class="vacio">Cargando…</div></div>
+
+<h2>Opiniones pendientes <span class="cuenta" id="n-opiniones">…</span></h2>
+<div class="ayuda">De <code>landing_testimonials</code> con <code>approved: false</code>.</div>
+<div class="rejilla" id="opiniones"><div class="vacio">Cargando…</div></div>
+
+<h2>Dibujo denunciado</h2>
+<div class="ayuda">Pega el ID del dibujo o el enlace entero del visor
+(<code>…?view=ID</code>). El ID viene en el campo <code>refId</code> de la denuncia.</div>
+<div class="buscador">
+  <input id="busca" placeholder="Y98TvNA7sJmilN68OXq0  o  https://…/?view=Y98TvNA7sJmilN68OXq0">
+  <button id="busca-btn">Ver dibujo</button>
+</div>
+<div class="rejilla" id="denunciado"></div>
+
+<h2>Lista de denuncias <span class="cuenta" id="n-denuncias">…</span></h2>
+<div id="denuncias"><div class="vacio">Comprobando…</div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+/* Misma configuración que la app. Es pública por diseño: lo que protege los
+   datos son las reglas de Firestore, no esconder estas claves. */
+firebase.initializeApp({
+  apiKey: "AIzaSyBwsOO3je4iK63tid5KDDgYWeVHs0OanIc",
+  authDomain: "sketchsend-d1976.firebaseapp.com",
+  projectId: "sketchsend-d1976",
+  storageBucket: "sketchsend-d1976.firebasestorage.app",
+  messagingSenderId: "445386471766",
+  appId: "1:445386471766:web:6f8c0681a676d5a5b67ef7"
+});
+const db = firebase.firestore();
+
+const esc = v => String(v == null ? '' : v)
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+const cuando = ts => {
+  const ms = ts?.seconds ? ts.seconds * 1000 : (ts?.toMillis ? ts.toMillis() : 0);
+  return ms ? new Date(ms).toLocaleString() : 'sin fecha';
+};
+
+/* Pinta el dibujo ENTERO de una vez, sin animación: para revisar interesa
+   verlo completo al instante, no esperar a que se dibuje solo. */
+function pintarDibujo(strokes, cajaMax) {
+  const cv = document.createElement('canvas');
+  const meta = Array.isArray(strokes) ? strokes.find(e => e && e.tipo === 'inicio' && e.origW) : null;
+  const ow = (meta && meta.origW) || 4, oh = (meta && meta.origH) || 3;
+  const caja = cajaMax || { w: 260, h: 340 };
+  const k = Math.min(caja.w / ow, caja.h / oh);
+  const W = Math.max(80, Math.round(ow * k)), H = Math.max(80, Math.round(oh * k));
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  cv.width = W * 2; cv.height = H * 2;
+
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#12121a'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  if (!Array.isArray(strokes)) return cv;
+
+  /* Encajar sin deformar, igual que la app y la landing. */
+  const e = Math.min(cv.width / ow, cv.height / oh);
+  const ox = (cv.width - ow * e) / 2, oy = (cv.height - oh * e) / 2;
+  const X = v => ox + v * e, Y = v => oy + v * e;
+  for (const s of strokes) {
+    if (!s || s.tipo !== 'seg' || !s.de || !s.a) continue;
+    ctx.strokeStyle = s.color || '#fff';
+    ctx.lineWidth = Math.max(1, (s.gw || 3) * e);
+    ctx.beginPath();
+    ctx.moveTo(X(s.de.x), Y(s.de.y));
+    ctx.lineTo(X(s.a.x), Y(s.a.y));
+    ctx.stroke();
+  }
+  return cv;
+}
+
+function fichaDibujo(id, d, cajaMax) {
+  const ficha = document.createElement('div');
+  ficha.className = 'ficha';
+  ficha.appendChild(pintarDibujo(d.strokes, cajaMax));
+  const pie = document.createElement('div');
+  pie.className = 'pie';
+  pie.innerHTML = '<div class="quien">@' + esc(d.author || d.fromName || '—') + '</div>'
+    + '<div class="cuando">' + esc(cuando(d.sharedAt || d.createdAt)) + '</div>'
+    + '<div class="id"><code title="' + esc(id) + '">' + esc(id) + '</code>'
+    + '<button type="button">Copiar ID</button></div>';
+  pie.querySelector('button').addEventListener('click', ev => {
+    navigator.clipboard.writeText(id).then(() => {
+      ev.target.textContent = 'Copiado ✓';
+      setTimeout(() => { ev.target.textContent = 'Copiar ID'; }, 1500);
+    });
+  });
+  ficha.appendChild(pie);
+  return ficha;
+}
+
+function pintarVacio(cont, texto) {
+  cont.innerHTML = '';
+  const v = document.createElement('div');
+  v.className = 'vacio'; v.textContent = texto;
+  cont.appendChild(v);
+}
+
+/* ── Dibujos pendientes ─────────────────────────────────────────────── */
+db.collection('landing_gallery').where('approved', '==', false).limit(60)
+  .onSnapshot(snap => {
+    const cont = document.getElementById('dibujos');
+    document.getElementById('n-dibujos').textContent = snap.size;
+    if (!snap.size) { pintarVacio(cont, 'Nada pendiente. Todo lo compartido ya está revisado.'); return; }
+    const filas = [];
+    snap.forEach(doc => filas.push({ id: doc.id, d: doc.data() }));
+    /* Lo más nuevo primero: es lo que acaba de llegar y lo que esperan. */
+    filas.sort((a, b) => (b.d.sharedAt?.seconds || 0) - (a.d.sharedAt?.seconds || 0));
+    cont.innerHTML = '';
+    filas.forEach(f => cont.appendChild(fichaDibujo(f.id, f.d)));
+  }, e => pintarVacio(document.getElementById('dibujos'), 'No se pudo leer: ' + e.message));
+
+/* ── Opiniones pendientes ───────────────────────────────────────────── */
+db.collection('landing_testimonials').where('approved', '==', false).limit(60)
+  .onSnapshot(snap => {
+    const cont = document.getElementById('opiniones');
+    document.getElementById('n-opiniones').textContent = snap.size;
+    if (!snap.size) { pintarVacio(cont, 'Nada pendiente.'); return; }
+    const filas = [];
+    snap.forEach(doc => filas.push({ id: doc.id, d: doc.data() }));
+    filas.sort((a, b) => (b.d.createdAt?.seconds || 0) - (a.d.createdAt?.seconds || 0));
+    cont.innerHTML = '';
+    filas.forEach(({ id, d }) => {
+      const o = document.createElement('div');
+      o.className = 'opinion';
+      o.innerHTML = '<p>' + esc(d.text || '') + '</p>'
+        + '<div class="pie" style="padding:0">'
+        + '<div class="quien">@' + esc(d.author || '—') + '</div>'
+        + '<div class="cuando">' + esc(cuando(d.createdAt)) + '</div>'
+        + '<div class="id"><code title="' + esc(id) + '">' + esc(id) + '</code>'
+        + '<button type="button">Copiar ID</button></div></div>';
+      o.querySelector('button').addEventListener('click', ev => {
+        navigator.clipboard.writeText(id).then(() => {
+          ev.target.textContent = 'Copiado ✓';
+          setTimeout(() => { ev.target.textContent = 'Copiar ID'; }, 1500);
+        });
+      });
+      cont.appendChild(o);
+    });
+  }, e => pintarVacio(document.getElementById('opiniones'), 'No se pudo leer: ' + e.message));
+
+/* ── Ver un dibujo denunciado por su ID ─────────────────────────────── */
+function verDibujo(entrada) {
+  const cont = document.getElementById('denunciado');
+  const id = (entrada.match(/[?&]view=([A-Za-z0-9]+)/) || [, entrada.trim()])[1];
+  if (!id) { pintarVacio(cont, 'Pega un ID o un enlace del visor.'); return; }
+  pintarVacio(cont, 'Buscando ' + id + '…');
+  db.collection('sketches').doc(id).get().then(doc => {
+    if (!doc.exists) {
+      /* Un dibujo caducado o borrado ya no está: no es un fallo. */
+      pintarVacio(cont, 'No existe. O caducó, o alguien ya lo borró.');
+      return;
+    }
+    cont.innerHTML = '';
+    cont.appendChild(fichaDibujo(doc.id, doc.data(), { w: 320, h: 420 }));
+  }).catch(e => pintarVacio(cont, 'No se pudo leer: ' + e.message));
+}
+document.getElementById('busca-btn').addEventListener('click',
+  () => verDibujo(document.getElementById('busca').value));
+document.getElementById('busca').addEventListener('keydown',
+  e => { if (e.key === 'Enter') verDibujo(e.target.value); });
+
+/* ── Lista de denuncias ─────────────────────────────────────────────── */
+/* Hoy las reglas no dicen nada de _reports, así que por defecto se deniega
+   todo y esta lista no puede cargarse desde el navegador. Si falla, en vez
+   de un error seco se explica qué regla hace falta. */
+db.collection('_reports').orderBy('createdAt', 'desc').limit(40).get()
+  .then(snap => {
+    const cont = document.getElementById('denuncias');
+    document.getElementById('n-denuncias').textContent = snap.size;
+    if (!snap.size) { pintarVacio(cont, 'Ninguna denuncia.'); return; }
+    cont.innerHTML = '';
+    snap.forEach(doc => {
+      const d = doc.data();
+      const fila = document.createElement('div');
+      fila.className = 'opinion';
+      fila.style.width = '100%';
+      fila.innerHTML = '<div class="quien">' + esc(d.tipo || 'denuncia')
+        + ' · @' + esc(d.autor || '—') + '</div>'
+        + '<p style="margin:6px 0">' + esc(d.motivo || 'sin motivo') + '</p>'
+        + '<div class="cuando">' + esc(cuando(d.createdAt)) + '</div>'
+        + (d.refId ? '<div class="id"><code>' + esc(d.refId) + '</code>'
+            + '<button type="button">Ver el dibujo</button></div>' : '');
+      const btn = fila.querySelector('button');
+      if (btn) btn.addEventListener('click', () => {
+        document.getElementById('busca').value = d.refId;
+        verDibujo(d.refId);
+        document.getElementById('denunciado').scrollIntoView({ behavior: 'smooth' });
+      });
+      cont.appendChild(fila);
+    });
+  })
+  .catch(() => {
+    document.getElementById('n-denuncias').textContent = '—';
+    document.getElementById('denuncias').innerHTML =
+      '<div class="aviso">Las reglas de Firestore no permiten leer '
+      + '<code>_reports</code> desde el navegador, así que esta lista no puede '
+      + 'cargarse. Mientras tanto, abre <code>_reports</code> en la consola, '
+      + 'copia el <code>refId</code> de la denuncia y pégalo arriba.<br><br>'
+      + 'Para que la lista funcione, añade esto a las reglas:'
+      + '<pre><code>match /_reports/{doc} {\n'
+      + '  allow read: if request.auth != null;\n'
+      + '  allow create: if request.auth != null;\n'
+      + '  allow update, delete: if false;\n'
+      + '}</code></pre>'
+      + 'Ojo: eso deja que <em>cualquiera</em> con cuenta lea las denuncias. '
+      + 'Para que solo las leas tú, cambia la condición por '
+      + '<code>request.auth.uid == &quot;TU_UID&quot;</code> y esta página '
+      + 'necesitará además que inicies sesión.</div>';
+  });
+</script>
+</body>
+</html>

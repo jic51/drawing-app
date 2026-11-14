@@ -105,11 +105,28 @@ self.addEventListener('push', e => {
       renotify: true,
       data: Object.assign({}, extra, { cuantos: n })
     });
+
+    /* El numerito sobre el icono de la app, como las apps nativas.
+       Solo funciona si está INSTALADA (añadida a la pantalla de inicio): en
+       una pestaña del navegador no hay icono donde ponerlo. En Android y
+       escritorio va; en iOS todavía no, así que si no existe no pasa nada.
+
+       Se cuenta el total de avisos pendientes de TODAS las personas, no solo
+       de esta: el icono es uno. */
+    try {
+      if (self.navigator.setAppBadge) {
+        const todas = await self.registration.getNotifications();
+        const total = todas.reduce((t, p) => t + ((p.data && p.data.cuantos) || 1), 0);
+        await self.navigator.setAppBadge(total || 1);
+      }
+    } catch (_) { /* el navegador no lo admite: no es un fallo */ }
   })());
 });
 
 self.addEventListener('notificationclick', e => {
   e.notification.close();
+  /* Al abrir desde el aviso, el numerito se va. */
+  try { self.navigator.clearAppBadge && self.navigator.clearAppBadge(); } catch (_) {}
   e.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windowClients => {
       for (const client of windowClients) {

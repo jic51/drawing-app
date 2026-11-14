@@ -20,13 +20,13 @@
   <meta property="og:site_name"   content="SketchSend">
   <meta property="og:title"       content="You received a drawing ✏️">
   <meta property="og:description" content="Tap to see the animated drawing. Reply with your own.">
-  <meta property="og:image"       content="https://jic51.github.io/drawing-app/og-preview.png">
+  <meta property="og:image"       content="https://sketch-send.com/og-preview.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card"       content="summary_large_image">
   <meta name="twitter:title"      content="You received a drawing ✏️">
   <meta name="twitter:description" content="Watch the animated drawing on SketchSend">
-  <meta name="twitter:image"      content="https://jic51.github.io/drawing-app/og-preview.png">
+  <meta name="twitter:image"      content="https://sketch-send.com/og-preview.png">
 
   <!-- PostHog Analytics — session replay, funnels, eventos -->
   <script>
@@ -41,9 +41,50 @@
   </script>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
+  <!-- Los archivos .woff2 no vienen de googleapis sino de gstatic. Sin este
+       preconnect el navegador descubre ese segundo servidor al terminar de
+       leer el CSS y paga DNS + TCP + TLS entonces. crossorigin es
+       obligatorio: las fuentes se piden en modo anónimo y sin él la
+       conexión precalentada no se reutiliza. -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <!-- Syne llega hasta 800: no existe un 900. Pedir wght@900 a solas
        devuelve HTTP 400 y la fuente no carga, asi que el logo usa 800. -->
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+  /* Descubre el logo cuando Syne esté lista.
+
+     Va DETRÁS del <link> de las fuentes a propósito: un script en línea
+     espera a que cargue la hoja de estilos anterior, así que aquí las reglas
+     @font-face ya existen. Puesto antes, document.fonts.load('Syne') no
+     encontraba ninguna cara y resolvía al instante, destapando el logo con
+     la fuente de reserva — justo lo que queremos evitar.
+
+     Y no sirve document.fonts.check(): devuelve true hasta para una familia
+     inventada, porque una familia desconocida cae en las del sistema, que sí
+     están disponibles.
+
+     El temporizador no es un extra: es la garantía de que el logo aparece
+     aunque la fuente no llegue nunca (red caída, Google bloqueado, un
+     navegador sin document.fonts). Ya nos pasó una vez que el logo quedaba
+     invisible hasta recargar. */
+  (function () {
+    var hecho = false;
+    function descubrir() {
+      if (hecho) return; hecho = true;
+      document.documentElement.classList.add('fuentes-listas');
+    }
+    setTimeout(descubrir, 1200);
+    try {
+      if (document.fonts && document.fonts.load) {
+        Promise.all([
+          document.fonts.load('800 2.25rem Syne'),
+          document.fonts.load('400 1rem "DM Sans"')
+        ]).then(descubrir, descubrir);
+      } else { descubrir(); }
+    } catch (e) { descubrir(); }
+  })();
+  </script>
+
   <!-- Firebase SDK (compat mode — un solo bundle, sin build step) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -59,6 +100,53 @@
        para poder cambiar el tema entero tocando solo este
        bloque. El modo claro/oscuro se detecta automáticamente.
     ══════════════════════════════════════════════════════ */
+    /* ── Reserva con las métricas de DM Sans ──────────────────────────
+       Mientras DM Sans viaja, el texto se pinta con la fuente del sistema.
+       Si esa reserva ocupa otro tamaño, al llegar la real todo se recoloca:
+       era el salto más grande al cargar (la tarjeta de login crecía de 250
+       a 275px y una línea pasaba a dos).
+
+       size-adjust iguala el ancho; ascent/descent-override igualan el alto.
+       Los números salen de medir en el navegador, no de estimar:
+         DM Sans vs Arial → 101,25% (400), 102,91% (500), 99,76% (600)
+         caja de DM Sans  → ascenso 99%, descenso 31% del em
+       ascent-override se divide entre size-adjust porque size-adjust escala
+       también las métricas, no solo los trazos.
+
+       Las fuentes locales listadas comparten métricas con Arial. Si no hay
+       ninguna, la cara se descarta y se usa sans-serif, como antes. */
+    @font-face {
+      font-family: 'DM Sans respaldo';
+      src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+      font-weight: 400;
+      size-adjust: 101.25%;
+      ascent-override: 97.78%;    /* 99 / 1.0125 */
+      descent-override: 30.62%;   /* 31 / 1.0125 */
+      line-gap-override: 0%;
+    }
+    @font-face {
+      font-family: 'DM Sans respaldo';
+      src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+      font-weight: 500;
+      size-adjust: 102.91%;
+      ascent-override: 96.20%;    /* 99 / 1.0291 */
+      descent-override: 30.12%;   /* 31 / 1.0291 */
+      line-gap-override: 0%;
+    }
+    @font-face {
+      font-family: 'DM Sans respaldo';
+      src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+      font-weight: 600;
+      /* Ojo con este: al declarar la cara como font-weight 600, el navegador
+         cree que ya ES seminegrita y deja de sintetizarla, así que local()
+         entrega Arial REGULAR. El ratio va contra el ancho regular
+         (4054,4 / 3863,4), no contra el de la negrita sintética. */
+      size-adjust: 104.94%;
+      ascent-override: 94.34%;    /* 99 / 1.0494 */
+      descent-override: 29.54%;   /* 31 / 1.0494 */
+      line-gap-override: 0%;
+    }
+
     :root {
       --bg:         #0f0f13;
       --surface:    #1a1a24;
@@ -74,7 +162,7 @@
       --online:     #4ade80;
       --canvas-bg:  #12121a;
       --r: 14px;
-      --sans: 'DM Sans', sans-serif;
+      --sans: 'DM Sans', 'DM Sans respaldo', sans-serif;
       --display: 'Syne', sans-serif;
     }
 
@@ -110,6 +198,21 @@
       border:1px solid var(--border); background:var(--surface2); color:var(--accent2); white-space:nowrap;
     }
 
+    /* Reto de la semana. Mismo molde que la insignia de temporada, pero con
+       el color de acento para que se distinga de un vistazo. En pantallas
+       estrechas se recorta en vez de empujar al resto de la fila. */
+    .reto-badge {
+      font-size:0.68rem; font-weight:600; padding:3px 9px; border-radius:20px;
+      border:1px solid var(--accent); background:var(--surface2); color:var(--accent2);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:42vw;
+    }
+    .reto-badge:empty { display:none; }
+    /* En móvil la fila de cabecera no da de sí y el reto salía cortado a la
+       mitad, que es peor que no ponerlo. Ahí el canal es la sugerencia sobre
+       el lienzo, que aparece entera y justo cuando estás decidiendo qué
+       dibujar. */
+    @media (max-width: 768px) { .reto-badge { display:none; } }
+
     *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
 
     body {
@@ -129,7 +232,17 @@
          estira a todo el ancho, el texto solo alcanza a mostrar un color y el
          arcoíris desaparece. fit-content la pega al texto en cualquier padre. */
       width:fit-content; margin-inline:auto;
+
+      /* Syne 800 es casi un 70% más ancha que cualquier fuente de sistema,
+         así que estirar una reserva para que cuadre dejaría unas letras
+         enormes. En vez de eso el logo no se pinta hasta que Syne está
+         lista: no hay versión equivocada ni ensanchamiento a la vista.
+         Nunca se queda invisible — abajo hay un temporizador que lo
+         descubre pase lo que pase, aunque la fuente no llegue. */
+      opacity:0; transition:opacity .22s ease;
     }
+    html.fuentes-listas .titulo { opacity:1; }
+    @media (prefers-reduced-motion: reduce) { .titulo { transition:none; } }
 
     @keyframes mover { from{background-position:0% center} to{background-position:200% center} }
 
@@ -262,6 +375,38 @@
     .tsep { width:26px; height:1px; background:var(--border); margin:3px 0; }
 
     /* ZONA DE CANVAS */
+    /* Aviso de conexión: una franja fina bajo la cabecera. Se nota —baja
+       deslizándose y el punto late— pero no tapa nada ni pide que la
+       cierres, porque el usuario no puede hacer nada al respecto. */
+    .senal {
+      flex:0 0 auto; overflow:hidden;
+      max-height:0; opacity:0;
+      transition: max-height .28s ease, opacity .28s ease;
+      background:var(--surface2);
+    }
+    .senal.visible { max-height:34px; opacity:1; }
+    .senal-fila {
+      display:flex; align-items:center; justify-content:center; gap:7px;
+      height:33px; font-size:12.5px; letter-spacing:.2px; color:var(--muted);
+      border-bottom:1px solid var(--border);   /* dentro del recorte, no se ve al cerrar */
+      box-sizing:border-box;
+    }
+    .senal-punto {
+      width:7px; height:7px; border-radius:50%;
+      background:var(--muted); flex:0 0 auto;
+      animation:senal-late 1.8s ease-in-out infinite;
+    }
+    .senal.ok .senal-punto { background:var(--ok); animation:none; }
+    .senal.ok .senal-fila  { color:var(--ok); }
+    @keyframes senal-late {
+      0%,100% { opacity:.35; transform:scale(1); }
+      50%     { opacity:1;   transform:scale(1.25); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .senal { transition:none; }
+      .senal-punto { animation:none; opacity:.8; }
+    }
+
     .czone { flex:1; display:flex; flex-direction:column; overflow:hidden; }
     .carea {
       flex:1; display:flex; align-items:center; justify-content:center;
@@ -1091,6 +1236,7 @@
          title="SketchSend" style="visibility:hidden;text-decoration:none;">SketchSend ✏️</a>
       <div class="hdr-sep"></div>
       <span class="season-badge" id="season-badge"></span>
+      <span class="reto-badge" id="reto-badge"></span>
       <!-- Desktop only: buttons and user here -->
       <button class="hbtn" id="guardar-btn">💾 <span class="hbtn-text">Guardar</span></button>
       <button class="hbtn danger" id="limpiar-btn">🗑️ <span class="hbtn-text">Limpiar</span></button>
@@ -1116,6 +1262,11 @@
       </button>
     </div>
   </header>
+
+  <!-- Aviso de conexión (oculto mientras haya señal) -->
+  <div class="senal" id="senal" role="status" aria-live="polite">
+    <div class="senal-fila"><span class="senal-punto"></span><span id="senal-texto"></span></div>
+  </div>
 
   <div class="body">
     <!-- Toolbar lateral (solo desktop) -->
@@ -1416,6 +1567,16 @@
         <a class="settings-row-action" href="privacy.html" target="_blank" rel="noopener"
            style="text-decoration:none;">↗</a>
       </div>
+      <!-- Avisos. Tiene que ser un BOTÓN: Safari de iOS solo abre el diálogo
+           de permiso si la petición sale de un toque. -->
+      <div class="settings-row" id="notif-row">
+        <div>
+          <div class="settings-row-label" id="lbl-notif">Avisos</div>
+          <div class="settings-row-sub" id="lbl-notif-sub">Cuando te llega un dibujo</div>
+        </div>
+        <button class="settings-row-action" id="notif-btn">Activar</button>
+      </div>
+
       <div class="settings-row">
         <div class="settings-row-label" id="lbl-terms">Términos</div>
         <a class="settings-row-action" href="terms.html" target="_blank" rel="noopener"
@@ -1424,7 +1585,7 @@
       <div class="settings-row" id="web-row" style="cursor:pointer;">
         <div>
           <div class="settings-row-label" id="lbl-web">Sitio web</div>
-          <div class="settings-row-sub">sketchsend.com</div>
+          <div class="settings-row-sub">sketch-send.com</div>
         </div>
         <a class="settings-row-action" id="web-btn" href="landing.html" target="_blank" rel="noopener"
            style="text-decoration:none;">↗</a>
@@ -1534,6 +1695,7 @@ const I18N = {
     gal_fail: 'No se pudo compartir el dibujo',
     save_png: '⬇️ Imagen (.PNG)', save_video: '🎬 Video replay (.WEBM)',
     save_sks: '📦 Proyecto (.SKS)', cancel: 'Cancelar',
+    save_plain: 'Guardar',
     inbox_title: '✉️ Dibujos recibidos', inbox_close: 'Cerrar',
     inbox_empty: 'No tienes dibujos nuevos', inbox_sent_you: 'Te envió un dibujo',
     inbox_del: 'Borrar sin verlo',
@@ -1615,6 +1777,23 @@ const I18N = {
     photo_too_large: '⚠️ La imagen debe pesar menos de 5 MB',
     downloading_img: '🖼️ Descargando imagen...',
     anonymous: 'Anónimo',
+    notif_label: 'Avisos',
+    notif_sub_off: 'Cuando te llega un dibujo',
+    notif_sub_on: 'Activados en este dispositivo',
+    notif_sub_denied: 'Bloqueados por el navegador',
+    notif_sub_ios: 'Primero añade SketchSend a tu pantalla de inicio',
+    notif_sub_unsupported: 'Este navegador no los admite',
+    notif_btn_on: 'Activar',
+    notif_btn_done: 'Activados ✓',
+    notif_btn_how: '¿Cómo?',
+    notif_ios_help: 'En iPhone o iPad: toca Compartir ⬆️ y luego «Añadir a inicio». Abre SketchSend desde ese icono y vuelve a Ajustes.',
+    notif_denied_help_ios: 'iOS no vuelve a preguntar una vez rechazado. Borra el icono de SketchSend de la pantalla de inicio, vuelve a añadirlo y actívalos desde ahí.',
+    notif_denied_help: 'Los has bloqueado antes. Permítelos en los ajustes del navegador para este sitio y recarga.',
+    notif_ok: '🔔 Avisos activados',
+    reto_titulo: 'Reto de la semana — el mismo para todo el mundo',
+    reto_prompt: '🎯 Reto de la semana: dibuja ',
+    sin_senal: 'Sin conexión',
+    senal_vuelve: 'Conexión restablecida',
     viewer_drawing_by: 'Dibujo de', viewer_tagline: 'Cada mensaje es un dibujo', viewer_cta: '✏️ Envía tu propio dibujo', viewer_hint: 'Crea una cuenta gratis y empieza a dibujar. ¡Es rápido!', viewer_loading: 'Cargando dibujo... ✏️', viewer_expired: '⏳ Este dibujo expiró o no existe.',
   },
   en: {
@@ -1652,6 +1831,7 @@ const I18N = {
     gal_fail: "Couldn't share the drawing",
     save_png: '⬇️ Image (.PNG)', save_video: '🎬 Video replay (.WEBM)',
     save_sks: '📦 Project (.SKS)', cancel: 'Cancel',
+    save_plain: 'Save',
     inbox_title: '✉️ Received drawings', inbox_close: 'Close',
     inbox_empty: 'No new drawings', inbox_sent_you: 'sent you a drawing',
     inbox_del: 'Delete without viewing',
@@ -1732,6 +1912,23 @@ const I18N = {
     photo_too_large: '⚠️ Image must be under 5 MB',
     downloading_img: '🖼️ Downloading image...',
     anonymous: 'Anonymous',
+    notif_label: 'Alerts',
+    notif_sub_off: 'When a drawing arrives',
+    notif_sub_on: 'On for this device',
+    notif_sub_denied: 'Blocked by the browser',
+    notif_sub_ios: 'First add SketchSend to your Home Screen',
+    notif_sub_unsupported: 'This browser does not support them',
+    notif_btn_on: 'Turn on',
+    notif_btn_done: 'On ✓',
+    notif_btn_how: 'How?',
+    notif_ios_help: 'On iPhone or iPad: tap Share ⬆️ then "Add to Home Screen". Open SketchSend from that icon and come back to Settings.',
+    notif_denied_help_ios: 'iOS never asks again once refused. Delete the SketchSend icon from your Home Screen, add it again, and turn them on from there.',
+    notif_denied_help: 'You blocked them earlier. Allow them in your browser settings for this site and reload.',
+    notif_ok: '🔔 Alerts on',
+    reto_titulo: 'Challenge of the week — the same for everyone',
+    reto_prompt: '🎯 Challenge of the week: draw ',
+    sin_senal: 'No connection',
+    senal_vuelve: 'Back online',
     viewer_drawing_by: 'Drawing by', viewer_tagline: 'Every message is a drawing', viewer_cta: '✏️ Send your own drawing', viewer_hint: 'Create a free account and start drawing. It\'s quick!', viewer_loading: 'Loading drawing... ✏️', viewer_expired: '⏳ This drawing has expired or doesn\'t exist.',
   }
 };
@@ -1759,8 +1956,22 @@ function applyLang() {
   const set = (id, key) => { const el = q(id); if (el) el.textContent = t(key); };
   const ph  = (id, key) => { const el = q(id); if (el) el.placeholder = t(key); };
 
+  if (typeof pintarSenal === 'function') pintarSenal();
+  if (typeof pintarReto === 'function') pintarReto();
+  if (typeof pintarFilaNotif === 'function') pintarFilaNotif();
+
   // ── WebView banner ──
   set('wb-title', 'wb_title'); set('wb-body', 'wb_body'); set('wb-hint', 'wb_hint');
+
+  /* Estos seis se quedaban en castellano con la app en inglés. Dos de
+     ellos (lema y aviso de privacidad) están en la pantalla de login,
+     o sea lo primero que ve alguien que acaba de llegar. */
+  set('lbl-tagline', 'viewer_tagline');
+  set('lbl-security', 'security_msg');
+  set('rename-save-btn', 'save_plain');
+  set('rename-cancel-btn', 'cancel');
+  set('uname-save-btn', 'save_plain');
+  set('uname-cancel-btn', 'cancel');
 
   // ── Login ──
   set('lbl-welcome', 'welcome');
@@ -1877,6 +2088,7 @@ function applyLang() {
 
   document.documentElement.lang = lang;
   if (typeof applySeason === 'function') applySeason();
+  if (typeof pintarReto === 'function') pintarReto();
 }
 
 function getBaseUrl() {
@@ -1991,6 +2203,66 @@ function fondoCanvas(targetCtx, w, h) {
 modoOscuro.addEventListener('change', () => redibujar());
 
 /* ── TEMAS ESTACIONALES ── */
+/* ══════════════════════════════════════════════════════
+   RETO SEMANAL — el mismo para todo el mundo
+   ────────────────────────────────────────────────────
+   No hace falta backend ni sincronizar nada: el reto se CALCULA a partir
+   de la fecha, así que dos personas en continentes distintos sacan el
+   mismo sin hablar entre ellas.
+
+   La cuenta va en UTC a propósito. Con la hora local, alguien en Tokio
+   cambiaría de reto medio día antes que alguien en Los Ángeles y durante
+   unas horas no estarían en el mismo. En UTC el cambio ocurre en el mismo
+   instante para todos: el lunes a las 00:00 UTC.
+══════════════════════════════════════════════════════ */
+const RETOS = [
+  { es:'tu desayuno',                 en:'your breakfast' },
+  { es:'tu animal favorito',          en:'your favourite animal' },
+  { es:'cómo te sientes hoy',         en:'how you feel today' },
+  { es:'tu lugar favorito',           en:'your favourite place' },
+  { es:'un monstruo simpático',       en:'a friendly monster' },
+  { es:'lo que ves por la ventana',   en:'what you see out the window' },
+  { es:'tu comida favorita',          en:'your favourite food' },
+  { es:'un robot',                    en:'a robot' },
+  { es:'a quien le mandas esto',      en:'whoever you are sending this to' },
+  { es:'tu canción favorita',         en:'your favourite song' },
+  { es:'algo que te dio risa',        en:'something that made you laugh' },
+  { es:'tu casa',                     en:'your house' },
+  { es:'un superhéroe inventado',     en:'a superhero you invent' },
+  { es:'el tiempo que hace',          en:'the weather right now' },
+  { es:'tu planta o tu mascota',      en:'your plant or your pet' },
+  { es:'algo imposible',              en:'something impossible' },
+  { es:'tu taza favorita',            en:'your favourite mug' },
+  { es:'el mejor día de tu semana',   en:'the best day of your week' },
+  { es:'un dinosaurio con sombrero',  en:'a dinosaur wearing a hat' },
+  { es:'lo primero que se te ocurra', en:'the first thing that comes to mind' },
+];
+
+/* Lunes 00:00 UTC. Desde aquí se cuentan las semanas. */
+const RETO_EPOCA = Date.UTC(2024, 0, 1);
+
+function semanaActual(ahora) {
+  const ms = (ahora || Date.now()) - RETO_EPOCA;
+  return Math.floor(ms / (7 * 24 * 60 * 60 * 1000));
+}
+
+function retoDeLaSemana(ahora) {
+  const i = ((semanaActual(ahora) % RETOS.length) + RETOS.length) % RETOS.length;
+  return RETOS[i];
+}
+
+function textoReto() {
+  const r = retoDeLaSemana();
+  return r[lang] || r.en;
+}
+
+function pintarReto() {
+  const b = document.getElementById('reto-badge');
+  if (!b) return;
+  b.textContent = '🎯 ' + textoReto();
+  b.title = t('reto_titulo');
+}
+
 const SEASONS = [
   { months:[2,3,4],  es:'🌸 Primavera', en:'🌸 Spring', cls:'season-spring' },
   { months:[5,6,7],  es:'☀️ Verano',    en:'☀️ Summer', cls:'season-summer' },
@@ -2075,39 +2347,124 @@ function iosSinInstalar() {
   return ios && !instalada;
 }
 
-async function solicitarNotificaciones() {
-  if (!messaging || !auth?.currentUser) return;
-  if (iosSinInstalar()) { toast('📲 ' + t('notif_ios')); return; }
+/* Guarda el token. No pide permiso: eso va aparte, porque pedirlo exige un
+   toque del usuario y esto se puede llamar solo. */
+async function refrescarTokenPush() {
+  if (!messaging || !auth?.currentUser) return false;
+  if (Notification.permission !== 'granted') return false;
   try {
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      if (window.posthog) posthog.capture('notifications_denied');
-      return;
-    }
     /* .ready ESPERA a que haya un service worker activo. getRegistration()
        devuelve undefined si aún no terminó de registrarse, y el `return`
        de antes abandonaba en silencio sin reintentar ni avisar. */
     const reg = await navigator.serviceWorker.ready;
-    if (!reg) { toast('⚠️ ' + t('notif_fail')); return; }
+    if (!reg) { toast('⚠️ ' + t('notif_fail')); return false; }
     const token = await messaging.getToken({
       vapidKey: 'BN2t-sQXDsXoEtQlv2RnXbl2SMmw6xb7DIBuQZ0HiHI5pb9hKPgJP9eoYXu0tX0NydkrwykSUn7Xd3GAAlU45M4',
       serviceWorkerRegistration: reg
     });
-    if (token) {
-      await db.collection('users').doc(auth.currentUser.uid).update({
-        fcmToken: token,
-        fcmUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      if (window.posthog) posthog.capture('notifications_enabled');
-    }
+    if (!token) return false;
+    await db.collection('users').doc(auth.currentUser.uid).update({
+      fcmToken: token,
+      fcmUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    if (window.posthog) posthog.capture('notifications_enabled');
+    return true;
   } catch(e) {
     /* Antes solo iba a la consola, así que un usuario que activaba las
        notificaciones y nunca recibía nada no tenía forma de saberlo. */
     console.warn('FCM token error:', e.message);
     toast('⚠️ ' + t('notif_fail'));
     logRemoteError('fcmToken', e);
+    return false;
   }
 }
+
+/* ESTO TIENE QUE SALIR DE UN TOQUE.
+
+   Safari de iOS solo abre el diálogo de permiso si la llamada ocurre dentro
+   del gesto del usuario. Antes se pedía desde un setTimeout de 3 s después
+   de entrar: en iOS eso no abre ningún diálogo y devuelve "denied" sin que
+   nadie vea nada. Peor aún, iOS no vuelve a preguntar nunca: hay que borrar
+   el icono de la pantalla de inicio y añadirlo otra vez.
+
+   Por eso no hay await antes de requestPermission: cualquier espera previa
+   consume el gesto y el diálogo ya no se abre. */
+async function activarNotificaciones() {
+  /* El permiso se pide aunque todavía no haya token que guardar: quien
+     guarda es refrescarTokenPush, que ya exige sesión. Así esta función
+     hace una sola cosa y se puede probar sin montar un login entero. */
+  if (!fcmDisponible()) return;
+  if (iosSinInstalar()) { ssAlert('<b>' + esc(t('notif_label')) + '</b><br><br>' + esc(t('notif_ios_help'))); return; }
+  let permiso;
+  try {
+    permiso = await Notification.requestPermission();
+  } catch(e) {
+    /* Safari viejo usa la forma con callback y la de promesa lanza. */
+    permiso = await new Promise(r => { try { Notification.requestPermission(r); } catch(_) { r('denied'); } });
+  }
+  pintarFilaNotif();
+  if (permiso !== 'granted') {
+    if (window.posthog) posthog.capture('notifications_denied');
+    ssAlert('<b>' + esc(t('notif_label')) + '</b><br><br>' + esc(esIos() ? t('notif_denied_help_ios') : t('notif_denied_help')));
+    return;
+  }
+  if (await refrescarTokenPush()) toast(t('notif_ok'));
+  pintarFilaNotif();
+}
+
+function fcmDisponible() { return !!messaging; }
+
+function esIos() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+/* La fila de Ajustes cuenta en qué estado está, que antes no se sabía. */
+function pintarFilaNotif() {
+  const fila = document.getElementById('notif-row');
+  const sub  = document.getElementById('lbl-notif-sub');
+  const btn  = document.getElementById('notif-btn');
+  const lbl  = document.getElementById('lbl-notif');
+  if (!fila || !btn) return;
+  lbl.textContent = t('notif_label');
+
+  /* El orden importa. En Safari de iOS sin añadir a inicio, Notification ni
+     siquiera existe, así que messaging queda nulo: si se mirara eso primero,
+     la fila diría "este navegador no los admite" justo en el único caso que
+     tiene arreglo y que hay que explicar. */
+  if (iosSinInstalar()) {
+    sub.textContent = t('notif_sub_ios');
+    btn.textContent = t('notif_btn_how'); btn.disabled = false; return;
+  }
+  if (!fcmDisponible() || !('Notification' in window)) {
+    sub.textContent = t('notif_sub_unsupported');
+    btn.textContent = t('notif_btn_on'); btn.disabled = true; return;
+  }
+  const p = Notification.permission;
+  if (p === 'granted') {
+    sub.textContent = t('notif_sub_on');
+    btn.textContent = t('notif_btn_done'); btn.disabled = true;
+  } else if (p === 'denied') {
+    sub.textContent = t('notif_sub_denied');
+    btn.textContent = t('notif_btn_how'); btn.disabled = false;
+  } else {
+    sub.textContent = t('notif_sub_off');
+    btn.textContent = t('notif_btn_on'); btn.disabled = false;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('notif-btn');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    if (iosSinInstalar())                  { ssAlert('<b>' + esc(t('notif_label')) + '</b><br><br>' + esc(t('notif_ios_help'))); return; }
+    if (Notification.permission === 'denied') {
+      ssAlert('<b>' + esc(t('notif_label')) + '</b><br><br>' + esc(esIos() ? t('notif_denied_help_ios') : t('notif_denied_help'))); return;
+    }
+    activarNotificaciones();   /* sin await delante: el gesto sigue vivo */
+  });
+  pintarFilaNotif();
+});
 
 if (messaging) {
   messaging.onMessage(payload => {
@@ -2272,7 +2629,11 @@ function mostrarPantallaUsername(nombre, fotoUrl) {
         email: auth.currentUser.email || '',
         createdAt: firebase.firestore.FieldValue.serverTimestamp(), uid,
         shortCode: generarShortCode(),
-        usernameHistory: [raw]
+        usernameHistory: [raw],
+        /* Ya se cuenta aquí abajo: la marca evita que se vuelva a contar
+           la próxima vez que entre. */
+        contadoEnStats: true,
+        zona: paisAproximado() || ''
       });
       /* Contadores de la landing. Van en el mismo documento que los
          dibujos enviados; cada zona horaria se cuenta una vez para poder
@@ -2333,11 +2694,12 @@ function finalizarLogin(username, displayName, photoURL) {
   }, wait);
   if (window.posthog) posthog.identify(username, { displayName, hasPhoto: !!photoURL });
 
-  if (messaging && Notification.permission === 'granted') {
-    solicitarNotificaciones();
-  } else if (messaging && Notification.permission === 'default') {
-    setTimeout(() => solicitarNotificaciones(), 3000);
-  }
+  /* Si ya hay permiso solo se refresca el token, que no necesita gesto.
+     Si no lo hay NO se pide aquí: pedirlo desde un temporizador no abre
+     ningún diálogo en iOS y deja el permiso en "denied" para siempre. Se
+     pide desde el botón de Ajustes, que sí es un toque. */
+  if (messaging && Notification.permission === 'granted') refrescarTokenPush();
+  pintarFilaNotif();
 
   /* Manejar ?add=CODE en URL */
   const urlParams = new URLSearchParams(window.location.search);
@@ -2445,6 +2807,19 @@ if (firebaseReady && auth) {
         if (!d.shortCode) updates.shortCode = generarShortCode();
         if (user.photoURL && !d.photoURL) updates.photoURL = user.photoURL;
         if (!d.uid) updates.uid = user.uid;
+        /* El contador de la landing solo subía al CREAR la cuenta, así que
+           los usuarios anteriores a ese código nunca se contaron: la
+           landing decía 2 habiendo 17. Esto lo repara solo — cada cuenta
+           se cuenta la primera vez que entra y queda marcada, así que
+           converge al número real sin tocar la consola y sin contar a
+           nadie dos veces. */
+        if (!d.contadoEnStats) {
+          updates.contadoEnStats = true;
+          const zonaU = paisAproximado();
+          const st = { usuarios: firebase.firestore.FieldValue.increment(1) };
+          if (zonaU && !d.zona) { st.zonas = { [zonaU]: firebase.firestore.FieldValue.increment(1) }; updates.zona = zonaU; }
+          db.collection('stats').doc('global').set(st, { merge: true }).catch(() => {});
+        }
         if (Object.keys(updates).length > 0) {
           db.collection('users').doc(user.uid).update(updates).catch(() => {});
         }
@@ -2547,7 +2922,7 @@ if (esWebView) {
       position:fixed;top:0;left:0;right:0;z-index:9999;
       background:#1a0a00;border-bottom:2px solid #f97316;
       padding:14px 18px;display:flex;align-items:flex-start;gap:12px;
-      font-family:'DM Sans',sans-serif;font-size:0.85rem;color:#fed7aa;
+      font-family:'DM Sans','DM Sans respaldo',sans-serif;font-size:0.85rem;color:#fed7aa;
       animation:aparecer 0.3s ease;
     ">
       <span style="font-size:1.4rem;flex-shrink:0;">⚠️</span>
@@ -2651,21 +3026,78 @@ document.getElementById('google-btn').addEventListener('click', async () => {
 /* ══════════════════════════════════════════════════════
    CANVAS CON HiDPI — sin pixelación al exportar
 ══════════════════════════════════════════════════════ */
+/* ── Aviso de conexión ───────────────────────────────────────────────────
+   navigator.onLine miente en un sentido: puede decir true estando sin
+   internet (wifi sin salida). En el otro no: si dice false, de verdad no
+   hay red. Así que solo avisamos cuando dice false, que es el caso que al
+   usuario le importa: acaba de dibujar y el envío no va a salir.
+   Al volver la señal se enseña un momento en verde y se retira sola. */
+let senalTimer = null;
+let senalEstado = 'ok';   /* 'ok' | 'sin' | 'vuelve' */
+
+function pintarSenal() {
+  const bar = document.getElementById('senal');
+  const txt = document.getElementById('senal-texto');
+  if (!bar || !txt) return;
+  if (senalEstado === 'sin') {
+    txt.textContent = t('sin_senal');
+    bar.classList.remove('ok');
+    bar.classList.add('visible');
+  } else if (senalEstado === 'vuelve') {
+    txt.textContent = t('senal_vuelve');
+    bar.classList.add('ok', 'visible');
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+
+function marcarSenal(hayRed) {
+  if (hayRed) {
+    /* Solo celebramos la vuelta si antes se avisó de la caída; si no, la
+       franja aparecería sin motivo al abrir la app. */
+    if (senalEstado !== 'sin') { senalEstado = 'ok'; pintarSenal(); return; }
+    senalEstado = 'vuelve'; pintarSenal();
+    clearTimeout(senalTimer);
+    senalTimer = setTimeout(() => {
+      if (senalEstado === 'vuelve') { senalEstado = 'ok'; pintarSenal(); }
+    }, 2600);
+  } else {
+    clearTimeout(senalTimer);
+    senalEstado = 'sin'; pintarSenal();
+  }
+}
+
+function vigilarSenal() {
+  window.addEventListener('online',  () => marcarSenal(true));
+  window.addEventListener('offline', () => marcarSenal(false));
+  /* La franja ocupa alto real, así que al abrirse o cerrarse el área de
+     dibujo cambia de tamaño y el lienzo hay que re-encajarlo; si no, se
+     sale por abajo y queda recortado. */
+  const bar = document.getElementById('senal');
+  if (bar) bar.addEventListener('transitionend', e => {
+    /* Se comprueba que el área tenga tamaño en vez de si hay sesión: es la
+       condición que de verdad importa, porque con la app oculta el área
+       mide 0 y setupCanvas dejaría el lienzo en 0x0. */
+    if (e.propertyName !== 'max-height') return;
+    if (carea && carea.getBoundingClientRect().height > 0) setupCanvas();
+  });
+  if (navigator.onLine === false) marcarSenal(false);
+}
+vigilarSenal();
+
 function setupCanvas() {
   const r = carea.getBoundingClientRect();
   const pad = window.innerWidth <= 768 ? 12 : 28;
 
-  let w, h;
-  if (window.innerWidth <= 768) {
-    /* En móvil: el canvas ocupa todo el espacio disponible */
-    w = r.width - pad;
-    h = r.height - pad;
-  } else {
-    /* En desktop: mantiene ratio 16:10 */
-    w = r.width - pad;
-    h = w / (16/10);
-    if (h > r.height - pad) { h = r.height - pad; w = h * (16/10); }
-  }
+  /* Misma proporción en todos los dispositivos: 9:16, la del teléfono y la
+     del video compartible. Antes el escritorio dibujaba en 16:10 apaisado,
+     así que ese dibujo no cabía en un marco vertical sin recortarlo o
+     encogerlo. Con una sola proporción, lo que dibujes donde sea encaja
+     tal cual. Se ajusta al hueco disponible sin deformarse. */
+  const RATIO = 9 / 16;
+  const dispW = r.width - pad, dispH = r.height - pad;
+  let w = dispH * RATIO, h = dispH;
+  if (w > dispW) { w = dispW; h = w / RATIO; }
 
   const cw = Math.floor(w), ch = Math.floor(h);
   cv.style.width  = cw + 'px';
@@ -3023,13 +3455,23 @@ let currentPromptIdx = Math.floor(Math.random() * PROMPTS_ES.length);
 
 function getPrompts() { return lang === 'en' ? PROMPTS_EN : PROMPTS_ES; }
 
+let retoYaSugerido = false;
+
 function mostrarPrompt() {
   const el = document.getElementById('drawing-prompts');
   const txt = document.getElementById('prompt-text');
   if (!el || !txt) return;
-  const prompts = getPrompts();
-  currentPromptIdx = (currentPromptIdx + 1) % prompts.length;
-  txt.textContent = prompts[currentPromptIdx];
+  /* La primera sugerencia es el reto de la semana: es la que vale algo,
+     porque es la misma para todos y da de qué hablar. Luego ya rotan las
+     sueltas de siempre. */
+  if (!retoYaSugerido) {
+    retoYaSugerido = true;
+    txt.textContent = t('reto_prompt') + textoReto();
+  } else {
+    const prompts = getPrompts();
+    currentPromptIdx = (currentPromptIdx + 1) % prompts.length;
+    txt.textContent = prompts[currentPromptIdx];
+  }
   el.style.opacity = '1';
   el.style.pointerEvents = 'none';
   promptVisible = true;
@@ -3132,6 +3574,9 @@ function limpiarCanvas() {
   const w = cv.width/DPR, h = cv.height/DPR;
   ctx.clearRect(0, 0, w, h); fondoCanvas(ctx, w, h);
   actualizarBotones(); toast(t('canvas_cleared'));
+  /* Limpiar es "quiero empezar otra cosa": el mejor momento para volver a
+     proponer el reto de la semana en vez de una sugerencia suelta. */
+  retoYaSugerido = false;
   setTimeout(mostrarPrompt, 1000);
 }
 
@@ -3353,7 +3798,12 @@ async function enviarSketchFirestore(toUid) {
       strokes: trazos,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       expiresAt: new Date(Date.now() + 24*3600*1000),
-      viewed: false
+      viewed: false,
+      /* Número de semana del reto, no su texto: el texto cambia con el
+         idioma de quien lo envía y así no se podría agrupar. Las reglas de
+         Firestore no validan con hasOnly, así que añadir un campo no rompe
+         los envíos — comprobado contra las reglas de 2026-11-11. */
+      reto: semanaActual()
     });
     db.collection('stats').doc('global').set({ sketchesSent: firebase.firestore.FieldValue.increment(1) }, { merge: true }).catch(() => {});
     if (window.posthog) posthog.capture('sketch_sent', { strokeCount: trazos.length });
@@ -3488,6 +3938,8 @@ function arrancarRelojes() {
 
 function renderInbox() {
   inboxBody.innerHTML = '';
+  /* Si el usuario está mirando la bandeja, el numerito del icono sobra. */
+  try { navigator.clearAppBadge && navigator.clearAppBadge(); } catch (_) {}
 
   /* Eliminar expirados */
   bandejaEntrada = bandejaEntrada.filter(m => m.expiresAt > Date.now());
@@ -3511,7 +3963,9 @@ function renderInbox() {
     return;
   }
 
-  bandejaEntrada.sort((a, b) => a.receivedAt - b.receivedAt);
+  /* El último que llega, arriba. Antes era al revés y un dibujo nuevo
+     aparecía al final de la lista, debajo de los que ya habías visto. */
+  bandejaEntrada.sort((a, b) => b.receivedAt - a.receivedAt);
   bandejaEntrada.forEach(msg => {
     const card = document.createElement('div');
     card.className = 'inbox-card';
@@ -4982,6 +5436,7 @@ document.querySelectorAll('.store-soon').forEach(btn => {
    ya existe. Ejecutamos directamente.
 ══════════════════════════════════════════════════════ */
 applySeason();
+pintarReto();
 applyLang();
 /* Si Firebase está activo, onAuthStateChanged gestiona login/logout.
    Si no, checkLogin() usa localStorage. En ambos casos arrancamos en login. */

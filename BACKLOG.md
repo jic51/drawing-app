@@ -2,7 +2,7 @@
 
 > Este archivo es la fuente de verdad del proyecto.
 > Se actualiza en cada sesión de trabajo con Claude.
-> Última actualización: 2026-10-29
+> Última actualización: 2026-11-11
 >
 > **Orden de trabajo acordado (2026-11-04):**
 > 1. 🔴 Safari — la app está rota para la mayoría de iPhones
@@ -125,10 +125,10 @@
 | F3 | Colores premium + selector libre | Tienda en-app, modelo freemium | 🟢 Baja |
 | F4 | Pinceles especiales (acuarela, neón, caligrafía, pixel) | Tienda en-app | 🟢 Baja |
 | F5 | Dibujo colaborativo en tiempo real | Firestore onSnapshot bidireccional, 2 personas dibujando a la vez | 🟢 Planificado |
-| F6 | **Feed público / "states" + board público** | (1) Estados de dibujos visibles a contactos (como Stories). (2) Board público donde todos ven los dibujos de todos y pueden dar like. (3) Concursos: el dibujo más votado hasta una fecha gana premios (colores/pinceles gratis). Verificar que solo se pueda votar una vez por dibujo. | 🟢 Planificado |
+| F6 | **Estados (stories) + board público** | **Pedido por el usuario 2026-11-10 — anotado, NO construir todavía.** (1) El usuario sube un dibujo a su *estado*, en vez de enviarlo a una persona. (2) Ve los estados de sus amigos en una fila arriba, estilo stories. (3) **Los estados de usuarios Pro de pago son visibles para todos**, no solo para sus amigos — ese es el gancho de pago: alcance, no funciones. (4) Board público donde todos ven los dibujos de todos y pueden dar like. (5) Concursos: el dibujo más votado hasta una fecha gana premios (colores/pinceles gratis). Verificar que solo se pueda votar una vez por dibujo. **Pendiente de decidir antes de construir:** cuánto dura un estado (¿las mismas 24 h?), si se puede responder a un estado con otro dibujo, y sobre todo la moderación — un estado Pro lo ve cualquiera, así que necesita denuncia y retirada rápida antes de abrirlo, no después. Reusa el motor de replay y el `_reports` que ya existen. | 🟢 Planificado |
 | F7 | Lanzamiento ProductHunt | Después de push notifications y onboarding | 🟢 Planificado |
 | F8 | BetaList / r/alphaandbetausers | Para conseguir early adopters y testers externos | 🟢 Planificado |
-| F9 | **Dominio propio (sketchsend.app o similar)** | Mover de `jic51.github.io/drawing-app` a dominio propio. ~$12/año. Da credibilidad profesional. Mismo código, solo cambia hosting. Hacer cuando haya ~500-1000 usuarios activos. | 🟢 Planificado |
+| F9 | **Dominio propio** | ✅ `sketch-send.com` comprado el 2026-11-11. En el código ya está en todas partes (metaetiquetas, enlace de la notificación, correo de contacto, CNAME). **Falta el DNS y activarlo en los ajustes del repo** — ver abajo. Los enlaces compartidos no hacía falta tocarlos: se arman con `getBaseUrl()` desde `location.origin` | 🟡 A medias |
 | F10 | **Google Play Store (TWA)** | Envolver la PWA en Trusted Web Activity para publicar en Play Store. Mismo código web empaquetado como APK. Costo: $25 una vez. Hacer cuando usuarios pidan "¿por qué no está en la tienda?". Mejora: push al 100%, descubrimiento en tienda. | 🟢 Planificado |
 | F11 | **Apple App Store (Capacitor/TWA)** | Wrapper con Capacitor o similar. Costo: $99/año. Apple cobra 30% de pagos in-app. Hacer después de Google Play. Mejora: push nativo en iOS, acceso a contactos, haptics. | 🟢 Planificado |
 | F12 | **Landing page pública** | Página que explique qué es SketchSend, cómo funciona, qué datos se recopilan, screenshots/demo animada. Necesaria para tiendas, ProductHunt y credibilidad. | 🟢 Pre-lanzamiento |
@@ -200,8 +200,112 @@
 | **Variaciones del pincel rainbow** | Explorar: (1) Glow momentáneo al dibujar que desaparece. (2) Dibujo que se vuelve blanco/negro y vuelve a colores periódicamente. (3) Animación de colores que pasa por el dibujo completo (colores se mueven por los trazos). (4) Colores que se mueven por detrás del trazo. Para versiones premium/futuras del pincel. | Sesión 2026-11-02 | Pendiente |
 | **Landing page: guardar dibujo del mini-canvas** | Guardar el dibujo del visitante en localStorage y cargarlo después del login/registro, para que no pierda su primer dibujo. | Sesión 2026-11-02 | Pendiente |
 | **Eliminar duplicado sketchsendv14.html** | index.html y sketchsendv14.html son el mismo archivo. Mantener solo index.html como fuente y eliminar el duplicado. | Sesión 2026-11-02 | Deuda técnica |
-| Dominio temporal: usar `iamjosecastro.com` hasta conseguir dominio de SketchSend | Usuario tiene este dominio disponible. sketchsend.com está ocupado. Buscar alternativas: sketchsend.app, sketchsend.io, etc. | Pendiente |
+| Dominio temporal: usar `iamjosecastro.com` hasta conseguir dominio de SketchSend | Usuario tiene este dominio disponible. sketch-send.com está ocupado. Buscar alternativas: sketch-send.com, sketchsend.io, etc. | Pendiente |
 | **Prioridades competitivas (SIEMPRE PRESENTES):** (1) Retención: streaks, notificaciones in-app. (2) Onboarding que impresione en 30s. (3) Board público + concursos (nadie lo tiene). (4) Replay timing perfecto. (5) Monetización inteligente (no repetir errores de Zynga). (6) Nicho primero, mainstream después. | Análisis competitivo | Estrategia — aplicar en cada decisión de diseño y desarrollo |
+
+---
+
+## 🌐 PONER EN MARCHA sketch-send.com
+
+El código ya está listo. Falta lo de fuera, y **el orden importa**: en cuanto
+`CNAME` llegue a `main`, GitHub Pages empieza a redirigir
+`jic51.github.io/drawing-app` al dominio nuevo. Si el DNS no responde
+todavía, la app queda caída hasta que responda.
+
+**1. DNS primero** (donde compraste el dominio). Cuatro registros A en la
+raíz (`@`), que son los de GitHub Pages:
+
+```
+185.199.108.153
+185.199.109.153
+185.199.110.153
+185.199.111.153
+```
+
+Y uno CNAME para `www` → `jic51.github.io`
+
+**2. Esperar** a que responda. Comprobar con `dig sketch-send.com +short`:
+tiene que devolver esas cuatro direcciones.
+
+**3. Fusionar la rama a `main`.** El despliegue sube el `CNAME` y GitHub
+toma el dominio. En Settings → Pages, marcar **Enforce HTTPS** en cuanto
+deje (el certificado tarda unos minutos en emitirse).
+
+**4. Después del cambio**, dos cosas que hay que hacer aparte:
+   - **Volver a desplegar la función** (`firebase deploy --only functions`):
+     el enlace que abre la notificación ya apunta al dominio nuevo, pero
+     hasta que no se despliegue sigue corriendo la versión vieja.
+   - **Firebase Auth → Settings → Authorized domains**: añadir
+     `sketch-send.com`. Si no, el login con Google falla en el dominio
+     nuevo con `auth/unauthorized-domain`.
+
+**Lo que NO se rompe:** los enlaces que ya mandaste
+(`jic51.github.io/drawing-app/?view=...`) siguen funcionando, porque GitHub
+los redirige al dominio nuevo.
+
+**Antes de fiarte del correo:** comprar el dominio no da buzón. Para que
+`hello@sketch-send.com` reciba de verdad hace falta un servicio de correo
+(Zoho y el reenvío de Cloudflare son gratis; Google Workspace es de pago).
+Está puesto en privacy.html y terms.html, así que conviene que funcione:
+un correo de contacto que no recibe es peor que no poner ninguno.
+
+---
+
+## 🙋 AMISTADES Y AVISOS (pedido 2026-11-14 — anotado, sin construir)
+
+| # | Qué | Detalle |
+|---|-----|---------|
+| A1 | **Las amistades se aceptan, no se imponen** | Hoy añadir a alguien crea la amistad de golpe: el otro se entera porque aparece en su lista. Debe haber **solicitud → aceptar o rechazar**. Cambia el modelo: `friendships` pasa a tener `estado: 'pendiente' \| 'aceptada'` y quién la pidió. **Ojo con las reglas**: hoy son `allow read, write: if request.auth != null`, o sea que cualquiera con cuenta puede crear o borrar amistades ajenas (ver S3). Esto hay que arreglarlo A LA VEZ, porque si no, aceptar no significa nada: cualquiera podría escribir `aceptada` en la amistad de otro |
+| A2 | **Ventana al entrar: quién te agregó** | Al abrir la app, si hay solicitudes nuevas o amigos nuevos desde la última vez, una ventana emergente con **nombre y foto** de cada uno. Con solicitudes: botones aceptar/rechazar ahí mismo. Sin ellas: solo "te agregó", para enterarte de quién es. Hace falta guardar la última vez que se vio, para no repetir a los mismos. Reutiliza el avatar y el popup de perfil que ya existen |
+| A3 | **Correos a los usuarios** | (1) De bienvenida al registrarse. (2) De vez en cuando, cuando haya algo nuevo. **Firebase no envía correo** salvo los de login: hace falta un servicio (la extensión *Trigger Email* de Firebase con SendGrid o Mailgun, o Resend, que es lo más sencillo). Tres cosas antes de mandar el primero: hace falta **buzón de verdad** en `hello@sketch-send.com`; todo correo masivo necesita **enlace para darse de baja** (lo exigen la CAN-SPAM y el RGPD); y hay que registrar SPF/DKIM en el dominio o irá a spam. El correo ya está guardado en `users`, y los de la landing en `landing_emails` |
+
+---
+
+## 🐞 ENCONTRADO AL PROBAR (2026-11-12 / 13)
+
+| # | Qué | Estado |
+|---|-----|--------|
+| B1 | **La bandeja no se actualiza en vivo.** Hay que cerrarla y volver a abrirla para ver un dibujo nuevo. `cargarBandeja()` lee una vez con `.get()` en vez de escuchar con `onSnapshot`, así que nada avisa a la lista de que llegó algo | 🔴 Anotado, pendiente |
+| B2 | **El carrusel de dibujos se reinicia al llegar al final** en vez de seguir girando. Hoy `pos = 0` da un salto visible. Lo normal es duplicar las tarjetas y saltar a la mitad, que no se nota | 🟡 Anotado, pendiente |
+| B3 | El contador de la landing decía **2 usuarios habiendo 17**: solo subía al CREAR la cuenta, así que nadie anterior a ese código se contó | ✅ Arreglado — se cuenta la primera vez que cada cuenta entra y queda marcada, así converge sola |
+| B4 | **El logo de la barra se veía ~1 s y desaparecía** al recargar la landing. Estaba visible desde el principio y solo se ocultaba cuando arrancaba la animación de scroll, que espera a que el splash aterrice (~2,7 s) | ✅ Arreglado |
+| B5 | En la galería **cada dibujo salía como una tira estrecha**: la tarjeta era 4:3 fija y los dibujos son verticales (416x557 los reales). Usaban el 56% del ancho | ✅ Arreglado — cada tarjeta toma la proporción de su dibujo |
+| B6 | **Las 7 mejoras de la rama no estaban en main**, así que al probar no se veía ninguna: ni lienzo vertical, ni reto, ni aviso de red, ni bandeja al derecho, ni 2 filas | ⚠️ Falta fusionar |
+
+---
+
+## 📱 APP NATIVA — qué haría falta
+
+Hoy es una web instalable (PWA). Para estar en las tiendas:
+
+| Vía | Qué cambia en el código | Coste | Qué gana |
+|-----|------------------------|-------|----------|
+| **Google Play (TWA)** | Casi nada: se envuelve la web igual que está. Hace falta firmar la app y publicar un `assetlinks.json` en el dominio | 25 USD, una vez | Aparece en la tienda; las notificaciones suben al 100% |
+| **App Store (Capacitor)** | Más: notificaciones nativas en vez de FCM web, revisar que el lienzo responda al tacto como esperan, y Apple exige borrar cuenta (ya está) y política de privacidad (ya está) | 99 USD/año + 30% de los pagos | Notificaciones en iOS sin instalar a mano, contactos, vibración |
+
+Lo importante: **no hay que reescribir la app**. El motor de dibujo, el replay y
+Firebase se quedan igual. Lo que cambia es el envoltorio y las notificaciones.
+
+---
+
+## 🔴 SEGURIDAD — hallazgos en las reglas de Firestore (2026-11-11)
+
+Revisadas las reglas que me pasaste. Lo primero está **comprobado en vivo**,
+sin iniciar sesión, desde fuera.
+
+| # | Qué | Gravedad | Arreglo |
+|---|-----|----------|---------|
+| S1 | **Cualquiera puede descargar el correo de todos los usuarios.** `match /users/{userId} { allow read: if true }` y los documentos guardan `email` y `fcmToken`. La clave de API es pública por diseño (está en el HTML), así que basta una URL. Verificado: devuelve `email` y `fcmToken` de usuarios reales sin autenticarse | 🔴 Alta — datos personales, y con el RGPD por medio | **Una línea, ya**: `allow read: if request.auth != null`. Comprobado que nada sin sesión lee `users`: el visor público saca el nombre del propio dibujo (`fromName`), y la landing no toca la colección. Cierra la descarga anónima |
+| S2 | Aun con S1 arreglado, cualquiera que se registre puede leer el correo de todos | 🟡 Media | Mover `email` y `fcmToken` a `users/{uid}/privado/datos` con `allow read: if request.auth.uid == uid`. La función en la nube usa el Admin SDK, así que se salta las reglas y la sigue leyendo; solo hay que cambiarle la ruta. Necesita migrar los usuarios que ya existen |
+| S3 | `friendships`: `allow read, write: if request.auth != null`. Cualquiera con cuenta puede **borrar o inventar amistades ajenas**, no solo las suyas | 🟡 Media | Exigir que el uid esté en el documento: `request.auth.uid in resource.data.uids` |
+| S4 | `stats`: `allow write: if request.auth != null`. Cualquiera puede poner el contador de la landing en lo que quiera | 🟡 Media | Permitir solo incrementos, o escribirlo desde la función en la nube |
+| S5 | `fcmTokens`: `allow read, write: if request.auth != null`. Cualquiera con cuenta lee y **sobrescribe** los tokens de los demás, y les deja sin avisos. (La colección parece sin usar: los tokens viven en `users`) | 🟡 Media | Si no se usa, borrar el bloque |
+| S6 | `landing_testimonials` y `landing_gallery` están **declarados dos veces**. El segundo bloque dice `allow write: if false`, pero Firestore une los bloques con OR: basta que uno permita. O sea que ese segundo bloque no protege nada, solo despista | 🟢 Baja | Borrar los bloques duplicados |
+| S7 | `landing_emails` permite `update` sin sesión, así que cualquiera puede sobrescribir la fila de un correo ajeno | 🟢 Baja | Dejar solo `create` |
+| S8 | `sketches` `allow update` deja al destinatario cambiar **cualquier** campo, incluidos los trazos | 🟢 Baja | Limitarlo a `viewed` |
+
+**No es un fallo:** `sketches` `allow get: if true` es a propósito y está bien
+pensado — el ID tiene 20 caracteres aleatorios y `list` sí exige ser parte.
 
 ---
 
@@ -286,9 +390,17 @@ visor de código abierto. Mide el interés real sin construir infraestructura.
 
 | # | Qué | Por qué | Estado |
 |---|-----|---------|--------|
-| D1 | **Video vertical compartible** — el replay de un dibujo como video 9:16 de ~10 s con marca y @usuario, listo para TikTok, Reels o Shorts | El modelo TikTok: cada pieza compartida es publicidad gratis. Ya existe el motor de replay y la descarga de video; falta el formato vertical con marca | 🔴 Primero |
-| D2 | **Captar correos desde la landing** | Hoy quien visita y no se registra se pierde para siempre. Una lista es tuya; los seguidores de una red no | 🟡 Segundo |
-| D3 | **Reto semanal** — un tema por semana ("dibuja tu desayuno"), los mejores a la galería | Da razón para volver, produce contenido solo y es compartible por naturaleza. El equivalente al "consejo diario" del video, pero el trabajo lo hace el usuario | 🟡 Tercero |
+| D1 | **Video vertical compartible** — el replay de un dibujo como video 9:16 de ~10 s con marca y @usuario, listo para TikTok, Reels o Shorts | El modelo TikTok: cada pieza compartida es publicidad gratis. Ya existe el motor de replay y la descarga de video; falta el formato vertical con marca | 🔴 **Desbloqueado 2026-11-10**: el lienzo ya es 9:16 en todos los dispositivos, así que el dibujo llena el marco sin recortes. Falta el video en sí |
+| D2 | **Captar correos desde la landing** | Hoy quien visita y no se registra se pierde para siempre. Una lista es tuya; los seguidores de una red no | ✅ Hecho — formulario en la landing escribe en `landing_emails`. Las reglas impiden leer la lista desde el cliente, así que se exporta desde la consola |
+| D3 | **Reto semanal** — un tema por semana, el mismo para todos | Da razón para volver, produce contenido solo y es compartible por naturaleza | ✅ **Primera mitad hecha 2026-11-10.** 20 retos que rotan. No hay backend: el reto se CALCULA de la fecha en UTC, así que es el mismo en todo el planeta y cambia a la vez (lunes 00:00 UTC). Insignia en la cabecera (en móvil se oculta: salía cortada) y primera sugerencia sobre el lienzo, también al limpiar. **Falta la segunda mitad:** marcar los dibujos con el reto y la galería de los mejores — ver R1 |
+
+### Pendiente del reto semanal
+
+| # | Qué | Detalle |
+|---|-----|---------|
+| R1 | Marcar el dibujo con el reto de esa semana | ✅ Hecho 2026-11-11. Las reglas NO validan con `hasOnly`, así que añadir el campo es seguro. Se guarda el **número de semana**, no el texto: el texto cambia con el idioma de quien envía y no se podría agrupar |
+| R2 | Galería de los mejores del reto | Depende de R1: sin la marca no hay por dónde filtrar |
+| R3 | Avisar del reto nuevo | Los lunes. Reutilizar las notificaciones push que ya funcionan |
 
 **Lo que NO hacer todavía:** ProductHunt, prensa o cualquier empujón de
 tráfico mientras la app siga rota en Safari. Una oleada de visitantes se
@@ -306,6 +418,6 @@ y que quien lo cuenta vende cursos de esto.
 
 ## 🔗 LINKS
 
-- **App en vivo:** https://jic51.github.io/drawing-app/
+- **App en vivo:** https://sketch-send.com/
 - **Repositorio:** https://github.com/jic51/drawing-app
 - **Firebase Console:** https://console.firebase.google.com/project/sketchsend-d1976

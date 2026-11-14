@@ -7,12 +7,105 @@
 <meta name="description" content="Draw, send, and watch your messages come alive. SketchSend turns every message into a hand-drawn animated creation.">
 <meta property="og:title" content="SketchSend — Every message is a drawing ✏️">
 <meta property="og:description" content="Draw, send, and watch your messages come alive.">
-<meta property="og:image" content="https://jic51.github.io/drawing-app/og-preview.png">
+<meta property="og:image" content="https://sketch-send.com/og-preview.png">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<script>
+/* Descubre el logo cuando Syne esté lista.
+
+   Va DETRÁS del <link> a propósito: un script en línea espera a que cargue la
+   hoja anterior, así que aquí las reglas @font-face ya existen. Puesto antes,
+   document.fonts.load('Syne') no encontraría ninguna cara y resolvería al
+   instante, destapando el logo con la fuente de reserva.
+
+   Y no sirve document.fonts.check(): devuelve true hasta para una familia
+   inventada, porque una familia desconocida cae en las del sistema.
+
+   El temporizador garantiza que el logo aparece aunque la fuente no llegue
+   nunca (red caída, Google bloqueado, navegador sin document.fonts). */
+(function () {
+  var hecho = false;
+  function descubrir() {
+    if (hecho) return; hecho = true;
+    document.documentElement.classList.add('fuentes-listas');
+  }
+  setTimeout(descubrir, 1200);
+  try {
+    if (document.fonts && document.fonts.load) {
+      Promise.all([
+        document.fonts.load('800 3rem Syne'),
+        document.fonts.load('400 1rem Inter')
+      ]).then(descubrir, descubrir);
+    } else { descubrir(); }
+  } catch (e) { descubrir(); }
+})();
+</script>
 <style>
+/* ── Reserva con las métricas de Inter ──────────────────────────────
+   Mientras Inter viaja, el texto se pinta con la fuente del sistema. Si esa
+   reserva ocupa otro tamaño, al llegar la real todo se recoloca. Los números
+   salen de medir en el navegador con document.fonts.ready, no de estimar:
+   Inter ocupa 104,94%–110,42% del ancho de Arial regular según el peso, y su
+   caja es ascenso 97 / descenso 24 del em (Arial: 91 / 21).
+   ascent-override se divide entre size-adjust porque size-adjust escala
+   también las métricas, no solo los trazos. */
+@font-face {
+  font-family: 'Inter respaldo';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  font-weight: 400;
+  size-adjust: 104.94%;
+  ascent-override: 92.43%;
+  descent-override: 22.87%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Inter respaldo';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  font-weight: 500;
+  size-adjust: 105.93%;
+  ascent-override: 91.57%;
+  descent-override: 22.66%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Inter respaldo';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  font-weight: 600;
+  size-adjust: 106.91%;
+  ascent-override: 90.73%;
+  descent-override: 22.45%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Inter respaldo';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  font-weight: 700;
+  size-adjust: 107.89%;
+  ascent-override: 89.91%;
+  descent-override: 22.24%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Inter respaldo';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  font-weight: 800;
+  size-adjust: 109.10%;
+  ascent-override: 88.91%;
+  descent-override: 22.00%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Inter respaldo';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  font-weight: 900;
+  size-adjust: 110.42%;
+  ascent-override: 87.85%;
+  descent-override: 21.74%;
+  line-gap-override: 0%;
+}
+
 :root {
   --bg: #0e0e14;
   --surface: #1a1a2e;
@@ -24,7 +117,7 @@
   --border: #2a2a40;
   --rainbow: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #9400d3, #ff0000);
   --glow: rgba(124,58,237,0.3);
-  --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --sans: 'Inter', 'Inter respaldo', -apple-system, BlinkMacSystemFont, sans-serif;
   --nav-h: 60px;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -58,7 +151,16 @@ img { max-width: 100%; height: auto; display: block; }
      solo alcanza a mostrar un color: el arcoíris se pierde. */
   width: fit-content;
   margin-inline: auto;
+
+  /* Syne 800 es casi un 70% más ancha que cualquier fuente del sistema, así
+     que una reserva estirada para que cuadre dejaría unas letras enormes. En
+     vez de eso el logo no se pinta hasta que Syne está lista. Nunca se queda
+     invisible: un temporizador lo descubre aunque la fuente no llegue. */
+  opacity: 0;
+  transition: opacity .22s ease;
 }
+html.fuentes-listas .ss-logo { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .ss-logo { transition: none; } }
 @keyframes mover { from{background-position:0% center} to{background-position:200% center} }
 
 /* ══ NAV FIJO ══ */
@@ -339,7 +441,27 @@ section {
 .carrusel > * {
   flex: 0 0 auto;
 }
-.gallery-grid.carrusel > * { width: 230px; }
+/* El ancho ya no se impone aqui: lo fija cada tarjeta. */
+
+/* Carrusel de DOS filas. Con una rejilla que fluye por columnas, cada
+   columna se llena de arriba abajo y el conjunto se desplaza de lado igual
+   que antes: montarCarrusel solo mueve scrollLeft, así que no se entera.
+   Hace falta !important porque .carrusel pone display:flex. */
+.gallery-grid.carrusel.doble {
+  display: grid !important;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(2, auto);
+  grid-auto-columns: min-content;   /* cada columna, lo que mida su tarjeta */
+  align-items: start;
+  justify-items: center;
+  /* Centrado cuando caben todas, y a desplazarse cuando no. Con
+     justify-content:center un contenedor que desborda recorta el principio
+     y no hay forma de llegar a él; esto no. */
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+
 .reviews-grid.carrusel > * { width: 300px; }
 /* El hover crece la tarjeta: dentro del carrusel la recortaría el
    desbordamiento, así que ahí se queda quieta. */
@@ -374,9 +496,9 @@ section {
 /* auto-fit + justify-content centra las tarjetas cuando no llenan la fila;
    con auto-fill una sola quedaba pegada a la izquierda. */
 .gallery-grid {
-  display: grid; gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 230px));
-  justify-content: center;
+  /* Sin carrusel: fila que se envuelve, cada tarjeta con su propio ancho. */
+  display: flex; flex-wrap: wrap; gap: 16px;
+  justify-content: center; align-items: flex-start;
 }
 .gallery-card {
   background: #12121a; border-radius: 14px; overflow: hidden;
@@ -387,7 +509,9 @@ section {
   transform: scale(1.35); z-index: 5;
   box-shadow: 0 18px 50px rgba(0,0,0,0.6), 0 0 40px var(--glow);
 }
-.gallery-card canvas { width: 100%; aspect-ratio: 4/3; display: block; }
+/* Sin proporcion fija: createGalleryCard le da a cada lienzo la de su
+   propio dibujo, en pixeles. */
+.gallery-card canvas { display: block; }
 /* El autor va DEBAJO del dibujo, no encima: tapaba la parte de abajo
    justo donde suele terminar el trazo. */
 .gallery-card .gallery-author {
@@ -488,7 +612,7 @@ footer {
   .step-desc { font-size: 0.82rem; }
   .counter-wrap { padding: 22px 30px; }
   .counter-label { font-size: 0.85rem; }
-  .gallery-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .gallery-grid { gap: 10px; }
   .try-controls { flex-wrap: wrap; gap: 8px; }
   .try-controls button { padding: 6px 14px; font-size: 0.8rem; }
   details.faq summary { padding: 16px 48px 16px 18px; font-size: 0.93rem; }
@@ -1099,8 +1223,34 @@ function createGalleryCard(strokes, author, photoURL) {
   const card = document.createElement('div');
   card.className = 'gallery-card';
   const canvas = document.createElement('canvas');
-  canvas.width = 400; canvas.height = 300;
   card.appendChild(canvas);
+
+  /* Cada tarjeta toma la proporción de SU dibujo.
+
+     Antes el lienzo de la tarjeta era 400x300 fijo (4:3). Desde que la app
+     dibuja en 9:16, un dibujo nuevo encajado ahí ocupaba 169x300: el 42%
+     del ancho, con el 58% vacio a los lados. Se veia como una tira.
+
+     Ahora la tarjeta se encoge hasta la forma del dibujo y este la llena
+     entera. Los viejos (16:10) salen anchos y bajos, los nuevos altos y
+     estrechos: tamanos distintos conviviendo, que es lo buscado.
+
+     El tamano sale de encajar en una CAJA, no de un ancho fijo: con ancho
+     fijo un dibujo vertical se iria a 500px de alto y dos filas no cabrian
+     en la pantalla. */
+  const metaTam = Array.isArray(strokes) ? strokes.find(e => e && e.tipo === 'inicio' && e.origW) : null;
+  const owTam = (metaTam && metaTam.origW) || 4;
+  const ohTam = (metaTam && metaTam.origH) || 3;
+  const caja = matchMedia('(max-width: 768px)').matches ? { w: 190, h: 230 } : { w: 300, h: 330 };
+  const kTam = Math.min(caja.w / owTam, caja.h / ohTam);
+  const anchoCss = Math.max(90, Math.round(owTam * kTam));
+  const altoCss  = Math.max(90, Math.round(ohTam * kTam));
+  canvas.style.width  = anchoCss + 'px';
+  canvas.style.height = altoCss + 'px';
+  /* El doble de pixeles reales para que el trazo no salga pixelado. */
+  canvas.width  = anchoCss * 2;
+  canvas.height = altoCss * 2;
+  card.style.width = anchoCss + 'px';
   if (author) {
     const label = document.createElement('div');
     label.className = 'gallery-author';
@@ -1205,10 +1355,13 @@ function createGalleryCard(strokes, author, photoURL) {
    comentario o seguir un dibujo sin que se escape. */
 const UMBRAL_CARRUSEL = 5;
 
-function montarCarrusel(grid) {
+function montarCarrusel(grid, filas = 1) {
   if (!grid) return;
   const suficientes = grid.children.length >= UMBRAL_CARRUSEL;
   grid.classList.toggle('carrusel', suficientes);
+  /* Dos filas solo cuando hay carrusel: con pocas tarjetas la segunda fila
+     quedaría medio vacía y se ve peor que una sola. */
+  grid.classList.toggle('doble', suficientes && filas === 2);
   if (grid._pararCarrusel) { grid._pararCarrusel(); grid._pararCarrusel = null; }
   if (!suficientes) return;
   /* Quien prefiere menos movimiento lo deja quieto, pero deslizable. */
@@ -1393,13 +1546,13 @@ function montarCarrusel(grid) {
       /* Vaciar antes de repintar: onSnapshot vuelve a disparar con cada
          cambio y si no, las tarjetas se duplicarían. */
       grid.innerHTML = '';
-      filas.slice(0, 8).forEach(d => {
+      filas.slice(0, 12).forEach(d => {   /* dos filas admiten más */
         const card = createGalleryCard(d.strokes, d.author, d.photoURL);
         grid.appendChild(card);
         observar(card);
       });
       sec.classList.add('ready');
-      montarCarrusel(grid);
+      montarCarrusel(grid, 2);
     }, () => {});
 
   } catch(e) { /* sin Firebase el contador y la galería quedan ocultos */ }
@@ -1417,17 +1570,33 @@ function montarCarrusel(grid) {
     const to = heroLogo.getBoundingClientRect();
     if (from.width === 0 || to.width === 0) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 500); return; }
     const clone = splashLogo.cloneNode(true);
+    /* El clon lleva el mismo id que el original: dos elementos con el mismo
+       id y getElementById puede devolver el que no es. */
+    clone.removeAttribute('id');
     /* No fijar font-family ni letter-spacing aquí: .ss-logo los gobierna. */
-    clone.style.cssText = 'position:fixed;z-index:10000;left:' + from.left + 'px;top:' + from.top + 'px;width:' + from.width + 'px;font-size:' + getComputedStyle(splashLogo).fontSize + ';transition:left 0.7s cubic-bezier(0.4,0,0.2,1),top 0.7s cubic-bezier(0.4,0,0.2,1),font-size 0.7s cubic-bezier(0.4,0,0.2,1),width 0.7s cubic-bezier(0.4,0,0.2,1);pointer-events:none;';
+
+    /* El vuelo se hace con transform, no con left/top/font-size/width.
+       Animar esas cuatro obliga al navegador a recalcular la maquetación en
+       cada fotograma: iba a tirones y además el navegador lo contaba como
+       29 saltos de maquetación seguidos. transform se resuelve en el
+       compositor y, por definición, no es un salto. */
+    const dx = to.left - from.left;
+    const dy = to.top  - from.top;
+    const k  = to.width / from.width;   /* mismo texto y misma fuente: la
+                                           razón de anchos es la de escala */
+    clone.style.cssText =
+      'position:fixed;z-index:10000;pointer-events:none;' +
+      'left:' + from.left + 'px;top:' + from.top + 'px;width:' + from.width + 'px;' +
+      'font-size:' + getComputedStyle(splashLogo).fontSize + ';' +
+      'transform-origin:left top;will-change:transform;' +
+      'transition:transform 0.7s cubic-bezier(0.4,0,0.2,1);';
     document.body.appendChild(clone);
     splashLogo.style.visibility = 'hidden';
     splash.style.opacity = '0';
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        clone.style.left = to.left + 'px';
-        clone.style.top = to.top + 'px';
-        clone.style.fontSize = getComputedStyle(heroLogo).fontSize;
-        clone.style.width = to.width + 'px';
+        clone.style.transform =
+          'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')';
       });
     });
     setTimeout(() => { heroLogo.style.visibility = 'visible'; clone.remove(); splash.remove(); }, 1200);
@@ -1518,6 +1687,17 @@ function montarCarrusel(grid) {
   const nav  = document.querySelector('.nav-logo');
   if (!hero || !nav || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
+  /* Con el scroll arriba el logo que manda es el grande del hero, no el de
+     la barra. Hay que ocultarlo YA, no cuando arranque la animación: esta
+     espera a que el splash aterrice (~2,7 s) y durante ese rato el splash
+     ya se ha desvanecido, así que se veía el logo pequeño arriba y de
+     golpe desaparecía al llegar el grande.
+
+     Se oculta desde JS y no desde el CSS a propósito: con
+     prefers-reduced-motion la función sale antes de esta línea y el logo
+     de la barra se queda visible, que es lo correcto ahí. */
+  nav.style.opacity = '0';
+
   let desde = null, hasta = null, escala = 1, recorrido = 400, activo = false;
 
   function medir() {
@@ -1580,7 +1760,12 @@ function montarCarrusel(grid) {
   const t0 = setInterval(() => {
     if (getComputedStyle(hero).visibility === 'visible') { clearInterval(t0); arrancar(); }
   }, 150);
-  setTimeout(() => clearInterval(t0), 8000);
+  setTimeout(() => {
+    clearInterval(t0);
+    /* Si nunca arrancó (el hero no llegó a medirse), devolver el logo de la
+       barra: más vale verlo siempre que no verlo nunca. */
+    if (!activo) nav.style.opacity = '1';
+  }, 8000);
 
   addEventListener('scroll', () => { if (activo) pintar(); }, { passive: true });
   addEventListener('resize', () => {
