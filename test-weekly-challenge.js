@@ -115,7 +115,7 @@ const chk = (cond, msg, dato) => {
   const m = await p2.evaluate(() => {
     document.querySelectorAll('#splash-screen,#auth-screen').forEach(e => { e.style.display = 'none'; });
     const a = document.getElementById('app'); if (a) a.style.display = 'flex';
-    setupCanvas(); mostrarPrompt();
+    setupCanvas(); mostrarReto();   /* mostrarPrompt se dividió en mostrarReto y mostrarIdea */
     const badge = document.getElementById('reto-badge');
     return {
       badgeVisible: badge.getBoundingClientRect().width > 0,

@@ -407,6 +407,40 @@
       .senal-punto { animation:none; opacity:.8; }
     }
 
+    /* Sugerencias sobre el lienzo. Van ARRIBA: abajo quedaban encima de la
+       zona donde más se dibuja y estorbaban justo al empezar. */
+    /* La posición exacta la fija setupCanvas, que es quien sabe dónde y de
+       qué tamaño quedó el lienzo. Aquí solo lo que no depende de eso. */
+    #drawing-prompts {
+      position:absolute; left:50%; transform:translateX(-50%); top:14px;
+      display:flex; flex-direction:column; align-items:center; gap:6px;
+      pointer-events:none; transition:opacity .45s ease; z-index:10;
+      opacity:0;
+    }
+    #prompt-text {
+      border-radius:18px; padding:9px 18px; font-size:0.84rem; font-weight:500;
+      /* Se parte en dos líneas si hace falta: el lienzo es estrecho (9:16) y
+         una frase larga en una sola línea se salía por los lados. */
+      text-align:center; line-height:1.35; max-width:100%;
+      backdrop-filter:blur(10px);
+      transition:background .3s ease, border-color .3s ease, color .3s ease;
+    }
+    /* El reto de la semana destaca: es lo mismo para todo el mundo y es lo
+       que queremos que se lea. La sugerencia suelta es solo una ayuda. */
+    #drawing-prompts.reto #prompt-text {
+      background:var(--surface2); border:1px solid var(--accent);
+      color:var(--accent2); box-shadow:0 4px 18px var(--glow);
+    }
+    #drawing-prompts.idea #prompt-text {
+      background:var(--surface2); border:1px solid var(--border);
+      color:var(--text); opacity:.92;
+    }
+    #prompt-sub { font-size:0.7rem; color:var(--muted); }
+    #drawing-prompts.idea #prompt-sub { display:none; }
+    @media (prefers-reduced-motion: reduce) {
+      #drawing-prompts, #prompt-text { transition:none; }
+    }
+
     .czone { flex:1; display:flex; flex-direction:column; overflow:hidden; }
     .carea {
       flex:1; display:flex; align-items:center; justify-content:center;
@@ -1287,18 +1321,9 @@
     <div class="czone">
       <div class="carea" id="carea">
         <canvas id="canvas"></canvas>
-        <div id="drawing-prompts" style="
-          position:absolute; bottom:60px; left:50%; transform:translateX(-50%);
-          display:flex; flex-direction:column; align-items:center; gap:8px;
-          pointer-events:none; transition:opacity 0.5s ease; z-index:10;
-        ">
-          <div id="prompt-text" style="
-            background:rgba(15,15,19,0.85); backdrop-filter:blur(8px);
-            border:1px solid var(--border); border-radius:20px;
-            padding:8px 18px; font-size:0.82rem; color:var(--muted);
-            white-space:nowrap;
-          "></div>
-          <div style="font-size:0.68rem;color:var(--muted);opacity:0.6;">✏️ start drawing</div>
+        <div id="drawing-prompts">
+          <div id="prompt-text"></div>
+          <div id="prompt-sub">✏️ start drawing</div>
         </div>
         <div id="preview"></div>
         <div class="fbtns" id="fbtns">
@@ -1790,6 +1815,7 @@ const I18N = {
     notif_denied_help_ios: 'iOS no vuelve a preguntar una vez rechazado. Borra el icono de SketchSend de la pantalla de inicio, vuelve a añadirlo y actívalos desde ahí.',
     notif_denied_help: 'Los has bloqueado antes. Permítelos en los ajustes del navegador para este sitio y recarga.',
     notif_ok: '🔔 Avisos activados',
+    prompt_sub: '✏️ empieza a dibujar',
     reto_titulo: 'Reto de la semana — el mismo para todo el mundo',
     reto_prompt: '🎯 Reto de la semana: dibuja ',
     sin_senal: 'Sin conexión',
@@ -1925,6 +1951,7 @@ const I18N = {
     notif_denied_help_ios: 'iOS never asks again once refused. Delete the SketchSend icon from your Home Screen, add it again, and turn them on from there.',
     notif_denied_help: 'You blocked them earlier. Allow them in your browser settings for this site and reload.',
     notif_ok: '🔔 Alerts on',
+    prompt_sub: '✏️ start drawing',
     reto_titulo: 'Challenge of the week — the same for everyone',
     reto_prompt: '🎯 Challenge of the week: draw ',
     sin_senal: 'No connection',
@@ -1958,6 +1985,7 @@ function applyLang() {
 
   if (typeof pintarSenal === 'function') pintarSenal();
   if (typeof pintarReto === 'function') pintarReto();
+  set('prompt-sub', 'prompt_sub');
   if (typeof pintarFilaNotif === 'function') pintarFilaNotif();
 
   // ── WebView banner ──
@@ -3107,6 +3135,18 @@ function setupCanvas() {
   ctx.setTransform(1,0,0,1,0,0); /* reset transform antes de escalar */
   ctx.scale(DPR, DPR);
   ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  /* La sugerencia va DENTRO del lienzo, no del área que lo rodea: el lienzo
+     es estrecho y está centrado, así que una caja anclada al área se salía
+     por los lados y por arriba. */
+  const sug = document.getElementById('drawing-prompts');
+  if (sug) {
+    /* cv.offsetTop YA es relativo a carea, que tiene position:relative.
+       Restarle el offsetTop de carea lo subía fuera del lienzo. */
+    sug.style.top = (cv.offsetTop + 12) + 'px';
+    sug.style.maxWidth = Math.max(140, cw - 28) + 'px';
+  }
+
   redibujar(); /* re-dibuja trazos existentes + fondo */
 }
 
@@ -3449,46 +3489,68 @@ const PROMPTS_EN = [
   'A message without words ✨',
 ];
 
-let promptTimer = null;
+/* ══════════════════════════════════════════════════════
+   SUGERENCIAS SOBRE EL LIENZO
+   ────────────────────────────────────────────────────
+   Dos cosas distintas que antes se mezclaban:
+
+   - EL RETO de la semana. Es la invitación: sale al abrir con el lienzo
+     vacío y al limpiarlo, destacado, y desaparece en cuanto se empieza a
+     dibujar.
+
+   - LAS IDEAS sueltas. Son una AYUDA, no un cartel: solo aparecen cuando
+     alguien lleva mucho rato sin dibujar nada. Si dibujas y paras un
+     momento no salen; hay que quedarse parado de verdad. Y entonces van
+     cambiando cada pocos segundos, porque una idea fija que no te sirve
+     no ayuda: lo que ayuda es ver varias.
+══════════════════════════════════════════════════════ */
+const IDEAS_ESPERA = 75000;   /* quieto tanto rato = probablemente atascado */
+const IDEAS_CICLO  = 3800;    /* cada cuánto cambia la idea */
+
+let promptTimer = null;       /* la cuenta atrás hasta ofrecer ideas */
+let ideasTimer = null;        /* el goteo de ideas, una tras otra */
 let promptVisible = false;
 let currentPromptIdx = Math.floor(Math.random() * PROMPTS_ES.length);
 
 function getPrompts() { return lang === 'en' ? PROMPTS_EN : PROMPTS_ES; }
 
-let retoYaSugerido = false;
+function cajaPrompt() { return document.getElementById('drawing-prompts'); }
 
-function mostrarPrompt() {
-  const el = document.getElementById('drawing-prompts');
-  const txt = document.getElementById('prompt-text');
+function mostrarReto() {
+  const el = cajaPrompt(), txt = document.getElementById('prompt-text');
   if (!el || !txt) return;
-  /* La primera sugerencia es el reto de la semana: es la que vale algo,
-     porque es la misma para todos y da de qué hablar. Luego ya rotan las
-     sueltas de siempre. */
-  if (!retoYaSugerido) {
-    retoYaSugerido = true;
-    txt.textContent = t('reto_prompt') + textoReto();
-  } else {
-    const prompts = getPrompts();
-    currentPromptIdx = (currentPromptIdx + 1) % prompts.length;
-    txt.textContent = prompts[currentPromptIdx];
-  }
+  txt.textContent = t('reto_prompt') + textoReto();
+  el.classList.add('reto'); el.classList.remove('idea');
   el.style.opacity = '1';
-  el.style.pointerEvents = 'none';
   promptVisible = true;
 }
 
+function mostrarIdea() {
+  const el = cajaPrompt(), txt = document.getElementById('prompt-text');
+  if (!el || !txt) return;
+  const lista = getPrompts();
+  currentPromptIdx = (currentPromptIdx + 1) % lista.length;
+  txt.textContent = lista[currentPromptIdx];
+  el.classList.add('idea'); el.classList.remove('reto');
+  el.style.opacity = '1';
+  promptVisible = true;
+  clearTimeout(ideasTimer);
+  ideasTimer = setTimeout(mostrarIdea, IDEAS_CICLO);
+}
+
 function ocultarPrompt() {
-  const el = document.getElementById('drawing-prompts');
+  const el = cajaPrompt();
+  clearTimeout(ideasTimer); ideasTimer = null;
   if (!el) return;
   el.style.opacity = '0';
   promptVisible = false;
 }
 
+/* Arranca la cuenta atrás. Cada trazo la reinicia, así que las ideas solo
+   salen tras un silencio largo de verdad. */
 function resetPromptTimer() {
   clearTimeout(promptTimer);
-  promptTimer = setTimeout(() => {
-    if (!trazos.length) mostrarPrompt();
-  }, 60000);
+  promptTimer = setTimeout(mostrarIdea, IDEAS_ESPERA);
 }
 
 let promptsInicializados = false;
@@ -3496,22 +3558,19 @@ function iniciarPromptsCanvas() {
   if (promptsInicializados) return;
   promptsInicializados = true;
 
-  /* Mostrar prompt al abrir si el canvas está vacío */
-  setTimeout(() => {
-    if (!trazos.length) mostrarPrompt();
-  }, 2000);
+  /* Al abrir con el lienzo vacío, el reto. Es lo primero que se lee. */
+  setTimeout(() => { if (!trazos.length) mostrarReto(); }, 900);
   resetPromptTimer();
 
-  /* Ocultar cuando empieza a dibujar */
+  /* Al primer trazo se va, y deja de contar: mientras dibujas no estorba. */
   cv.addEventListener('pointerdown', () => {
-    if (promptVisible) ocultarPrompt();
+    ocultarPrompt();
     clearTimeout(promptTimer);
   });
 
-  /* Reiniciar timer cuando levanta el dedo */
-  cv.addEventListener('pointerup', () => {
-    resetPromptTimer();
-  });
+  /* Al levantar el dedo vuelve a contar desde cero. */
+  cv.addEventListener('pointerup', resetPromptTimer);
+  cv.addEventListener('pointercancel', resetPromptTimer);
 }
 
 /* ── LIMPIAR ── */
@@ -3576,8 +3635,11 @@ function limpiarCanvas() {
   actualizarBotones(); toast(t('canvas_cleared'));
   /* Limpiar es "quiero empezar otra cosa": el mejor momento para volver a
      proponer el reto de la semana en vez de una sugerencia suelta. */
-  retoYaSugerido = false;
-  setTimeout(mostrarPrompt, 1000);
+  /* Limpiar es "quiero empezar otra cosa": vuelve el reto, que es la
+     invitación, no una sugerencia suelta. */
+  ocultarPrompt();
+  setTimeout(() => { if (!trazos.length) mostrarReto(); }, 700);
+  resetPromptTimer();
 }
 
 /* ══════════════════════════════════════════════════════
