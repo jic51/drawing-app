@@ -205,49 +205,17 @@
 
 ---
 
-## 🌐 PONER EN MARCHA sketch-send.com
+## ✅ sketch-send.com EN MARCHA (2026-11-14)
 
-El código ya está listo. Falta lo de fuera, y **el orden importa**: en cuanto
-`CNAME` llegue a `main`, GitHub Pages empieza a redirigir
-`jic51.github.io/drawing-app` al dominio nuevo. Si el DNS no responde
-todavía, la app queda caída hasta que responda.
+DNS configurado, CNAME publicado, dominio añadido a los Authorized domains
+de Firebase Auth y login funcionando. La app está en `/app/` y la landing
+en la raíz.
 
-**1. DNS primero** (donde compraste el dominio). Cuatro registros A en la
-raíz (`@`), que son los de GitHub Pages:
-
-```
-185.199.108.153
-185.199.109.153
-185.199.110.153
-185.199.111.153
-```
-
-Y uno CNAME para `www` → `jic51.github.io`
-
-**2. Esperar** a que responda. Comprobar con `dig sketch-send.com +short`:
-tiene que devolver esas cuatro direcciones.
-
-**3. Fusionar la rama a `main`.** El despliegue sube el `CNAME` y GitHub
-toma el dominio. En Settings → Pages, marcar **Enforce HTTPS** en cuanto
-deje (el certificado tarda unos minutos en emitirse).
-
-**4. Después del cambio**, dos cosas que hay que hacer aparte:
-   - **Volver a desplegar la función** (`firebase deploy --only functions`):
-     el enlace que abre la notificación ya apunta al dominio nuevo, pero
-     hasta que no se despliegue sigue corriendo la versión vieja.
-   - **Firebase Auth → Settings → Authorized domains**: añadir
-     `sketch-send.com`. Si no, el login con Google falla en el dominio
-     nuevo con `auth/unauthorized-domain`.
-
-**Lo que NO se rompe:** los enlaces que ya mandaste
-(`jic51.github.io/drawing-app/?view=...`) siguen funcionando, porque GitHub
-los redirige al dominio nuevo.
-
-**Antes de fiarte del correo:** comprar el dominio no da buzón. Para que
-`hello@sketch-send.com` reciba de verdad hace falta un servicio de correo
-(Zoho y el reenvío de Cloudflare son gratis; Google Workspace es de pago).
-Está puesto en privacy.html y terms.html, así que conviene que funcione:
-un correo de contacto que no recibe es peor que no poner ninguno.
+**Lo que queda de esto:**
+- `firebase deploy --only functions` — el enlace que abre la notificación
+  ya apunta a `sketch-send.com/app/`, pero corre la versión anterior hasta
+  que se despliegue.
+- Settings → Pages → **Enforce HTTPS**, si GitHub ya emitió el certificado.
 
 ---
 
