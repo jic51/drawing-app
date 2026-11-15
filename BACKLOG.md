@@ -260,9 +260,9 @@ cada enlace ya enviado dejaría de funcionar. Lo vigila `test-routing.js`.
 
 | # | Qué | Detalle |
 |---|-----|---------|
-| P1 | **Ajustes: los títulos son enlaces** | Hoy se toca un botón al lado. Debe abrirse al tocar **las letras**, no el espacio vacío: Privacidad, Términos, Opinión y Web. Opinión y Web además deben verse distintos (son acciones, no páginas legales) |
-| P2 | **Ajustes: detalles** | Idioma con la misma forma de botones que Tema · el número de versión pegado a la palabra "Versión" · "Replay after sending" tiene un fondo feo: bordes redondeados y otro color · Avisos se queda como está |
-| P3 | **El video, mejor presentado** | Quitar la franja oscura de abajo, que está solo para el @usuario y el nombre. Buscar una forma que no parta el cuadro en dos |
+| P1 | **Ajustes: los títulos son enlaces** | ✅ Hecho 2026-11-15. Privacidad y Términos son `<a>` de verdad; Opinión responde también al teclado. Opinión y Web van en color de acento (son acciones), las legales en el color del texto |
+| P2 | **Ajustes: detalles** | ✅ Hecho 2026-11-15. Idioma y Tema comparten la clase `.seg`. Versión junta. Y el fondo feo del replay NO era de estilo: el código pintaba el hermano equivocado y teñía el bloque de texto en vez de la barrita del interruptor, que además nunca se encendía |
+| P3 | **El video, mejor presentado** | ✅ Hecho 2026-11-15. Sin franja: el dibujo usa el alto entero y la marca va encima, con un degradado que se desvanece hacia arriba y no deja borde |
 | P4 | **Punto verde de conectado** | Pegado al círculo del avatar, en la bandeja Y en los amigos de debajo del lienzo. Quien está en línea o acaba de estarlo |
 | P5 | **Aviso flotante al recibir** | ✅ Hecho 2026-11-15. Aviso con avatar, tocable, que abre la bandeja; la fila nueva entra animada. Al abrir la app no avisa de los pendientes (saldrían todos de golpe) y la pila no pasa de tres |
 | P6 | **La cuenta del creador, amiga de todos** | Cada cuenta nueva queda emparejada con la del creador, y se muestra como tal para que se sepa quién hizo la app |

@@ -64,11 +64,22 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   }
 
   /* Comprobar el lienzo de grabación: tamaño y marca abajo. */
-  const marco = await p.evaluate(() => ({ W: VIDEO_W, H: VIDEO_H, banda: VIDEO_BANDA, max: VIDEO_MAX_MS }));
+  const marco = await p.evaluate(() => ({ W: VIDEO_W, H: VIDEO_H, velo: VIDEO_MARCA_ALTO, max: VIDEO_MAX_MS }));
   chk(marco.W === 1080 && marco.H === 1920, 'marco 1080x1920 (9:16 de redes)', marco);
   chk(Math.abs(marco.W / marco.H - 9/16) < 0.001, 'proporción exacta 9:16');
-  chk(marco.banda > 100 && marco.banda < marco.H * 0.15, 'la franja de la marca no se come el dibujo',
-      { banda: marco.banda, porcentaje: Math.round(marco.banda / marco.H * 100) + '%' });
+  /* Ya no hay franja opaca: el dibujo usa el alto entero y la marca va
+     encima, con un degradado que se desvanece. Lo que se comprueba es que
+     el dibujo NO pierda alto por la marca. */
+  const zona = await p.evaluate(() => {
+    const ow = 424, oh = 754;
+    const k = Math.min(VIDEO_W / ow, VIDEO_H / oh);
+    return { altoDibujo: Math.round(oh * k), altoMarco: VIDEO_H };
+  });
+  chk(zona.altoDibujo > marco.H * 0.95,
+      'el dibujo usa el alto entero del cuadro, sin franja que se lo coma', zona);
+  chk(marco.velo > 150 && marco.velo < marco.H * 0.25,
+      'el degradado de la marca es suave y no domina el cuadro',
+      { velo: marco.velo, porcentaje: Math.round(marco.velo / marco.H * 100) + '%' });
 
   chk(errs.length === 0, 'sin errores de JS', errs[0] || '');
   await b.close();

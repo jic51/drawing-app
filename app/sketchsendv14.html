@@ -1118,6 +1118,51 @@
       color:#fff; border:2px solid transparent; box-shadow:0 2px 8px var(--glow);
     }
     .settings-row-action.premium:hover { box-shadow:0 4px 14px var(--glow); transform:translateY(-1px); }
+    /* Grupo de botones para elegir una opción. Lo usan Idioma y Tema, que
+       son el mismo tipo de ajuste y antes se veían distintos. */
+    .seg {
+      display:flex; gap:4px; background:var(--surface2);
+      border-radius:9px; padding:2px; flex:0 0 auto;
+    }
+    .seg-btn {
+      font-size:0.75rem; padding:5px 11px; border-radius:7px; border:none;
+      cursor:pointer; background:transparent; color:var(--muted);
+      font-family:var(--sans); transition:background .2s ease, color .2s ease;
+      white-space:nowrap;
+    }
+    .seg-btn:hover { color:var(--text); }
+    .seg-btn.activo { background:var(--accent); color:#fff; }
+
+    /* Un título que ES el enlace. Antes había que acertarle al botón de la
+       derecha y tocar las letras no hacía nada, que es lo primero que
+       cualquiera intenta. */
+    a.settings-row-label, .settings-row-label[role="link"] {
+      cursor:pointer; text-decoration:none; display:inline-block;
+      border-bottom:1px solid transparent; transition:color .2s ease, border-color .2s ease;
+    }
+    a.settings-row-label:hover, .settings-row-label[role="link"]:hover {
+      border-bottom-color:currentColor;
+    }
+    /* Las páginas legales son texto para leer: se quedan en el color normal.
+       Opinión y Sitio web son acciones, así que llevan el color de acento. */
+    .enlace-legal { color:var(--text); }
+    .enlace-legal:hover { color:var(--accent2); }
+    .enlace-accion { color:var(--accent2); font-weight:600; }
+    .settings-row-action.accion { border-color:var(--accent); color:var(--accent2); }
+
+    /* Una fila con caja propia, para la que lleva interruptor: así se ve que
+       es un ajuste que se enciende y se apaga, y no una franja de color
+       pegada al borde. */
+    .fila-caja {
+      background:var(--surface2); border:1px solid var(--border);
+      border-radius:12px; padding:12px 14px; margin:4px 0;
+    }
+
+    .version-num {
+      font-size:0.78rem; color:var(--muted); margin-left:8px;
+      font-variant-numeric:tabular-nums;
+    }
+
     .settings-row-action.danger {
       border-color:rgba(239,68,68,0.3); color:var(--danger); background:var(--surface2);
     }
@@ -1618,21 +1663,23 @@
       </div>
       <div class="settings-row">
         <div class="settings-row-label" id="lbl-language">Idioma</div>
-        <div style="display:flex;gap:6px;">
-          <button id="lang-es-btn" class="btn-g" style="font-size:0.8rem;">🇪🇸 ES</button>
-          <button id="lang-en-btn" class="btn-g" style="font-size:0.8rem;opacity:0.5;">🇺🇸 EN</button>
+        <!-- Misma forma que Tema: son la misma clase de ajuste, elegir una
+             de varias, y antes se veían como dos cosas distintas. -->
+        <div class="seg">
+          <button id="lang-es-btn" class="seg-btn">🇪🇸 ES</button>
+          <button id="lang-en-btn" class="seg-btn">🇺🇸 EN</button>
         </div>
       </div>
       <div class="settings-row">
         <div class="settings-row-label" id="lbl-theme">Theme</div>
-        <div style="display:flex;gap:4px;background:var(--surface2);border-radius:8px;padding:2px;">
-          <button id="theme-auto-btn" style="font-size:0.75rem;padding:4px 10px;border-radius:6px;border:none;cursor:pointer;background:var(--accent);color:#fff;transition:.2s;">🔄 Auto</button>
-          <button id="theme-dark-btn" style="font-size:0.75rem;padding:4px 10px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:var(--muted);transition:.2s;">🌙 Dark</button>
-          <button id="theme-light-btn" style="font-size:0.75rem;padding:4px 10px;border-radius:6px;border:none;cursor:pointer;background:transparent;color:var(--muted);transition:.2s;">☀️ Light</button>
+        <div class="seg">
+          <button id="theme-auto-btn" class="seg-btn">🔄 Auto</button>
+          <button id="theme-dark-btn" class="seg-btn">🌙 Dark</button>
+          <button id="theme-light-btn" class="seg-btn">☀️ Light</button>
         </div>
       </div>
-      <div class="settings-row" id="replay-toggle-row" style="cursor:pointer;">
-        <div>
+      <div class="settings-row fila-caja" id="replay-toggle-row" style="cursor:pointer;">
+        <div style="background:transparent;">
           <div class="settings-row-label" id="lbl-replay-self">Replay after sending</div>
           <div class="settings-row-sub" id="lbl-replay-self-sub">Play back your drawing after you send it</div>
         </div>
@@ -1644,15 +1691,19 @@
       </div>
       <div class="settings-row" id="review-row" style="cursor:pointer;">
         <div>
-          <div class="settings-row-label" id="lbl-review">Leave a review</div>
+          <span class="settings-row-label enlace-accion" id="lbl-review" role="link" tabindex="0">Leave a review</span>
           <div class="settings-row-sub" id="lbl-review-sub">Tell us what you think — it may appear on our site</div>
         </div>
-        <button class="settings-row-action" id="review-btn">✍️</button>
+        <button class="settings-row-action accion" id="review-btn">✍️</button>
       </div>
+      <!-- El título ES el enlace. Antes había que acertarle al botón de la
+           derecha; tocar las letras no hacía nada, que es justo lo que
+           cualquiera intenta primero. -->
       <div class="settings-row">
-        <div class="settings-row-label" id="lbl-privacy">Privacidad</div>
+        <a class="settings-row-label enlace-legal" id="lbl-privacy"
+           href="../privacy.html" target="_blank" rel="noopener">Privacidad</a>
         <a class="settings-row-action" href="../privacy.html" target="_blank" rel="noopener"
-           style="text-decoration:none;">↗</a>
+           style="text-decoration:none;" tabindex="-1" aria-hidden="true">↗</a>
       </div>
       <!-- Avisos. Tiene que ser un BOTÓN: Safari de iOS solo abre el diálogo
            de permiso si la petición sale de un toque. -->
@@ -1665,21 +1716,25 @@
       </div>
 
       <div class="settings-row">
-        <div class="settings-row-label" id="lbl-terms">Términos</div>
+        <a class="settings-row-label enlace-legal" id="lbl-terms"
+           href="../terms.html" target="_blank" rel="noopener">Términos</a>
         <a class="settings-row-action" href="../terms.html" target="_blank" rel="noopener"
-           style="text-decoration:none;">↗</a>
+           style="text-decoration:none;" tabindex="-1" aria-hidden="true">↗</a>
       </div>
-      <div class="settings-row" id="web-row" style="cursor:pointer;">
+      <div class="settings-row" id="web-row">
         <div>
-          <div class="settings-row-label" id="lbl-web">Sitio web</div>
+          <a class="settings-row-label enlace-accion" id="lbl-web"
+             href="../" target="_blank" rel="noopener">Sitio web</a>
           <div class="settings-row-sub">sketch-send.com</div>
         </div>
-        <a class="settings-row-action" id="web-btn" href="../" target="_blank" rel="noopener"
-           style="text-decoration:none;">↗</a>
+        <a class="settings-row-action accion" id="web-btn" href="../" target="_blank" rel="noopener"
+           style="text-decoration:none;" tabindex="-1" aria-hidden="true">↗</a>
       </div>
       <div class="settings-row">
-        <div class="settings-row-label" id="lbl-version">Versión</div>
-        <div style="font-size:0.82rem;color:var(--muted);">1.20.0</div>
+        <div class="settings-row-label">
+          <span id="lbl-version">Versión</span>
+          <span class="version-num">1.20.0</span>
+        </div>
       </div>
       <div class="settings-row" style="justify-content:center;">
         <button class="settings-row-action danger" id="settings-logout" style="width:100%;">Sign out</button>
@@ -2179,8 +2234,10 @@ function applyLang() {
   set('lbl-store-section', 'store_section');
 
   // ── Language buttons ──
-  const langEs = q('lang-es-btn'); if (langEs) langEs.style.opacity = lang==='es' ? '1' : '0.5';
-  const langEn = q('lang-en-btn'); if (langEn) langEn.style.opacity = lang==='en' ? '1' : '0.5';
+  /* La elegida se marca igual que en Tema: fondo de acento, no una
+     opacidad a medias que parecía un botón deshabilitado. */
+  const langEs = q('lang-es-btn'); if (langEs) langEs.classList.toggle('activo', lang === 'es');
+  const langEn = q('lang-en-btn'); if (langEn) langEn.classList.toggle('activo', lang === 'en');
 
   document.documentElement.lang = lang;
   if (typeof applySeason === 'function') applySeason();
@@ -4637,7 +4694,15 @@ pngBtn.addEventListener('click', () => {
 const VIDEO_W = 1080, VIDEO_H = 1920;
 const VIDEO_MAX_MS = 10000;      /* lo que dura mirar sin aburrirse */
 const VIDEO_COLA_MS = 1300;      /* el dibujo terminado se queda quieto */
-const VIDEO_BANDA = 196;         /* alto de la franja de la marca */
+/* Sin franja. La marca va ENCIMA del dibujo, abajo a la izquierda, como
+   hacen las redes. Una franja opaca partía el cuadro en dos y le robaba
+   el 10% del alto al dibujo solo para poner dos líneas de texto.
+
+   Para que el texto se lea sobre cualquier dibujo hay un degradado suave
+   en la parte baja, de transparente a oscuro. No es una franja: no tiene
+   borde, no se nota dónde empieza, y encima de un dibujo claro apenas se
+   ve. */
+const VIDEO_MARCA_ALTO = 300;    /* hasta dónde sube el degradado */
 
 const ARCOIRIS = ['#ff0000','#ff7f00','#ffff00','#00ff00','#0000ff','#9400d3','#ff0000'];
 
@@ -4668,12 +4733,21 @@ function textoArcoiris(ctx, texto, x, y, font, fase, alto) {
    poder pintarla y mirarla sin grabar un video entero, que es la única
    forma de comprobar que se ve bien. */
 function pintarMarcaVideo(tc, fase, oscuro, quien) {
-  const y0 = VIDEO_H - VIDEO_BANDA;
+  const y0 = VIDEO_H - VIDEO_MARCA_ALTO;
   tc.save();
-  tc.fillStyle = oscuro ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.85)';
-  tc.fillRect(0, y0, VIDEO_W, VIDEO_BANDA);
-  tc.fillStyle = oscuro ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)';
-  tc.fillRect(0, y0, VIDEO_W, 2);
+
+  /* Degradado, no franja: se desvanece hacia arriba, así que no hay un
+     borde donde el ojo note "aquí termina el dibujo". */
+  const velo = tc.createLinearGradient(0, y0, 0, VIDEO_H);
+  if (oscuro) {
+    velo.addColorStop(0, 'rgba(0,0,0,0)');
+    velo.addColorStop(1, 'rgba(0,0,0,0.72)');
+  } else {
+    velo.addColorStop(0, 'rgba(255,255,255,0)');
+    velo.addColorStop(1, 'rgba(255,255,255,0.88)');
+  }
+  tc.fillStyle = velo;
+  tc.fillRect(0, y0, VIDEO_W, VIDEO_MARCA_ALTO);
 
   const x = 56;
   /* @usuario a la izquierda, como se pidió. */
@@ -4681,14 +4755,14 @@ function pintarMarcaVideo(tc, fase, oscuro, quien) {
   tc.textBaseline = 'middle';
   tc.textAlign = 'left';
   tc.fillStyle = oscuro ? 'rgba(255,255,255,0.92)' : 'rgba(20,20,30,0.92)';
-  tc.fillText('@' + (quien || ''), x, y0 + 66);
+  tc.fillText('@' + (quien || ''), x, VIDEO_H - 132);
 
   /* "Hecho con" + el logo con los colores moviéndose. Syne llega hasta 800:
      pedir 900 no existe y el navegador lo falsea engordando el trazo. */
   tc.font = '400 34px "DM Sans", sans-serif';
   tc.fillStyle = oscuro ? 'rgba(255,255,255,0.55)' : 'rgba(20,20,30,0.55)';
   const etiqueta = lang === 'es' ? 'Hecho con ' : 'Made with ';
-  tc.fillText(etiqueta, x, y0 + 134);
+  tc.fillText(etiqueta, x, VIDEO_H - 64);
   const anchoEtiqueta = tc.measureText(etiqueta).width;
 
   /* El nombre va con el arcoíris, pero el lápiz NO: 'source-in' tiñe todo
@@ -4696,11 +4770,11 @@ function pintarMarcaVideo(tc, fase, oscuro, quien) {
      En la app el lápiz es rojo, y el logo tiene que verse igual en todas
      partes. Así que se pintan por separado. */
   const fuenteLogo = '800 40px Syne, sans-serif';
-  const anchoNombre = textoArcoiris(tc, 'SketchSend', x + anchoEtiqueta, y0 + 134,
+  const anchoNombre = textoArcoiris(tc, 'SketchSend', x + anchoEtiqueta, VIDEO_H - 64,
                                     fuenteLogo, fase, 56);
   tc.font = fuenteLogo;
   tc.fillStyle = oscuro ? '#fff' : '#111';
-  tc.fillText(' ✏️', x + anchoEtiqueta + anchoNombre, y0 + 134);
+  tc.fillText(' ✏️', x + anchoEtiqueta + anchoNombre, VIDEO_H - 64);
   tc.restore();
 }
 
@@ -4733,7 +4807,8 @@ vidBtn.addEventListener('click', async () => {
     const ow = (meta && meta.origW) || Math.round(cv.width / DPR);
     const oh = (meta && meta.origH) || Math.round(cv.height / DPR);
 
-    const zonaH = VIDEO_H - VIDEO_BANDA;
+    /* El dibujo usa el alto ENTERO: la marca va encima, no debajo. */
+    const zonaH = VIDEO_H;
     const k = Math.min(VIDEO_W / ow, zonaH / oh);
     const ox = (VIDEO_W - ow * k) / 2;
     const oy = (zonaH - oh * k) / 2;
@@ -4791,7 +4866,7 @@ vidBtn.addEventListener('click', async () => {
         const transcurrido = (ahora - t0) * (1 / factor);
 
         tc.fillStyle = fondo;
-        tc.fillRect(0, 0, VIDEO_W, VIDEO_H - VIDEO_BANDA);
+        tc.fillRect(0, 0, VIDEO_W, VIDEO_H);
 
         /* Se repinta todo lo dibujado hasta este instante. Repintar desde
            cero cada cuadro evita que la franja o el fondo borren trazos. */
@@ -4954,6 +5029,15 @@ async function abrirOpinion() {
   if (window.posthog) posthog.capture('review_submitted');
 }
 document.getElementById('review-row').addEventListener('click', abrirOpinion);
+/* El título también abre, con ratón y con teclado: lleva role="link", así
+   que quien navegue con el teclado espera que Enter funcione. */
+(() => {
+  const t = document.getElementById('lbl-review');
+  if (!t) return;
+  t.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); abrirOpinion(); }
+  });
+})();
 
 sksBtn.addEventListener('click', () => {
   if (!trazos.length) { toast(t('draw_first')); return; }
@@ -5848,8 +5932,7 @@ function applyTheme(theme) {
   else document.documentElement.setAttribute('data-theme', theme);
   ['auto','dark','light'].forEach(v => {
     const b = document.getElementById('theme-'+v+'-btn');
-    b.style.background = theme === v ? 'var(--accent)' : 'transparent';
-    b.style.color = theme === v ? '#fff' : 'var(--muted)';
+    if (b) b.classList.toggle('activo', theme === v);
   });
   if (typeof setupCanvas === 'function' && cv) { const w=cv.width/DPR, h=cv.height/DPR; ctx.clearRect(0,0,w,h); fondoCanvas(ctx,w,h); }
 }
@@ -5865,7 +5948,13 @@ function syncReplayToggle() {
   const on = ls.get('ss_replay_self') !== 'false';
   replayToggle.checked = on;
   replayKnob.style.transform = on ? 'translateX(20px)' : 'none';
-  replayKnob.parentElement.previousElementSibling.style.background = on ? 'var(--accent)' : 'var(--border)';
+  /* La barrita del interruptor es el hermano ANTERIOR de la bolita.
+     Antes se subía al <label> y se pintaba el hermano anterior DE ESE, que
+     es el bloque de texto: de ahí el rectángulo naranja detrás de "Replay
+     after sending". Y la barrita nunca se encendía, así que tampoco se
+     distinguía encendido de apagado. */
+  const barrita = replayKnob.previousElementSibling;
+  if (barrita) barrita.style.background = on ? 'var(--accent)' : 'var(--border)';
 }
 syncReplayToggle();
 replayToggle.addEventListener('change', () => {
