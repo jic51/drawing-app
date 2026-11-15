@@ -79,7 +79,11 @@ self.addEventListener('push', e => {
   /* Una etiqueta por remitente. Con una fija, cada aviso borraba el
      anterior y solo se veía el último. Así cada persona tiene el suyo, y
      varios dibujos de la misma se juntan en uno que lleva la cuenta. */
-  const tag = quien ? 'ss-de-' + quien : 'ss-sketch';
+  /* Los "vieron tu dibujo" llevan su propia etiqueta: si compartieran la
+     de "te envió un dibujo", el contador diría "te envió 3 dibujos" cuando
+     en realidad son dos envíos y un visto. */
+  const esVisto = (extra && extra.tipo) === 'visto';
+  const tag = esVisto ? 'ss-visto-' + (quien || '') : (quien ? 'ss-de-' + quien : 'ss-sketch');
 
   e.waitUntil((async () => {
     const previas = await self.registration.getNotifications({ tag });
@@ -88,7 +92,7 @@ self.addEventListener('push', e => {
     const es = (self.navigator.language || '').toLowerCase().startsWith('es');
     let title = notification.title || 'SketchSend';
     let body  = notification.body || 'Tienes un nuevo dibujo ✏️';
-    if (n > 1 && quien) {
+    if (n > 1 && quien && !esVisto) {
       title = es ? `${quien} te envió ${n} dibujos ✏️`
                  : `${quien} sent you ${n} drawings ✏️`;
       body  = es ? 'Tócalos para verlos antes de que desaparezcan'

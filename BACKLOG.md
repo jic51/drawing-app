@@ -264,10 +264,30 @@ cada enlace ya enviado dejaría de funcionar. Lo vigila `test-routing.js`.
 | P2 | **Ajustes: detalles** | Idioma con la misma forma de botones que Tema · el número de versión pegado a la palabra "Versión" · "Replay after sending" tiene un fondo feo: bordes redondeados y otro color · Avisos se queda como está |
 | P3 | **El video, mejor presentado** | Quitar la franja oscura de abajo, que está solo para el @usuario y el nombre. Buscar una forma que no parta el cuadro en dos |
 | P4 | **Punto verde de conectado** | Pegado al círculo del avatar, en la bandeja Y en los amigos de debajo del lienzo. Quien está en línea o acaba de estarlo |
-| P5 | **Aviso flotante al recibir** | Un toast dentro de la app: "@usuario te envió un dibujo", y al tocarlo se abre la bandeja. Ver un numerito pasar de 1 a 2 no es lo mismo. Y animar la fila nueva dentro de la bandeja |
+| P5 | **Aviso flotante al recibir** | ✅ Hecho 2026-11-15. Aviso con avatar, tocable, que abre la bandeja; la fila nueva entra animada. Al abrir la app no avisa de los pendientes (saldrían todos de golpe) y la pila no pasa de tres |
 | P6 | **La cuenta del creador, amiga de todos** | Cada cuenta nueva queda emparejada con la del creador, y se muestra como tal para que se sepa quién hizo la app |
 | P7 | **El hero de la landing: dibujos de verdad** | En vez de la flor inventada, reproducir los dibujos reales de la galería uno a uno, del más nuevo hacia atrás y rotando, al ritmo al que se dibujaron. Sin nombre de autor |
 | P8 | **"Pruébalo tú mismo": lienzo del tamaño real** | Para que cuadre con lo que la app hace de verdad |
+
+---
+
+## 👀 "VIERON TU DIBUJO" (2026-11-15)
+
+Hecho, pero **necesita desplegar las funciones** para que funcione:
+`firebase deploy --only functions`.
+
+Va en el servidor y no en el navegador a propósito: desde el cliente,
+escuchar los dibujos que uno envió significa descargarlos ENTEROS, y un
+dibujo pesa cientos de kilobytes porque los trazos viven en el mismo
+documento que el estado. Quien enviara diez al día se bajaría varios megas
+solo para enterarse de un "visto". El servidor ya tiene el documento
+delante.
+
+**Pendiente de decidir:** hoy el `viewed` solo se marca cuando el
+destinatario abre el dibujo DENTRO de la app. Quien abre un enlace público
+sin sesión no puede escribirlo (las reglas no se lo permiten, y está bien
+que sea así). O sea que un dibujo visto solo por enlace no avisa. Habría
+que decidir si eso importa.
 
 ---
 

@@ -134,23 +134,31 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   /* ¿Los dibujos siguen animándose después de rotar? Se comparan dos fotos
      del mismo lienzo separadas en el tiempo. */
   const mueve = await p.evaluate(async () => {
-    /* Un lienzo que esté VISIBLE: los que quedan fuera de pantalla pausan su
-       animación a propósito, para no gastar batería. Tras rotar, el primer
-       hijo puede ser justo el que acaba de salir por la derecha. */
-    const cv = [...document.querySelectorAll('#gallery-grid canvas')].find(c => {
-      const r = c.getBoundingClientRect();
-      return r.right > 0 && r.left < innerWidth && r.width > 0;
-    });
-    if (!cv) return false;
-    const foto = () => cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data.join(',').length;
-    /* El replay se queda QUIETO 2,7 s al terminar antes de repetir, así que
-       dos fotos cercanas pueden salir idénticas aunque todo funcione. Se
-       vigila una ventana más larga que esa pausa y basta con que cambie
-       una vez. */
-    const a = foto();
+    /* Dos trampas que hacían fallar esto sin que nada estuviera roto:
+       - Los lienzos fuera de pantalla pausan su animación a propósito, así
+         que hay que mirar solo los visibles.
+       - El carrusel sigue moviéndose: el que es visible ahora puede no
+         serlo dentro de unos segundos. Por eso se compara cada lienzo
+         CONSIGO MISMO entre dos instantes seguidos, en vez de seguir a uno.
+       - Y el replay se queda quieto 2,7 s al terminar antes de repetir, así
+         que hace falta una ventana más larga que esa pausa. */
+    const foto = cv => cv.getContext('2d')
+      .getImageData(0, 0, cv.width, cv.height).data.join(',').length;
+    const visibles = () => [...document.querySelectorAll('#gallery-grid canvas')]
+      .filter(c => { const r = c.getBoundingClientRect();
+                     return r.right > 0 && r.left < innerWidth && r.width > 0; });
+
+    let previo = new Map();
+    visibles().forEach(c => previo.set(c, foto(c)));
     for (let i = 0; i < 24; i++) {
       await new Promise(r => setTimeout(r, 250));
-      if (foto() !== a) return true;
+      const ahora = new Map();
+      for (const c of visibles()) {
+        const f = foto(c);
+        if (previo.has(c) && previo.get(c) !== f) return true;
+        ahora.set(c, f);
+      }
+      previo = ahora;
     }
     return false;
   });

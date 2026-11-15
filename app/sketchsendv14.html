@@ -460,6 +460,47 @@
       #drawing-prompts, #prompt-text { transition:none; }
     }
 
+    /* Aviso flotante. Distinto del toast de siempre: lleva avatar, se puede
+       tocar, y dura más, porque pide una decisión ("ábrelo") en vez de solo
+       informar. Ver un numerito pasar de 1 a 2 no es lo mismo que esto. */
+    .aviso-pila {
+      position:fixed; top:14px; left:50%; transform:translateX(-50%);
+      z-index:9500; display:flex; flex-direction:column; gap:8px;
+      width:min(380px, calc(100vw - 24px)); pointer-events:none;
+    }
+    .aviso {
+      pointer-events:auto; cursor:pointer;
+      display:flex; align-items:center; gap:11px;
+      background:var(--surface); border:1px solid var(--border);
+      border-left:3px solid var(--accent);
+      border-radius:14px; padding:11px 14px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.35);
+      opacity:0; transform:translateY(-14px);
+      transition:opacity .28s ease, transform .28s ease;
+    }
+    .aviso.dentro { opacity:1; transform:translateY(0); }
+    .aviso.fuera  { opacity:0; transform:translateY(-14px); }
+    .aviso img {
+      width:38px; height:38px; border-radius:50%; flex:0 0 auto; object-fit:cover;
+      border:2px solid var(--accent);
+    }
+    .aviso-txt { min-width:0; line-height:1.3; }
+    .aviso-quien { font-weight:700; font-size:0.88rem; color:var(--accent2); }
+    .aviso-que   { font-size:0.78rem; color:var(--muted); }
+    .aviso:hover { border-color:var(--accent); }
+
+    /* La fila nueva de la bandeja entra deslizándose, para que se vea CUÁL
+       es la que acaba de llegar. */
+    @keyframes inbox-entra {
+      from { opacity:0; transform:translateY(-10px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    .inbox-card.nueva { animation:inbox-entra .4s ease both; }
+    @media (prefers-reduced-motion: reduce) {
+      .aviso { transition:none; }
+      .inbox-card.nueva { animation:none; }
+    }
+
     .czone { flex:1; display:flex; flex-direction:column; overflow:hidden; }
     .carea {
       flex:1; display:flex; align-items:center; justify-content:center;
@@ -1281,6 +1322,8 @@
 </div>
 
 <!-- ══ APP PRINCIPAL ══ -->
+<div class="aviso-pila" id="aviso-pila"></div>
+
 <div id="app">
   <header class="hdr">
     <!-- Row 1: Logo + season badge (always visible) -->
@@ -1835,6 +1878,9 @@ const I18N = {
     notif_denied_help: 'Los has bloqueado antes. Permítelos en los ajustes del navegador para este sitio y recarga.',
     notif_ok: '🔔 Avisos activados',
     prompt_sub: '✏️ empieza a dibujar',
+    aviso_llego: 'te envió un dibujo · toca para verlo',
+    aviso_visto: 'vio tu dibujo 👀',
+
     reto_titulo: 'Reto de la semana — el mismo para todo el mundo',
     reto_prompt: '🎯 Reto de la semana: dibuja ',
     sin_senal: 'Sin conexión',
@@ -1971,6 +2017,9 @@ const I18N = {
     notif_denied_help: 'You blocked them earlier. Allow them in your browser settings for this site and reload.',
     notif_ok: '🔔 Alerts on',
     prompt_sub: '✏️ start drawing',
+    aviso_llego: 'sent you a drawing · tap to see it',
+    aviso_visto: 'saw your drawing 👀',
+
     reto_titulo: 'Challenge of the week — the same for everyone',
     reto_prompt: '🎯 Challenge of the week: draw ',
     sin_senal: 'No connection',
@@ -2515,10 +2564,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
 if (messaging) {
   messaging.onMessage(payload => {
-    const { title, body, icon } = payload.notification || {};
-    if (title && Notification.permission === 'granted') {
-      new Notification(title, { body, icon: icon || '../og-preview.png' });
+    /* La función manda SOLO datos (sin bloque 'notification'), para que el
+       service worker pueda agrupar. Esto leía payload.notification, que en
+       ese caso no existe: con la app abierta no se pintaba nada.
+
+       Y con la app delante no hace falta un aviso del sistema: se usa el
+       aviso de dentro, que además se puede tocar. */
+    const d = payload.data || {};
+    if (d.tipo === 'visto') {
+      aviso({ quien: d.quien || '', texto: t('aviso_visto') });
+      return;
     }
+    /* Un dibujo que llega estando la app abierta ya lo anuncia la propia
+       bandeja, que escucha Firestore y tiene el nombre y la hora. Avisar
+       también aquí lo mostraría dos veces. */
   });
 }
 
@@ -3761,6 +3820,8 @@ const CONTACTOS = [
 
 /* ── SISTEMA DE AMIGOS ── */
 let amigosCache = null;   /* lo último que devolvió Firestore */
+let primeraBandeja = true;        /* la primera carga no avisa de nada */
+const idsRecien = new Set();      /* lo llegado hace un momento, para animarlo */
 
 async function cargarAmigos() {
   if (!firebaseReady || !auth.currentUser) return [];
@@ -4044,6 +4105,7 @@ function cargarBandeja() {
          vez que algo cambia, y con una sesión abierta un rato la de antes
          se quedaba vieja y dejaba pasar dibujos ya caducados. */
       const ahora = Date.now();
+      const conocidos = new Set(bandejaEntrada.map(m => m.id));
       bandejaEntrada = snap.docs
         .map(doc => {
           const d = doc.data();
@@ -4059,6 +4121,22 @@ function cargarBandeja() {
           };
         })
         .filter(m => !m.viewed && m.expiresAt > ahora);
+
+      /* Lo que acaba de llegar, para avisarlo y para animar su fila. La
+         primera vez no se avisa de nada: al abrir la app todos serían
+         "nuevos" y saldrían diez avisos de golpe. */
+      const recien = primeraBandeja ? [] : bandejaEntrada.filter(m => !conocidos.has(m.id));
+      primeraBandeja = false;
+      recien.forEach(m => {
+        idsRecien.add(m.id);
+        aviso({
+          quien: m.sender,
+          texto: t('aviso_llego'),
+          foto: m.photoURL,
+          alTocar: () => abrirInbox()
+        });
+      });
+
       actualizarBadge();
       /* Y repintar la lista si está abierta. Antes la escucha solo
          actualizaba los datos y el contador, así que un dibujo que llegaba
@@ -4122,6 +4200,26 @@ function arrancarRelojes() {
   _relojBandeja = setInterval(tic, 1000);
 }
 
+/* Avisa a quien lo mandó de que ya lo vimos.
+
+   Nadie marcaba esto nunca, así que quien enviaba no se enteraba de nada:
+   el dibujo salía y ahí se acababa la conversación. Escribir `viewed` es
+   lo que dispara la notificación de vuelta desde el servidor.
+
+   Va con catch mudo a propósito: que falle no puede impedir que el dibujo
+   se abra, que es lo que la persona pidió al tocar. Y solo se escribe una
+   vez: el `msg.viewed` local evita repetirlo si se vuelve a abrir. */
+function marcarVisto(msg) {
+  if (!msg || msg.viewed) return false;
+  if (!firebaseReady || !auth?.currentUser) return false;
+  msg.viewed = true;
+  db.collection('sketches').doc(msg.id).update({
+    viewed: true,
+    viewedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(() => {});
+  return true;
+}
+
 function renderInbox() {
   inboxBody.innerHTML = '';
   /* Si el usuario está mirando la bandeja, el numerito del icono sobra. */
@@ -4154,7 +4252,9 @@ function renderInbox() {
   bandejaEntrada.sort((a, b) => b.receivedAt - a.receivedAt);
   bandejaEntrada.forEach(msg => {
     const card = document.createElement('div');
-    card.className = 'inbox-card';
+    card.className = 'inbox-card' + (idsRecien.has(msg.id) ? ' nueva' : '');
+    /* Se anima una sola vez: si no, cada repintado la volvería a mover. */
+    if (idsRecien.has(msg.id)) setTimeout(() => idsRecien.delete(msg.id), 1200);
 
     /* Horas:minutos:segundos, con los segundos corriendo. Ver bajar el
        contador es lo que comunica que el dibujo se va de verdad. */
@@ -4227,6 +4327,7 @@ function renderInbox() {
       msg.visto = true;
       actualizarBadge();
       cerrarInbox();
+      marcarVisto(msg);
       /* Abrir replay de este dibujo — toque en canvas = responder a esta persona */
       setTimeout(() => iniciarReplayInbox(msg), 300);
     });
@@ -5010,6 +5111,49 @@ function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   clearTimeout(t._t); t._t = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+/* ══════════════════════════════════════════════════════
+   AVISO FLOTANTE
+   ────────────────────────────────────────────────────
+   Para lo que pide una decisión, no para lo que solo informa. El toast de
+   siempre sirve para "copiado" o "error"; esto es para "te llegó un dibujo":
+   lleva la cara de quien lo manda, se puede tocar para abrirlo, y dura más.
+══════════════════════════════════════════════════════ */
+const AVISO_MS = 7000;
+const AVISO_MAX = 3;          /* más de tres apilados tapan la app */
+
+function aviso({ quien, texto, foto, alTocar }) {
+  const pila = document.getElementById('aviso-pila');
+  if (!pila) return;
+
+  /* Los más viejos salen antes de que la pila crezca de más. */
+  while (pila.children.length >= AVISO_MAX) pila.firstElementChild.remove();
+
+  const el = document.createElement('div');
+  el.className = 'aviso';
+  const img = document.createElement('img');
+  img.src = safeUrl(foto) || genAvatar(quien || '?');
+  img.alt = '';
+  const txt = document.createElement('div');
+  txt.className = 'aviso-txt';
+  const q = document.createElement('div');
+  q.className = 'aviso-quien'; q.textContent = '@' + (quien || '');
+  const d = document.createElement('div');
+  d.className = 'aviso-que'; d.textContent = texto;
+  txt.append(q, d);
+  el.append(img, txt);
+
+  const quitar = () => {
+    el.classList.add('fuera');
+    setTimeout(() => el.remove(), 300);
+  };
+  el.addEventListener('click', () => { quitar(); if (alTocar) alTocar(); });
+
+  pila.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('dentro'));
+  setTimeout(quitar, AVISO_MS);
+  return el;
 }
 
 /* ── SketchSend Modal System (replaces native prompt/confirm/alert) ── */
