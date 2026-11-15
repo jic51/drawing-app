@@ -135,6 +135,37 @@
   line-gap-override: 0%;
 }
 
+/* ── QUE NADA SE MUEVA AL CAMBIAR DE IDIOMA ─────────────────────────
+   Una misma frase no mide igual en inglés que en español, así que al
+   cambiar el idioma los botones crecían o encogían y algunos párrafos
+   pasaban de una línea a dos, empujando hacia abajo todo lo que venía
+   después. Se veía como si la página entera se recolocara.
+
+   Se reserva de antemano el tamaño del idioma MÁS LARGO: el texto corto
+   deja un hueco, pero nada se mueve de sitio. Los números salen de medir
+   los dos idiomas en el navegador, no de estimarlos; si mañana cambia un
+   texto, hay que volver a medir. */
+/* Estos tres son <span>, o sea en línea, y min-height NO se aplica a un
+   elemento en línea: hay que sacarlo de la línea primero. */
+[data-i18n="r1_p2_d"],
+[data-i18n="r2_p1_d"],
+[data-i18n="r2_p2_d"] { display: block; min-height: 42px; }
+[data-i18n="lista_sub"] { min-height: 46px; }
+[data-i18n="nav_cta"] { min-width: 127px; }
+[data-i18n="hero_cta"] { min-width: 335px; }
+[data-i18n="try_clear"] { min-width: 89px; }
+[data-i18n="try_cta"] { min-width: 227px; }
+[data-i18n="lista_btn"] { min-width: 134px; }
+[data-i18n="foot_open"] { min-width: 88px; }
+[data-i18n="foot_how"] { min-width: 99px; }
+[data-i18n="foot_privacy"] { min-width: 140px; }
+[data-i18n="foot_terms"] { min-width: 140px; }
+/* Si no caben (pantalla estrecha), manda la pantalla: más vale que se
+   mueva algo a que un botón se salga por el lado. */
+@media (max-width: 560px) {
+  [data-i18n] { min-width: 0 !important; }
+}
+
 :root {
   --bg: #0e0e14;
   --surface: #1a1a2e;
@@ -1608,7 +1639,11 @@ function montarCarrusel(grid, filas = 1) {
       filas.slice(0, 12).forEach(d => {   /* dos filas admiten más */
         const card = createGalleryCard(d.strokes, d.author, d.photoURL);
         grid.appendChild(card);
-        observar(card);
+        /* .reveal hace entrar la tarjeta deslizándose 30px hacia arriba. Eso
+           está pensado para secciones que aparecen al bajar por la página;
+           en un carrusel, donde cada tarjeta entra de lado, se ve como un
+           brinco cada vez que una asoma. Solo se usa cuando NO hay carrusel. */
+        if (filas.length < UMBRAL_CARRUSEL) observar(card);
       });
       sec.classList.add('ready');
       montarCarrusel(grid, 2);
@@ -1617,7 +1652,17 @@ function montarCarrusel(grid, filas = 1) {
   } catch(e) { /* sin Firebase el contador y la galería quedan ocultos */ }
 })();
 
-/* ══ SPLASH — el logo vuela al hero ══ */
+/* ══ SPLASH — el logo vuela al hero ══
+   Antes se clonaba el logo del splash, se movía el clon y al llegar se
+   cambiaba por el del hero. Ese cambiazo se NOTABA: los dos tienen el
+   degradado animado, pero cada animación arrancó en un momento distinto, así
+   que al intercambiarlos los colores daban un salto, como si el logo se
+   reiniciara.
+
+   Ahora no hay dos logos ni intercambio: vuela el del hero. Se le aplica el
+   transform que lo coloca donde estaba el del splash y se le quita. Es el
+   mismo elemento de principio a fin, con la misma animación corriendo, así
+   que no hay nada que reiniciar. */
 (function() {
   const splash = document.getElementById('landing-splash');
   if (!splash) return;
@@ -1625,40 +1670,49 @@ function montarCarrusel(grid, filas = 1) {
     const heroLogo = document.querySelector('.hero-logo');
     const splashLogo = document.getElementById('landing-splash-logo');
     if (!heroLogo || !splashLogo) { splash.remove(); return; }
-    const from = splashLogo.getBoundingClientRect();
-    const to = heroLogo.getBoundingClientRect();
-    if (from.width === 0 || to.width === 0) { splash.style.opacity = '0'; setTimeout(() => splash.remove(), 500); return; }
-    const clone = splashLogo.cloneNode(true);
-    /* El clon lleva el mismo id que el original: dos elementos con el mismo
-       id y getElementById puede devolver el que no es. */
-    clone.removeAttribute('id');
-    /* No fijar font-family ni letter-spacing aquí: .ss-logo los gobierna. */
 
-    /* El vuelo se hace con transform, no con left/top/font-size/width.
-       Animar esas cuatro obliga al navegador a recalcular la maquetación en
-       cada fotograma: iba a tirones y además el navegador lo contaba como
-       29 saltos de maquetación seguidos. transform se resuelve en el
-       compositor y, por definición, no es un salto. */
-    const dx = to.left - from.left;
-    const dy = to.top  - from.top;
-    const k  = to.width / from.width;   /* mismo texto y misma fuente: la
-                                           razón de anchos es la de escala */
-    clone.style.cssText =
-      'position:fixed;z-index:10000;pointer-events:none;' +
-      'left:' + from.left + 'px;top:' + from.top + 'px;width:' + from.width + 'px;' +
-      'font-size:' + getComputedStyle(splashLogo).fontSize + ';' +
-      'transform-origin:left top;will-change:transform;' +
-      'transition:transform 0.7s cubic-bezier(0.4,0,0.2,1);';
-    document.body.appendChild(clone);
+    const from = splashLogo.getBoundingClientRect();
+    /* Se hace visible para poder medirlo en su sitio natural. */
+    heroLogo.style.visibility = 'visible';
+    const to = heroLogo.getBoundingClientRect();
+    if (!from.width || !to.width) {
+      splash.style.opacity = '0'; setTimeout(() => splash.remove(), 500);
+      document.documentElement.dataset.heroListo = '1';
+      return;
+    }
+
+    const dx = from.left - to.left;
+    const dy = from.top  - to.top;
+    const k  = from.width / to.width;   /* mismo texto y misma fuente */
+
+    /* Por encima del splash mientras vuela. */
+    heroLogo.style.position = 'relative';
+    heroLogo.style.zIndex = '10000';
+    heroLogo.style.transformOrigin = 'left top';
+    heroLogo.style.willChange = 'transform';
+    heroLogo.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')';
+
     splashLogo.style.visibility = 'hidden';
     splash.style.opacity = '0';
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        clone.style.transform =
-          'translate(' + dx + 'px,' + dy + 'px) scale(' + k + ')';
+        heroLogo.style.transition = 'transform 0.7s cubic-bezier(0.4,0,0.2,1)';
+        heroLogo.style.transform = 'none';
       });
     });
-    setTimeout(() => { heroLogo.style.visibility = 'visible'; clone.remove(); splash.remove(); }, 1200);
+
+    setTimeout(() => {
+      heroLogo.style.transition = '';
+      heroLogo.style.transform = '';
+      heroLogo.style.position = '';
+      heroLogo.style.zIndex = '';
+      heroLogo.style.willChange = '';
+      splash.remove();
+      /* Recién ahora puede entrar el guion del scroll: si entrara durante el
+         vuelo, su primera medición le quitaría el transform a media subida. */
+      document.documentElement.dataset.heroListo = '1';
+    }, 1000);
   }, 2000);
 })();
 
@@ -1815,10 +1869,12 @@ function montarCarrusel(grid, filas = 1) {
     pintar();
   }
 
-  /* Esperar a que el splash aterrice: antes de eso el logo está oculto. */
+  /* Esperar a que el vuelo TERMINE, no solo a que el logo se vea: durante
+     el vuelo el logo ya es visible, y medirlo entonces le quitaría el
+     transform a media subida. */
   const t0 = setInterval(() => {
-    if (getComputedStyle(hero).visibility === 'visible') { clearInterval(t0); arrancar(); }
-  }, 150);
+    if (document.documentElement.dataset.heroListo === '1') { clearInterval(t0); arrancar(); }
+  }, 120);
   setTimeout(() => {
     clearInterval(t0);
     /* Si nunca arrancó (el hero no llegó a medirse), devolver el logo de la

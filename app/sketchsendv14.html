@@ -435,6 +435,25 @@
       background:var(--surface2); border:1px solid var(--border);
       color:var(--text); opacity:.92;
     }
+    /* Las frases no se cambian de golpe: las letras de la vieja se tiñen con
+       los colores del logo y se van saliendo de derecha a izquierda; cuando
+       no queda ninguna, entra la nueva. Cada letra es un <span> para poder
+       darle su propio color y su propio retardo. */
+    /* La palabra entera no se parte; el corte de línea solo cae en los
+       espacios. */
+    #prompt-text .w { display:inline-block; white-space:nowrap; }
+    #prompt-text .ch {
+      display:inline-block; white-space:pre;
+      transition:opacity .3s ease, transform .3s ease, color .3s ease;
+    }
+    #prompt-text .ch.sale { opacity:0; transform:translateX(-10px) scale(.86); }
+    #prompt-text .ch.entra { opacity:0; transform:translateY(7px); }
+    @media (prefers-reduced-motion: reduce) {
+      /* Sin movimiento, el cambio es directo: nadie se marea leyendo una
+         sugerencia. */
+      #prompt-text .ch { transition:none; }
+      #prompt-text .ch.sale, #prompt-text .ch.entra { opacity:1; transform:none; }
+    }
     #prompt-sub { font-size:0.7rem; color:var(--muted); }
     #drawing-prompts.idea #prompt-sub { display:none; }
     @media (prefers-reduced-motion: reduce) {
@@ -3505,7 +3524,8 @@ const PROMPTS_EN = [
      no ayuda: lo que ayuda es ver varias.
 ══════════════════════════════════════════════════════ */
 const IDEAS_ESPERA = 75000;   /* quieto tanto rato = probablemente atascado */
-const IDEAS_CICLO  = 3800;    /* cada cuánto cambia la idea */
+const IDEAS_CICLO  = 12000;   /* cada cuánto cambia la idea: da tiempo a
+                                 leerla y a pensarla, que es el punto */
 
 let promptTimer = null;       /* la cuenta atrás hasta ofrecer ideas */
 let ideasTimer = null;        /* el goteo de ideas, una tras otra */
@@ -3516,10 +3536,91 @@ function getPrompts() { return lang === 'en' ? PROMPTS_EN : PROMPTS_ES; }
 
 function cajaPrompt() { return document.getElementById('drawing-prompts'); }
 
+/* Los mismos colores del logo, para que el cambio se sienta de la casa. */
+const COLORES_FRASE = ['#ff0000','#ff7f00','#ffff00','#00ff00','#0000ff','#9400d3'];
+
+const SALIDA_LETRA = 32;   /* ms entre letra y letra al salir */
+const ENTRADA_LETRA = 22;
+
+function letrasDe(txt, clase) {
+  const frag = document.createDocumentFragment();
+  /* Cada letra va en su propio inline-block para poder darle color y
+     retardo propios. Pero eso deja que el navegador corte la línea entre
+     dos letras cualesquiera, y el texto salía partido a mitad de palabra
+     ("Challenge of th / e week"). Así que las letras de una palabra van
+     dentro de una envoltura que no se parte, y el corte solo puede caer en
+     los espacios, como en cualquier texto. */
+  const trozos = txt.split(/(\s+)/);
+  for (const trozo of trozos) {
+    if (!trozo) continue;
+    if (/^\s+$/.test(trozo)) {
+      const sp = document.createElement('span');
+      sp.className = 'ch' + (clase ? ' ' + clase : '');
+      sp.textContent = trozo;
+      frag.appendChild(sp);
+      continue;
+    }
+    const palabra = document.createElement('span');
+    palabra.className = 'w';
+    for (const c of trozo) {
+      const sp = document.createElement('span');
+      sp.className = 'ch' + (clase ? ' ' + clase : '');
+      sp.textContent = c;
+      palabra.appendChild(sp);
+    }
+    frag.appendChild(palabra);
+  }
+  return frag;
+}
+
+function pintarFrase(txt) {
+  const el = document.getElementById('prompt-text');
+  if (!el) return;
+  el.innerHTML = '';
+  el.appendChild(letrasDe(txt, ''));
+}
+
+let cambioEnCurso = null;
+
+/* Cambia la frase con el barrido de color. Devuelve cuánto tarda, para que
+   quien la llame sepa cuándo queda libre. */
+function cambiarFrase(nuevo) {
+  const el = document.getElementById('prompt-text');
+  if (!el) return 0;
+  const viejas = [...el.querySelectorAll('.ch')];
+  if (!viejas.length) { pintarFrase(nuevo); return 0; }
+
+  /* De derecha a izquierda: la última letra es la primera en irse. */
+  viejas.forEach((sp, i) => {
+    const desdeElFinal = viejas.length - 1 - i;
+    setTimeout(() => {
+      /* El color recorre la frase: cada letra toma el siguiente del logo. */
+      sp.style.color = COLORES_FRASE[desdeElFinal % COLORES_FRASE.length];
+      /* Un respiro con el color puesto antes de desaparecer, si no el
+         arcoíris no llega a verse. */
+      setTimeout(() => sp.classList.add('sale'), 130);
+    }, desdeElFinal * SALIDA_LETRA);
+  });
+
+  const msSalida = (viejas.length - 1) * SALIDA_LETRA + 130 + 300;
+  clearTimeout(cambioEnCurso);
+  cambioEnCurso = setTimeout(() => {
+    el.innerHTML = '';
+    el.appendChild(letrasDe(nuevo, 'entra'));
+    const nuevas = [...el.querySelectorAll('.ch')];
+    requestAnimationFrame(() => {
+      nuevas.forEach((sp, i) => {
+        setTimeout(() => sp.classList.remove('entra'), i * ENTRADA_LETRA);
+      });
+    });
+  }, msSalida);
+  return msSalida + nuevo.length * ENTRADA_LETRA + 300;
+}
+
 function mostrarReto() {
   const el = cajaPrompt(), txt = document.getElementById('prompt-text');
   if (!el || !txt) return;
-  txt.textContent = t('reto_prompt') + textoReto();
+  pintarFrase(t('reto_prompt') + textoReto());
   el.classList.add('reto'); el.classList.remove('idea');
   el.style.opacity = '1';
   promptVisible = true;
@@ -3530,8 +3631,13 @@ function mostrarIdea() {
   if (!el || !txt) return;
   const lista = getPrompts();
   currentPromptIdx = (currentPromptIdx + 1) % lista.length;
-  txt.textContent = lista[currentPromptIdx];
+  const frase = lista[currentPromptIdx];
+
+  const yaVisible = promptVisible && el.classList.contains('idea');
   el.classList.add('idea'); el.classList.remove('reto');
+  /* La primera sale sin más; a partir de ahí, con el barrido de color. */
+  if (yaVisible) cambiarFrase(frase); else pintarFrase(frase);
+
   el.style.opacity = '1';
   promptVisible = true;
   clearTimeout(ideasTimer);
@@ -3541,6 +3647,7 @@ function mostrarIdea() {
 function ocultarPrompt() {
   const el = cajaPrompt();
   clearTimeout(ideasTimer); ideasTimer = null;
+  clearTimeout(cambioEnCurso);
   if (!el) return;
   el.style.opacity = '0';
   promptVisible = false;
@@ -3653,6 +3760,8 @@ const CONTACTOS = [
 ];
 
 /* ── SISTEMA DE AMIGOS ── */
+let amigosCache = null;   /* lo último que devolvió Firestore */
+
 async function cargarAmigos() {
   if (!firebaseReady || !auth.currentUser) return [];
   const uid = auth.currentUser.uid;
@@ -3674,10 +3783,12 @@ async function cargarAmigos() {
         }
       } catch(e) { /* skip usuario no encontrado */ }
     }
+    /* Lo último que se sabe, para pintarlo al instante la próxima vez. */
+    amigosCache = amigos;
     return amigos;
   } catch(e) {
     console.warn('Error cargando amigos:', e.message);
-    return [];
+    return amigosCache || [];
   }
 }
 
@@ -5063,6 +5174,57 @@ const settingsInvite  = document.getElementById('settings-invite');
 const settingsLogout  = document.getElementById('settings-logout');
 const settingsFriends = document.getElementById('settings-friends');
 
+function pintarAmigosAjustes(amigos) {
+  settingsFriends.innerHTML = '';
+  if (!amigos.length) {
+    const sinAmigos = document.createElement('div');
+    sinAmigos.style.cssText = 'font-size:0.8rem;color:var(--muted);line-height:1.6';
+    const l1 = document.createElement('div'); l1.textContent = t('no_friends_yet');
+    const l2 = document.createElement('div');
+    l2.style.cssText = 'margin-top:4px;color:var(--accent2);cursor:pointer;text-decoration:underline';
+    l2.textContent = t('no_friends_hint');
+    l2.addEventListener('click', () => document.getElementById('settings-invite')?.click());
+    sinAmigos.append(l1, l2);
+    settingsFriends.appendChild(sinAmigos);
+    return;
+  }
+  amigos.forEach(c => {
+    const chip = document.createElement('div');
+    chip.className = 'settings-friend-chip';
+    const avWrap = document.createElement('span'); avWrap.className='settings-friend-av-wrap rainbow-hover-ring';
+    const avImg = document.createElement('img'); avImg.className='settings-friend-av';
+    avImg.src = safeUrl(c.photoURL) || genAvatar(c.nombre); avImg.alt = c.nombre;
+    avWrap.appendChild(avImg);
+    const nameNode = document.createTextNode(c.nombre);
+    const rmSpan = document.createElement('span'); rmSpan.textContent='✕';
+    rmSpan.style.cssText='margin-left:4px;opacity:0.4;font-size:0.7rem;';
+    chip.appendChild(avWrap); chip.appendChild(nameNode); chip.appendChild(rmSpan);
+    chip.title = t('prof_open');
+    rmSpan.title = t('prof_remove');
+    rmSpan.style.cursor = 'pointer';
+
+    const eliminar = async () => {
+      if (!await ssConfirm(lang === 'es' ? `¿Eliminar a <b>${esc(c.nombre)}</b> de tus amigos?` : `Remove <b>${esc(c.nombre)}</b> from your friends?`)) return;
+      try {
+        const uid = auth.currentUser.uid;
+        const snap = await db.collection('friendships')
+          .where('users', 'array-contains', uid).get();
+        const docToDelete = snap.docs.find(d => d.data().users.includes(c.id));
+        if (docToDelete) await docToDelete.ref.delete();
+        toast(t('friend_removed'));
+        chip.remove();
+        amigosCache = (amigosCache || []).filter(a => a.id !== c.id);
+        buildCarousel();
+      } catch(e) { toast('❌ ' + e.message); }
+    };
+
+    /* Solo la ✕ elimina; el resto del chip abre el perfil. */
+    rmSpan.addEventListener('click', e => { e.stopPropagation(); eliminar(); });
+    chip.addEventListener('click', () => abrirPerfilAmigo(c, eliminar));
+    settingsFriends.appendChild(chip);
+  });
+}
+
 function abrirSettings() {
   /* Actualizar datos del perfil */
   document.getElementById('settings-avatar').src = genAvatar(usuario || '?');
@@ -5104,58 +5266,27 @@ function abrirSettings() {
     });
   }
 
-  /* Renderizar lista de amigos reales */
-  settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">' + t('loading') + '</span>';
+  /* Los amigos, al instante.
+
+     Antes esto volvía a preguntarle a Firestore cada vez que se abría
+     Ajustes: una consulta más una lectura POR AMIGO. Durante ese viaje la
+     lista aparecía vacía, aunque los mismos amigos ya estuvieran pintados
+     en el carrusel de abajo desde que se abrió la app.
+
+     Ahora se pinta lo que ya se sabe y se refresca por detrás, callado. Si
+     no ha cambiado nada no se vuelve a pintar, para no dar un parpadeo
+     justo cuando alguien está leyendo la lista. */
   if (firebaseReady && auth.currentUser) {
+    if (amigosCache) {
+      pintarAmigosAjustes(amigosCache);
+    } else {
+      settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">' + esc(t('loading')) + '</span>';
+    }
+    const huella = JSON.stringify((amigosCache || []).map(a => a.id + a.nombre + a.photoURL));
     cargarAmigos().then(amigos => {
-      settingsFriends.innerHTML = '';
-      if (amigos.length === 0) {
-        settingsFriends.innerHTML = '';
-        const sinAmigos = document.createElement('div');
-        sinAmigos.style.cssText = 'font-size:0.8rem;color:var(--muted);line-height:1.6';
-        const l1 = document.createElement('div'); l1.textContent = t('no_friends_yet');
-        const l2 = document.createElement('div');
-        l2.style.cssText = 'margin-top:4px;color:var(--accent2);cursor:pointer;text-decoration:underline';
-        l2.textContent = t('no_friends_hint');
-        l2.addEventListener('click', () => document.getElementById('settings-invite')?.click());
-        sinAmigos.append(l1, l2);
-        settingsFriends.appendChild(sinAmigos);
-        return;
+      if (JSON.stringify(amigos.map(a => a.id + a.nombre + a.photoURL)) !== huella) {
+        pintarAmigosAjustes(amigos);
       }
-      amigos.forEach(c => {
-        const chip = document.createElement('div');
-        chip.className = 'settings-friend-chip';
-        const avWrap = document.createElement('span'); avWrap.className='settings-friend-av-wrap rainbow-hover-ring';
-        const avImg = document.createElement('img'); avImg.className='settings-friend-av';
-        avImg.src = safeUrl(c.photoURL) || genAvatar(c.nombre); avImg.alt = c.nombre;
-        avWrap.appendChild(avImg);
-        const nameNode = document.createTextNode(c.nombre);
-        const rmSpan = document.createElement('span'); rmSpan.textContent='✕';
-        rmSpan.style.cssText='margin-left:4px;opacity:0.4;font-size:0.7rem;';
-        chip.appendChild(avWrap); chip.appendChild(nameNode); chip.appendChild(rmSpan);
-        chip.title = t('prof_open');
-        rmSpan.title = t('prof_remove');
-        rmSpan.style.cursor = 'pointer';
-
-        const eliminar = async () => {
-          if (!await ssConfirm(lang === 'es' ? `¿Eliminar a <b>${esc(c.nombre)}</b> de tus amigos?` : `Remove <b>${esc(c.nombre)}</b> from your friends?`)) return;
-          try {
-            const uid = auth.currentUser.uid;
-            const snap = await db.collection('friendships')
-              .where('users', 'array-contains', uid).get();
-            const docToDelete = snap.docs.find(d => d.data().users.includes(c.id));
-            if (docToDelete) await docToDelete.ref.delete();
-            toast(t('friend_removed'));
-            chip.remove();
-            buildCarousel();
-          } catch(e) { toast('❌ ' + e.message); }
-        };
-
-        /* Solo la ✕ elimina; el resto del chip abre el perfil. */
-        rmSpan.addEventListener('click', e => { e.stopPropagation(); eliminar(); });
-        chip.addEventListener('click', () => abrirPerfilAmigo(c, eliminar));
-        settingsFriends.appendChild(chip);
-      });
     });
   } else {
     settingsFriends.innerHTML = '<span style="font-size:0.8rem;color:var(--muted);">' + esc(t('login_to_see')) + '</span>';

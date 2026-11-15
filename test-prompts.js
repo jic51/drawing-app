@@ -15,6 +15,7 @@
 */
 const { chromium } = require('playwright');
 const path = require('path');
+const IDEAS_CICLO_ESPERADO = 12000;
 let f = 0;
 const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==undefined?'   '+JSON.stringify(d):'')); };
 
@@ -59,6 +60,16 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
     return s.left >= c.left - 1 && s.right <= c.right + 1 && s.top >= c.top - 1 && s.bottom <= c.bottom;
   });
   chk(dentro, 'y entera DENTRO del lienzo, sin salirse por los lados');
+  /* Cada letra va en su propio inline-block para poder animarla; sin
+     agrupar por palabras, el navegador corta la línea a mitad de palabra. */
+  const partidas = await p.evaluate(() => {
+    const el = document.getElementById('prompt-text');
+    return [...el.querySelectorAll('.w')].filter(w => {
+      const lineas = new Set([...w.querySelectorAll('.ch')].map(c => Math.round(c.getBoundingClientRect().top)));
+      return lineas.size > 1;
+    }).map(w => w.textContent);
+  });
+  chk(partidas.length === 0, 'ninguna palabra se parte entre dos líneas', partidas);
 
   console.log('\n— Al empezar a dibujar —');
   const caja = await p.locator('#canvas').boundingBox();
@@ -85,9 +96,21 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   chk(!e.subVisible, 'sin el "empieza a dibujar" (ya dibujó)');
   chk(e.arriba, 'también arriba', { aDistanciaDelBorde: e.distanciaArriba });
   const t1 = e.texto;
-  await p.waitForTimeout(4200);
+  /* El cambio se dispara a mano: esperar los 12 s reales haría la prueba
+     eterna sin comprobar nada más. */
+  await p.evaluate(() => { clearTimeout(ideasTimer); mostrarIdea(); });
+  await p.waitForTimeout(250);
+  const barrido = await p.evaluate(() => {
+    const ch = [...document.querySelectorAll('#prompt-text .ch')];
+    const teñidas = ch.filter(c => c.style.color).length;
+    return { teñidas, total: ch.length };
+  });
+  chk(barrido.teñidas > 0, 'al cambiar, las letras se tiñen con los colores del logo', barrido);
+  await p.waitForTimeout(2200);
   const t2 = (await leer()).texto;
-  chk(t1 !== t2, 'la idea cambia sola a los pocos segundos', { antes: t1, despues: t2 });
+  chk(t1 !== t2, 'y entra la frase nueva', { antes: t1, despues: t2 });
+  chk(IDEAS_CICLO_ESPERADO === await p.evaluate(() => IDEAS_CICLO),
+      'cada frase dura 12 s, no 4', { configurado: await p.evaluate(() => IDEAS_CICLO) });
 
   console.log('\n— Volver a dibujar la calla —');
   await p.mouse.move(caja.x + 200, caja.y + 400);

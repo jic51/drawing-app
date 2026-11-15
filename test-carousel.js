@@ -134,7 +134,14 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   /* ¿Los dibujos siguen animándose después de rotar? Se comparan dos fotos
      del mismo lienzo separadas en el tiempo. */
   const mueve = await p.evaluate(async () => {
-    const cv = document.querySelector('#gallery-grid canvas');
+    /* Un lienzo que esté VISIBLE: los que quedan fuera de pantalla pausan su
+       animación a propósito, para no gastar batería. Tras rotar, el primer
+       hijo puede ser justo el que acaba de salir por la derecha. */
+    const cv = [...document.querySelectorAll('#gallery-grid canvas')].find(c => {
+      const r = c.getBoundingClientRect();
+      return r.right > 0 && r.left < innerWidth && r.width > 0;
+    });
+    if (!cv) return false;
     const foto = () => cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data.join(',').length;
     /* El replay se queda QUIETO 2,7 s al terminar antes de repetir, así que
        dos fotos cercanas pueden salir idénticas aunque todo funcione. Se
