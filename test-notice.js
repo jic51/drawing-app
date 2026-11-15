@@ -11,16 +11,23 @@
 
    Ejecutar:  node test-notice.js
 */
-const { chromium } = require('playwright');
+/* El navegador sale de la variable NAVEGADOR: "chromium" por defecto,
+   "webkit" para el motor de Safari. Probar solo en Chrome no dice nada de
+   iOS, y esta app ya se rompió ahí varias veces. */
+const { chromium, webkit, firefox } = require('playwright');
+const NAVEGADOR = { chromium, webkit, firefox }[process.env.NAVEGADOR || 'chromium'] || chromium;
+const { servir, erroresDeLaApp } = require('./test-server');
+let SITIO;
 const path = require('path');
 let f = 0;
 const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==undefined?'   '+JSON.stringify(d):'')); };
 
 (async () => {
-  const b = await chromium.launch();
+  SITIO = await servir();
+  const b = await NAVEGADOR.launch();
   const p = await b.newPage({ viewport: { width: 1100, height: 850 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
-  await p.goto('file://' + path.resolve(__dirname, 'app', 'index.html'));
+  await p.goto(SITIO.pagina('app/index.html'));
   await p.waitForTimeout(2800);
 
   /* Firebase está bloqueado aquí, así que se imita lo justo: el camino que
@@ -115,8 +122,8 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   chk(guarda.yaVisto === false, 'un dibujo ya visto no se vuelve a escribir', guarda);
   chk(guarda.sinMensaje === false, 'y sin dibujo no hace nada');
 
-  chk(errs.length === 0, 'sin errores de JS', errs[0] || '');
-  await b.close();
+  chk(erroresDeLaApp(errs).length === 0, 'sin errores de JS', erroresDeLaApp(errs)[0] || '');
+  await b.close(); if (SITIO) await SITIO.cerrar();
   console.log(f ? '\n❌ ' + f + ' fallo(s)' : '\n✅ Avisos correctos');
   process.exit(f ? 1 : 0);
 })();

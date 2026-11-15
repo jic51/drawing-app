@@ -256,6 +256,37 @@ cada enlace ya enviado dejaría de funcionar. Lo vigila `test-routing.js`.
 
 ---
 
+## 🧪 CÓMO SE PRUEBA (2026-11-15)
+
+```
+./test-todo.sh            los dos motores
+./test-todo.sh webkit     solo el de Safari
+```
+
+Hasta hoy todo se probaba **solo en Chromium**, que no dice nada de iPhone
+ni iPad. Ahora las 13 pruebas corren también en **WebKit**, el motor de
+Safari. Para conseguirlo hubo que permitir dos servidores en la red del
+entorno y servir las páginas por HTTP en vez de `file://` (WebKit rechaza
+por CORS cargar el SDK de Firebase desde un archivo local).
+
+**Lo que WebKit SÍ caza:** diferencias de CSS y de API, que es la mayoría.
+Lo encontrado al estrenarlo: WebKit engorda los glifos de la fuente de
+reserva para fingir los pesos de 600 arriba, y la misma cara mide un 5,3%
+más que en Chromium. No produce salto (el CLS sale 0,0000 igual), pero
+está documentado en test-layout-shift.js. Probé a evitarlo con
+`font-synthesis:none` y con nombres PostScript; ninguna de las dos lo
+impide.
+
+**Lo que NO caza, y hay que probar en un aparato de verdad:**
+- Los permisos de notificación de iOS (hay que instalar en pantalla de
+  inicio; el diálogo solo sale desde un toque).
+- Que `MediaRecorder` exista: la build de Linux ni lo trae, el Safari real
+  sí, solo que con MP4 en vez de webm.
+- El teclado, la barra del navegador que aparece y desaparece, los gestos.
+- Que el login con Google no dé vueltas (fue un fallo real de ITP).
+
+---
+
 ## 📋 PEDIDO EL 2026-11-15 (pendiente)
 
 | # | Qué | Detalle |

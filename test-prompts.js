@@ -13,17 +13,24 @@
 
    Ejecutar:  node test-prompts.js
 */
-const { chromium } = require('playwright');
+/* El navegador sale de la variable NAVEGADOR: "chromium" por defecto,
+   "webkit" para el motor de Safari. Probar solo en Chrome no dice nada de
+   iOS, y esta app ya se rompió ahí varias veces. */
+const { chromium, webkit, firefox } = require('playwright');
+const NAVEGADOR = { chromium, webkit, firefox }[process.env.NAVEGADOR || 'chromium'] || chromium;
+const { servir, erroresDeLaApp } = require('./test-server');
+let SITIO;
 const path = require('path');
 const IDEAS_CICLO_ESPERADO = 12000;
 let f = 0;
 const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==undefined?'   '+JSON.stringify(d):'')); };
 
 (async () => {
-  const b = await chromium.launch();
+  SITIO = await servir();
+  const b = await NAVEGADOR.launch();
   const p = await b.newPage({ viewport: { width: 1100, height: 850 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
-  await p.goto('file://' + require('path').resolve(__dirname, 'app', 'index.html'));
+  await p.goto(SITIO.pagina('app/index.html'));
   await p.waitForTimeout(2800);
   await p.evaluate(() => {
     document.querySelectorAll('#splash-screen,#auth-screen').forEach(e => e.style.display = 'none');
@@ -121,8 +128,8 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   await p.waitForTimeout(4500);
   chk(!(await leer()).visible, 'y el goteo de ideas quedó cortado, no vuelve solo');
 
-  chk(errs.length === 0, 'sin errores de JS', errs[0] || '');
-  await b.close();
+  chk(erroresDeLaApp(errs).length === 0, 'sin errores de JS', erroresDeLaApp(errs)[0] || '');
+  await b.close(); if (SITIO) await SITIO.cerrar();
   console.log(f ? '\n❌ ' + f + ' fallos' : '\n✅ sugerencias correctas');
   process.exit(f ? 1 : 0);
 })();

@@ -7,7 +7,13 @@
 
    Ejecutar:  node test-notifications.js
 */
-const { chromium } = require('playwright');
+/* El navegador sale de la variable NAVEGADOR: "chromium" por defecto,
+   "webkit" para el motor de Safari. Probar solo en Chrome no dice nada de
+   iOS, y esta app ya se rompió ahí varias veces. */
+const { chromium, webkit, firefox } = require('playwright');
+const NAVEGADOR = { chromium, webkit, firefox }[process.env.NAVEGADOR || 'chromium'] || chromium;
+const { servir } = require('./test-server');
+let SITIO;
 const UA_IPAD = 'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
 let f=0; const chk=(c,m,d)=>{ if(!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==undefined?'   '+JSON.stringify(d):'')); };
 
@@ -28,7 +34,7 @@ async function abrir(b, {ua, instalada, permiso, conMessaging=true} = {}) {
     Object.defineProperty(window.Notification, 'permission', { get:()=>perm, configurable:true });
     if (!cm) window.__sinMessaging = true;
   }, [instalada, permiso, conMessaging]);
-  await p.goto('file://' + process.cwd() + '/app/index.html');
+  await p.goto(SITIO.pagina('app/index.html'));
   await p.waitForTimeout(3000);
   await p.evaluate(() => {
     document.querySelectorAll('#splash-screen,#auth-screen').forEach(e=>e.style.display='none');
@@ -47,7 +53,8 @@ const leer = p => p.evaluate(()=>{
 });
 
 (async () => {
-  const b = await chromium.launch();
+  SITIO = await servir();
+  const b = await NAVEGADOR.launch();
 
   console.log('— iPad en Safari, SIN añadir a inicio —');
   let { ctx, p } = await abrir(b, { ua:UA_IPAD, instalada:false, permiso:'default' });
@@ -87,7 +94,7 @@ const leer = p => p.evaluate(()=>{
   chk(/On for|Activados en/.test(e.sub) && e.apagado, 'muestra que ya están activados', e);
   await ctx.close();
 
-  await b.close();
+  await b.close(); if (SITIO) await SITIO.cerrar();
   console.log(f?'\n❌ '+f+' fallos':'\n✅ flujo de avisos correcto');
   process.exit(f?1:0);
 })();

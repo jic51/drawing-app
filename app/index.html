@@ -117,7 +117,9 @@
        ninguna, la cara se descarta y se usa sans-serif, como antes. */
     @font-face {
       font-family: 'DM Sans respaldo';
-      src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+      src: local('ArialMT'), local('Arial'), local('Helvetica'),
+           local('LiberationSans-Regular'), local('Liberation Sans'),
+           local('Arimo-Regular'), local('Arimo');
       font-weight: 400;
       size-adjust: 101.25%;
       ascent-override: 97.78%;    /* 99 / 1.0125 */
@@ -126,7 +128,9 @@
     }
     @font-face {
       font-family: 'DM Sans respaldo';
-      src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+      src: local('ArialMT'), local('Arial'), local('Helvetica'),
+           local('LiberationSans-Regular'), local('Liberation Sans'),
+           local('Arimo-Regular'), local('Arimo');
       font-weight: 500;
       size-adjust: 102.91%;
       ascent-override: 96.20%;    /* 99 / 1.0291 */
@@ -135,7 +139,9 @@
     }
     @font-face {
       font-family: 'DM Sans respaldo';
-      src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+      src: local('ArialMT'), local('Arial'), local('Helvetica'),
+           local('LiberationSans-Regular'), local('Liberation Sans'),
+           local('Arimo-Regular'), local('Arimo');
       font-weight: 600;
       /* Ojo con este: al declarar la cara como font-weight 600, el navegador
          cree que ya ES seminegrita y deja de sintetizarla, así que local()
@@ -218,6 +224,13 @@
     body {
       font-family: var(--sans); background:var(--bg); color:var(--text);
       height:100vh; height: 100dvh; overflow:hidden; display:flex; justify-content:center; align-items:center;
+      /* Que el navegador NO se invente la negrita. WebKit engorda los
+         glifos de la fuente de reserva para fingir el peso 600, y Chromium
+         no, así que la misma reserva medía un 5% más en Safari y el texto
+         se recolocaba al llegar la fuente de verdad. Nuestras fuentes traen
+         todos los pesos, así que no hay nada que fingir. */
+      font-synthesis: none;            /* forma antigua, la que entiende Safari */
+      font-synthesis-weight: none;     /* forma nueva */
     }
 
     /* ══════════════════════════════════════════════════════

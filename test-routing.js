@@ -11,7 +11,11 @@
 
    Ejecutar:  node test-routing.js   (desde la raíz del proyecto)
 */
-const { chromium } = require('playwright');
+/* El navegador sale de la variable NAVEGADOR: "chromium" por defecto,
+   "webkit" para el motor de Safari. Probar solo en Chrome no dice nada de
+   iOS, y esta app ya se rompió ahí varias veces. */
+const { chromium, webkit, firefox } = require('playwright');
+const NAVEGADOR = { chromium, webkit, firefox }[process.env.NAVEGADOR || 'chromium'] || chromium;
 const path = require('path');
 let f = 0;
 const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==undefined?'   '+JSON.stringify(d):'')); };
@@ -37,7 +41,7 @@ const srv = http.createServer((req, res) => {
 (async () => {
   await new Promise(r => srv.listen(0, r));
   const base = 'http://127.0.0.1:' + srv.address().port;
-  const b = await chromium.launch();
+  const b = await NAVEGADOR.launch();
 
   const visita = async (ruta, esperaRedir) => {
     const p = await b.newPage({ viewport: { width: 1100, height: 800 } });

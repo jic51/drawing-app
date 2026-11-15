@@ -82,7 +82,9 @@
    también las métricas, no solo los trazos. */
 @font-face {
   font-family: 'Inter respaldo';
-  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  src: local('ArialMT'), local('Arial'), local('Helvetica'),
+           local('LiberationSans-Regular'), local('Liberation Sans'),
+           local('Arimo-Regular'), local('Arimo');
   font-weight: 400;
   size-adjust: 104.94%;
   ascent-override: 92.43%;
@@ -91,7 +93,9 @@
 }
 @font-face {
   font-family: 'Inter respaldo';
-  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  src: local('ArialMT'), local('Arial'), local('Helvetica'),
+           local('LiberationSans-Regular'), local('Liberation Sans'),
+           local('Arimo-Regular'), local('Arimo');
   font-weight: 500;
   size-adjust: 105.93%;
   ascent-override: 91.57%;
@@ -100,7 +104,9 @@
 }
 @font-face {
   font-family: 'Inter respaldo';
-  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  src: local('ArialMT'), local('Arial'), local('Helvetica'),
+           local('LiberationSans-Regular'), local('Liberation Sans'),
+           local('Arimo-Regular'), local('Arimo');
   font-weight: 600;
   size-adjust: 106.91%;
   ascent-override: 90.73%;
@@ -109,7 +115,9 @@
 }
 @font-face {
   font-family: 'Inter respaldo';
-  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  src: local('ArialMT'), local('Arial'), local('Helvetica'),
+           local('LiberationSans-Regular'), local('Liberation Sans'),
+           local('Arimo-Regular'), local('Arimo');
   font-weight: 700;
   size-adjust: 107.89%;
   ascent-override: 89.91%;
@@ -118,7 +126,9 @@
 }
 @font-face {
   font-family: 'Inter respaldo';
-  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  src: local('ArialMT'), local('Arial'), local('Helvetica'),
+           local('LiberationSans-Regular'), local('Liberation Sans'),
+           local('Arimo-Regular'), local('Arimo');
   font-weight: 800;
   size-adjust: 109.10%;
   ascent-override: 88.91%;
@@ -127,7 +137,9 @@
 }
 @font-face {
   font-family: 'Inter respaldo';
-  src: local('Arial'), local('Helvetica'), local('Liberation Sans'), local('Arimo');
+  src: local('ArialMT'), local('Arial'), local('Helvetica'),
+           local('LiberationSans-Regular'), local('Liberation Sans'),
+           local('Arimo-Regular'), local('Arimo');
   font-weight: 900;
   size-adjust: 110.42%;
   ascent-override: 87.85%;
@@ -189,7 +201,14 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
-}
+      /* Que el navegador NO se invente la negrita. WebKit engorda los
+         glifos de la fuente de reserva para fingir el peso 600, y Chromium
+         no, así que la misma reserva medía un 5% más en Safari y el texto
+         se recolocaba al llegar la fuente de verdad. Nuestras fuentes traen
+         todos los pesos, así que no hay nada que fingir. */
+      font-synthesis: none;            /* forma antigua, la que entiende Safari */
+      font-synthesis-weight: none;     /* forma nueva */
+    }
 a { color: var(--accent2); text-decoration: none; }
 img { max-width: 100%; height: auto; display: block; }
 

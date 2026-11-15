@@ -4,11 +4,17 @@
 
    Ejecutar:  node test-canvas-ratio.js
 */
-const { chromium } = require('playwright');
+/* El navegador sale de la variable NAVEGADOR: "chromium" por defecto,
+   "webkit" para el motor de Safari. Probar solo en Chrome no dice nada de
+   iOS, y esta app ya se rompió ahí varias veces. */
+const { chromium, webkit, firefox } = require('playwright');
+const NAVEGADOR = { chromium, webkit, firefox }[process.env.NAVEGADOR || 'chromium'] || chromium;
+const { servir, erroresDeLaApp } = require('./test-server');
+let SITIO;
 const path = require('path');
 
 const RATIO = 9 / 16;
-const ARCHIVO = 'file://' + path.resolve(__dirname, 'app/index.html');
+let ARCHIVO;   /* se rellena cuando el servidor está en pie */
 
 const TAMANOS = [
   ['escritorio 1440x900',  1440, 900],
@@ -66,7 +72,8 @@ async function pruebaProporcion(b) {
     /* El búfer interno debe tener la misma forma que la caja CSS, si no el
        trazo sale ovalado. */
     if (Math.abs(m.bw / m.bh - ratio) > 0.01) fallas.push('BUFER-DEFORME');
-    if (errores.length) fallas.push('ERROR-JS: ' + errores[0].slice(0, 60));
+    const propios = erroresDeLaApp(errores);
+    if (propios.length) fallas.push('ERROR-JS: ' + propios[0].slice(0, 60));
 
     if (fallas.length) fallos++;
     console.log((fallas.length ? '❌' : '✅') + ' ' + nombre.padEnd(22)
@@ -147,13 +154,15 @@ async function pruebaDibujosAntiguos(b) {
 }
 
 (async () => {
-  const b = await chromium.launch();
+  SITIO = await servir();
+  ARCHIVO = SITIO.pagina('app/index.html');
+  const b = await NAVEGADOR.launch();
   let fallos = 0;
   try {
     fallos += await pruebaProporcion(b);
     fallos += await pruebaDibujosAntiguos(b);
   } finally {
-    await b.close();
+    await b.close(); if (SITIO) await SITIO.cerrar();
   }
   console.log(fallos ? '\n❌ ' + fallos + ' fallo(s)' : '\n✅ Lienzo correcto en todos los casos');
   process.exit(fallos ? 1 : 0);

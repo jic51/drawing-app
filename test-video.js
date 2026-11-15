@@ -12,16 +12,25 @@
 
    Ejecutar:  node test-video.js
 */
-const { chromium } = require('playwright');
+/* El navegador sale de la variable NAVEGADOR: "chromium" por defecto,
+   "webkit" para el motor de Safari. Probar solo en Chrome no dice nada de
+   iOS, y esta app ya se rompió ahí varias veces. */
+const { chromium, webkit, firefox } = require('playwright');
+const NAVEGADOR = { chromium, webkit, firefox }[process.env.NAVEGADOR || 'chromium'] || chromium;
+const { servir, erroresDeLaApp } = require('./test-server');
+let SITIO;
 const dir = '/tmp/claude-0/-home-user-drawing-app/a65429ad-417c-5e15-800c-f527dcef78f1/scratchpad/';
 let f = 0;
 const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==undefined?'   '+JSON.stringify(d):'')); };
 
 (async () => {
-  const b = await chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
+  SITIO = await servir();
+  /* Esa opción solo la entiende Chrome; WebKit se niega a arrancar con ella. */
+  const b = await NAVEGADOR.launch(NAVEGADOR === chromium
+    ? { args: ['--autoplay-policy=no-user-gesture-required'] } : {});
   const p = await b.newPage({ viewport: { width: 1280, height: 800 } });
   const errs = []; p.on('pageerror', e => errs.push(e.message));
-  await p.goto('file://' + require('path').resolve(__dirname, 'app/index.html'));
+  await p.goto(SITIO.pagina('app/index.html'));
 
   await p.waitForTimeout(2800);
 
@@ -55,6 +64,29 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
     return { video: window.__video, relojMs: Math.round(performance.now() - t0) };
   });
 
+  /* La build de WebKit para Linux no trae MediaRecorder; el Safari de verdad
+     sí lo tiene desde iOS 14.3, solo que con MP4 en vez de webm. Así que en
+     ese motor no se puede comprobar la grabación — pero sí algo que importa
+     igual: que la app lo diga en vez de quedarse colgada. */
+  const hayGrabador = await p.evaluate(() => typeof MediaRecorder !== 'undefined');
+  if (!hayGrabador) {
+    console.log('ℹ️  Este motor no trae MediaRecorder: se comprueba que la app avise bien.');
+    chk(!r.video, 'no se genera video, como es de esperar');
+    const estado = await p.evaluate(() => ({
+      avisó: (document.getElementById('toast')?.textContent || '') +
+             [...document.querySelectorAll('#aviso-pila .aviso')].map(e => e.textContent).join(' '),
+      descargando: typeof _downloading !== 'undefined' ? _downloading : null,
+    }));
+    chk(/no |not |support|admite/i.test(estado.avisó),
+        'la app avisa de que no se puede grabar aquí', estado.avisó.slice(0, 70));
+    chk(estado.descargando === false,
+        'y no se queda bloqueada creyendo que descarga', estado);
+    chk(erroresDeLaApp(errs).length === 0, 'sin errores de JS', erroresDeLaApp(errs)[0] || '');
+    await b.close(); if (SITIO) await SITIO.cerrar();
+    console.log(f ? '\n❌ ' + f + ' fallos' : '\n✅ degrada bien donde no hay grabador');
+    process.exit(f ? 1 : 0);
+  }
+
   chk(!!r.video, 'el video se generó', r.video || 'sin video');
   if (r.video) {
     chk(r.video.size > 20000, 'el archivo tiene contenido', { bytes: r.video.size });
@@ -81,8 +113,8 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
       'el degradado de la marca es suave y no domina el cuadro',
       { velo: marco.velo, porcentaje: Math.round(marco.velo / marco.H * 100) + '%' });
 
-  chk(errs.length === 0, 'sin errores de JS', errs[0] || '');
-  await b.close();
+  chk(erroresDeLaApp(errs).length === 0, 'sin errores de JS', erroresDeLaApp(errs)[0] || '');
+  await b.close(); if (SITIO) await SITIO.cerrar();
   console.log(f ? '\n❌ ' + f + ' fallos' : '\n✅ video correcto');
   process.exit(f ? 1 : 0);
 })();

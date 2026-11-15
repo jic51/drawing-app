@@ -14,12 +14,19 @@
 
    Ejecutar:  node test-language-shift.js
 */
-const { chromium } = require('playwright');
+/* El navegador sale de la variable NAVEGADOR: "chromium" por defecto,
+   "webkit" para el motor de Safari. Probar solo en Chrome no dice nada de
+   iOS, y esta app ya se rompió ahí varias veces. */
+const { chromium, webkit, firefox } = require('playwright');
+const NAVEGADOR = { chromium, webkit, firefox }[process.env.NAVEGADOR || 'chromium'] || chromium;
+const { servir } = require('./test-server');
+let SITIO;
 const path = require('path');
 (async () => {
-  const b = await chromium.launch();
+  SITIO = await servir();
+  const b = await NAVEGADOR.launch();
   const p = await b.newPage({ viewport: { width: 1280, height: 900 } });
-  await p.goto('file://' + path.resolve(__dirname, 'index.html'));
+  await p.goto(SITIO.pagina('index.html'));
   await p.waitForTimeout(3600);
   await p.evaluate(() => document.getElementById('landing-splash')?.remove());
   await p.waitForTimeout(400);
@@ -66,7 +73,7 @@ const path = require('path');
   chk(Object.keys(antes).length > 30, 'se midieron elementos de verdad',
       { medidos: Object.keys(antes).length });
 
-  await b.close();
+  await b.close(); if (SITIO) await SITIO.cerrar();
   console.log(f ? '\n❌ ' + f + ' fallo(s)' : '\n✅ La landing no se recoloca al cambiar de idioma');
   process.exit(f ? 1 : 0);
 })();

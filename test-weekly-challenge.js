@@ -10,10 +10,16 @@
 
    Ejecutar:  node test-weekly-challenge.js
 */
-const { chromium } = require('playwright');
+/* El navegador sale de la variable NAVEGADOR: "chromium" por defecto,
+   "webkit" para el motor de Safari. Probar solo en Chrome no dice nada de
+   iOS, y esta app ya se rompió ahí varias veces. */
+const { chromium, webkit, firefox } = require('playwright');
+const NAVEGADOR = { chromium, webkit, firefox }[process.env.NAVEGADOR || 'chromium'] || chromium;
+const { servir } = require('./test-server');
+let SITIO;
 const path = require('path');
 
-const ARCHIVO = 'file://' + path.resolve(__dirname, 'app/index.html');
+let ARCHIVO;   /* se rellena cuando el servidor está en pie */
 
 let fallos = 0;
 const chk = (cond, msg, dato) => {
@@ -23,7 +29,9 @@ const chk = (cond, msg, dato) => {
 };
 
 (async () => {
-  const b = await chromium.launch();
+  SITIO = await servir();
+  ARCHIVO = SITIO.pagina('app/index.html');
+  const b = await NAVEGADOR.launch();
 
   /* ── 1. El mismo reto en husos opuestos ─────────────────────────────
      Kiritimati (UTC+14) y Niue (UTC-11) son los extremos del planeta: 25
@@ -127,7 +135,7 @@ const chk = (cond, msg, dato) => {
       'en móvil el reto llega por la sugerencia del lienzo', m.prompt);
   await p2.close();
 
-  await b.close();
+  await b.close(); if (SITIO) await SITIO.cerrar();
   console.log(fallos ? '\n❌ ' + fallos + ' fallo(s)' : '\n✅ Reto semanal correcto');
   process.exit(fallos ? 1 : 0);
 })();

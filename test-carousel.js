@@ -12,7 +12,13 @@
 
    Ejecutar:  node test-carousel.js
 */
-const { chromium } = require('playwright');
+/* El navegador sale de la variable NAVEGADOR: "chromium" por defecto,
+   "webkit" para el motor de Safari. Probar solo en Chrome no dice nada de
+   iOS, y esta app ya se rompió ahí varias veces. */
+const { chromium, webkit, firefox } = require('playwright');
+const NAVEGADOR = { chromium, webkit, firefox }[process.env.NAVEGADOR || 'chromium'] || chromium;
+const { servir } = require('./test-server');
+let SITIO;
 const path = require('path');
 
 /* Dibujos de mentira pero con proporciones MEZCLADAS, que es el caso real
@@ -38,10 +44,11 @@ let f = 0;
 const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==undefined?'   '+JSON.stringify(d):'')); };
 
 (async () => {
-  const b = await chromium.launch();
+  SITIO = await servir();
+  const b = await NAVEGADOR.launch();
   /* Estrecho a propósito para que el contenido desborde y el carrusel gire. */
   const p = await b.newPage({ viewport: { width: 560, height: 900 } });
-  await p.goto('file://' + path.resolve(__dirname, 'index.html'));
+  await p.goto(SITIO.pagina('index.html'));
   await p.waitForTimeout(1200);
 
   await p.evaluate(({ formas, fuente }) => {
@@ -164,7 +171,7 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   });
   chk(mueve, 'los dibujos siguen reproduciéndose tras la rotación (no son clones muertos)');
 
-  await b.close();
+  await b.close(); if (SITIO) await SITIO.cerrar();
   console.log(f ? '\n❌ ' + f + ' fallos' : '\n✅ carrusel sin fin correcto');
   process.exit(f ? 1 : 0);
 })();
