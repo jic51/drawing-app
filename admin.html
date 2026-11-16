@@ -183,8 +183,13 @@ auth.onAuthStateChanged(async user => {
   }
   document.getElementById('puerta').innerHTML = '';
   document.getElementById('panel').hidden = false;
+  MI_UID = user.uid;
   arrancarModeracion();
 });
+
+/* Se guarda para poder enseñártelo si las denuncias salen denegadas: la
+   regla pide tu uid y así no hay que ir a buscarlo a la consola. */
+let MI_UID = '';
 
 function arrancarModeracion() {
 const esc = v => String(v == null ? '' : v)
@@ -321,9 +326,10 @@ document.getElementById('busca').addEventListener('keydown',
   e => { if (e.key === 'Enter') verDibujo(e.target.value); });
 
 /* ── Lista de denuncias ─────────────────────────────────────────────── */
-/* Hoy las reglas no dicen nada de _reports, así que por defecto se deniega
-   todo y esta lista no puede cargarse desde el navegador. Si falla, en vez
-   de un error seco se explica qué regla hace falta. */
+/* Las reglas ya declaran _reports, pero la lectura está atada a un uid
+   concreto. Si ese uid todavía es el hueco de ejemplo, esto se deniega: en
+   vez de un error seco se enseña el uid de quien está dentro, listo para
+   pegar en las reglas. */
 db.collection('_reports').orderBy('createdAt', 'desc').limit(40).get()
   .then(snap => {
     const cont = document.getElementById('denuncias');
@@ -353,20 +359,14 @@ db.collection('_reports').orderBy('createdAt', 'desc').limit(40).get()
   .catch(() => {
     document.getElementById('n-denuncias').textContent = '—';
     document.getElementById('denuncias').innerHTML =
-      '<div class="aviso">Las reglas de Firestore no permiten leer '
-      + '<code>_reports</code> desde el navegador, así que esta lista no puede '
-      + 'cargarse. Mientras tanto, abre <code>_reports</code> en la consola, '
-      + 'copia el <code>refId</code> de la denuncia y pégalo arriba.<br><br>'
-      + 'Para que la lista funcione, añade esto a las reglas:'
-      + '<pre><code>match /_reports/{doc} {\n'
-      + '  allow read: if request.auth != null;\n'
-      + '  allow create: if request.auth != null;\n'
-      + '  allow update, delete: if false;\n'
-      + '}</code></pre>'
-      + 'Ojo: eso deja que <em>cualquiera</em> con cuenta lea las denuncias. '
-      + 'Para que solo las leas tú, cambia la condición por '
-      + '<code>request.auth.uid == &quot;TU_UID&quot;</code> y esta página '
-      + 'necesitará además que inicies sesión.</div>';
+      '<div class="aviso">Las reglas solo dejan leer <code>_reports</code> a un '
+      + 'uid concreto, y todavía no es el tuyo. Mientras tanto, abre '
+      + '<code>_reports</code> en la consola de Firebase, copia el '
+      + '<code>refId</code> de la denuncia y pégalo arriba.<br><br>'
+      + 'Para arreglarlo, en las reglas cambia '
+      + '<code>PON_AQUI_TU_UID</code> por esto:'
+      + '<pre><code>' + esc(MI_UID || '(no se pudo leer tu uid)') + '</code></pre>'
+      + 'Es el uid de la cuenta con la que estás dentro ahora mismo.</div>';
   });
 }   /* fin de arrancarModeracion */
 </script>

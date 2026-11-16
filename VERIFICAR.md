@@ -13,16 +13,26 @@
 
 Sin esto, parte de lo de abajo no puede funcionar.
 
-- [ ] **Publicar las reglas nuevas.** Están en `firestore.rules`. Firebase
-      Console → Firestore → Rules → pegar → Publish.
-      ⚠️ Antes de pegar, busca `PON_AQUI_TU_UID` y cámbialo por tu uid real
-      (Authentication → Users), o borra ese bloque entero.
-- [ ] **Desplegar las funciones otra vez**: `firebase deploy --only functions`.
-      Hay una nueva (`emparejarConCreador`) y sin ella las cuentas nuevas ya
-      no te tendrán de amigo.
-- [ ] **Después de publicar las reglas, comprobar que NO se rompió nada**:
-      entra, manda un dibujo, agrega a alguien. Si algo falla con
-      "permission denied", avísame con el mensaje exacto.
+- [x] **Publicar las reglas nuevas.** ✅ Hecho el 2026-11-16. **Lo comprobé yo
+      en vivo**, sin sesión, contra tu Firestore de verdad: `users`,
+      `friendships`, `fcmTokens`, `landing_emails`, `_reports` y la lista de
+      dibujos salen **denegados**; la galería, las opiniones y el contador
+      siguen **abiertos**, que es lo que la landing necesita.
+      También repasé una por una las escrituras de la app y encajan con las
+      reglas nuevas (el contador escribe solo esos tres campos; marcar visto
+      escribe solo `viewed` y `viewedAt`; las solicitudes nacen `pendiente`).
+- [ ] **Desplegar las funciones otra vez.** Pasos para Windows en
+      `DEPLOY-WINDOWS.md`, para el Mac en `DEPLOY.md`. Hay una nueva
+      (`emparejarConCreador`) y sin ella las cuentas nuevas ya no te tendrán
+      de amigo. **Esto es lo único que falta de esta sección.**
+- [ ] **Poner tu uid en las reglas** (opcional). `_reports` tiene todavía
+      `PON_AQUI_TU_UID`, así que la lista de denuncias de `admin.html` sale
+      denegada. Ya no hace falta ir a buscarlo: abre `admin.html` y **la
+      propia página te enseña tu uid listo para copiar**.
+- [ ] **Comprobar a mano que no se rompió nada** (lo mío fue sin sesión; esto
+      es con sesión): entra, manda un dibujo, agrega a alguien, acepta una
+      solicitud. Si algo falla con "permission denied", mándame el mensaje
+      exacto.
 
 ---
 

@@ -415,8 +415,8 @@ tenga el uid de alguien puede mandarle dibujos sin ser nada suyo.
 
 | # | Qué | Detalle |
 |---|-----|---------|
-| E1 | **Arreglo de verdad: comprobarlo en las reglas** | La regla tendría que mirar si existe la amistad. Para eso Firestore necesita poder construir la RUTA del documento, y hoy las amistades tienen ID automático. Hay que pasar a un ID deducible (los dos uid ordenados, `uidA_uidB`) y migrar las que ya existen. No es difícil pero toca datos vivos |
-| E2 | **Parche mientras tanto: en el cliente** | Al responder, comprobar que la amistad sigue viva. Arregla lo que se ve, pero NO es seguridad: cualquiera puede saltarse el navegador |
+| E1 | **Arreglo de verdad: comprobarlo en las reglas** | ⬜ PENDIENTE. La regla tendría que mirar si existe la amistad. Para eso Firestore necesita poder construir la RUTA del documento, y hoy las amistades tienen ID automático. Hay que pasar a un ID deducible (los dos uid ordenados, `uidA_uidB`) y migrar las que ya existen. No es difícil pero toca datos vivos. **Las reglas del 2026-11-16 no arreglan esto**: `sketches` sigue exigiendo solo que `from` seas tú |
+| E2 | **Parche mientras tanto: en el cliente** | ✅ HECHO 2026-11-16. `sigueSiendoAmigo()` en `enviarSketchFirestore`, así que responder a quien ya te eliminó sale con un aviso en vez de enviarse. Falla **abierto** si la lista de amigos aún no cargó, a propósito. **No es seguridad**: cualquiera puede saltarse el navegador. Eso es E1 |
 | E3 | **Decidir qué pasa con lo ya enviado** | Un dibujo que llegó ANTES de dejar de ser amigos, ¿se puede seguir abriendo? Yo diría que sí: ya se envió, y borrarlo retroactivamente sorprende más de lo que protege |
 
 ---

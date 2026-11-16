@@ -4678,8 +4678,31 @@ enviarBtn.addEventListener('click', async () => {
   selCount.textContent = '';
 });
 
+/* ¿Sigue siendo amigo? Devuelve true también cuando NO se sabe todavía.
+   Fallar abierto es a propósito: `amigosCache` empieza en null y se llena
+   con la escucha viva, así que fallar cerrado dejaría sin enviar a quien
+   dibuja en los primeros segundos, que es un fallo peor que el que esto
+   intenta evitar.
+
+   Esto NO es la cerradura de verdad: las reglas de Firestore solo exigen
+   que `from` seas tú, y no pueden comprobar la amistad porque el documento
+   tiene un ID aleatorio y una regla no sabe buscarlo. La cerradura pide IDs
+   del tipo `uidA_uidB` y migrar lo que ya existe (E1 en el backlog). Lo de
+   aquí arregla el caso real que viste: responder a alguien que ya te
+   eliminó, o a quien tú eliminaste. */
+function sigueSiendoAmigo(toUid) {
+  if (!Array.isArray(amigosCache)) return true;   /* aún no se sabe */
+  return amigosCache.some(a => a.id === toUid);
+}
+
 async function enviarSketchFirestore(toUid) {
   const uid = auth.currentUser.uid;
+  if (!sigueSiendoAmigo(toUid)) {
+    toast(lang === 'es'
+      ? '⚠️ Ya no son amigos'
+      : '⚠️ You are not friends anymore');
+    return;
+  }
   /* fromName: usar @usuario, si no está disponible usar displayName, si no el email */
   const senderName = usuario
     || auth.currentUser.displayName
