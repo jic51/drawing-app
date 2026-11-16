@@ -1,4 +1,5 @@
 const { onDocumentCreated, onDocumentUpdated } = require('firebase-functions/v2/firestore');
+const { FieldValue } = require('firebase-admin/firestore');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
@@ -103,5 +104,51 @@ exports.notifySketchViewed = onDocumentUpdated('sketches/{sketchId}', async (eve
       await db.collection('users').doc(autor).update({ fcmToken: null });
     }
     console.error('FCM send error (visto):', e.code, e.message);
+  }
+});
+
+/* ══════════════════════════════════════════════════════
+   LA CUENTA DEL CREADOR, AMIGA DE CADA CUENTA NUEVA
+   ────────────────────────────────────────────────────
+   Esto lo hacía el navegador, y con las reglas nuevas ya no puede: crear
+   una amistad YA ACEPTADA es exactamente lo que se prohibió, porque si
+   cualquiera puede hacerlo entonces "aceptar" no significa nada.
+
+   Aquí sí se puede, porque el servidor va con el SDK de administración y
+   no pasa por las reglas. Y es el sitio correcto: es una decisión de la
+   app, no de quien se registra.
+══════════════════════════════════════════════════════ */
+const USUARIO_CREADOR = 'jose';
+
+exports.emparejarConCreador = onDocumentCreated('users/{uid}', async (event) => {
+  const nuevo = event.params.uid;
+  const datos = event.data && event.data.data();
+  if (!nuevo || !datos) return;
+  /* Si el que se registra ES el creador, no hay nada que hacer. */
+  if ((datos.username || '').toLowerCase() === USUARIO_CREADOR) return;
+
+  const db = getFirestore();
+  try {
+    const snap = await db.collection('users')
+      .where('username', '==', USUARIO_CREADOR).limit(1).get();
+    if (snap.empty) return;
+    const creador = snap.docs[0].id;
+    if (creador === nuevo) return;
+
+    /* Que no se duplique si por lo que sea ya existe. */
+    const ya = await db.collection('friendships')
+      .where('users', 'array-contains', nuevo).get();
+    if (ya.docs.some(d => (d.data().users || []).includes(creador))) return;
+
+    await db.collection('friendships').add({
+      users: [nuevo, creador],
+      status: 'accepted',
+      requestedBy: creador,
+      esDelCreador: true,
+      createdAt: FieldValue.serverTimestamp(),
+      acceptedAt: FieldValue.serverTimestamp(),
+    });
+  } catch (e) {
+    console.error('emparejarConCreador:', e.message);
   }
 });

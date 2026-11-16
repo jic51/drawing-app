@@ -161,15 +161,21 @@ const STUB = () => {
     return {
       orden: items.map(e => e.dataset.id || '+'),
       pendientes: items.filter(e => e.classList.contains('pendiente')).map(e => e.dataset.id),
-      enviadas: items.filter(e => e.classList.contains('enviada')).map(e => e.dataset.id),
+      /* Las enviadas se agrupan en UN círculo, sin dataset.id. */
+      enviadas: items.filter(e => e.classList.contains('esperando')).length,
+      cuentaEnviadas: document.querySelector('.cuenta-esperando')?.textContent,
       conEtiqueta: items.filter(e => e.querySelector('.etiqueta-nuevo')).map(e => e.dataset.id),
     };
   });
   chk(car.pendientes.join() === 'marta', 'la solicitud recibida sale en gris', car.pendientes);
-  chk(car.enviadas.join() === 'pedro', 'la que envié yo sale aparte', car.enviadas);
+  chk(car.enviadas === 1, 'las que envié yo se agrupan en UN círculo', car.enviadas);
+  chk(car.cuentaEnviadas === '1', 'con su cuenta encima', car.cuentaEnviadas);
   chk(car.orden[0] === 'marta', 'y la solicitud va PRIMERA', car.orden);
   chk(!car.conEtiqueta.includes('pedro'),
       'la que envié yo no lleva etiqueta de nuevo: no tengo nada que hacer', car.conEtiqueta);
+  /* El botón de compartir se quitó del carrusel: ya está en Ajustes. */
+  const share = await p.evaluate(() => !!document.querySelector('#carousel .sharebtn'));
+  chk(!share, 'el botón de compartir ya no duplica el de Ajustes');
   chk(car.conEtiqueta.includes('marta') && car.conEtiqueta.includes('ana'),
       'la solicitud y los amigos sin ver sí la llevan', car.conEtiqueta);
 

@@ -1208,6 +1208,14 @@
     }
     /* La que YO envié y aún no contestan: gris y sin etiqueta roja, porque
        no hay nada que yo tenga que hacer. */
+    .cuenta-esperando {
+      position:absolute; top:-4px; right:-6px; background:var(--accent);
+      color:#fff; font-size:0.6rem; font-weight:800; min-width:16px; height:16px;
+      border-radius:9px; display:flex; align-items:center; justify-content:center;
+      border:2px solid var(--bg); padding:0 3px;
+    }
+    .citem.esperando .cwrap { position:relative; }
+
     .citem.enviada .cimg { filter:grayscale(1); opacity:.4; }
     .citem.enviada .cname { color:var(--muted); font-style:italic; }
 
@@ -1991,6 +1999,9 @@ const I18N = {
     sol_uno: 'quiere ser tu amigo',
     nuevos_sub: 'ya es tu amigo',
     sol_te_acepto: 'aceptó tu solicitud 🎉',
+    sol_retirar: 'Retirar',
+    sol_esperando_titulo: 'Solicitudes que enviaste',
+    sol_esperando: 'esperando',
     sol_nueva: 'nuevo',
     sol_enviada_corta: 'enviada',
     sol_ya_pedida: 'Ya le enviaste una solicitud a {u}',
@@ -2147,6 +2158,9 @@ const I18N = {
     sol_uno: 'wants to be your friend',
     nuevos_sub: 'is your friend now',
     sol_te_acepto: 'accepted your request 🎉',
+    sol_retirar: 'Withdraw',
+    sol_esperando_titulo: 'Requests you sent',
+    sol_esperando: 'waiting',
     sol_nueva: 'new',
     sol_enviada_corta: 'sent',
     sol_ya_pedida: 'You already sent {u} a request',
@@ -2886,9 +2900,6 @@ function mostrarPantallaUsername(nombre, fotoUrl) {
       /* Contadores de la landing. Van en el mismo documento que los
          dibujos enviados; cada zona horaria se cuenta una vez para poder
          saber cuántas distintas hay sin guardar a quién pertenece. */
-      /* Que no entre a una app vacía: queda emparejado con el creador. */
-      emparejarConCreador(uid).catch(() => {});
-
       const zona = paisAproximado();
       const stats = { usuarios: firebase.firestore.FieldValue.increment(1) };
       if (zona) stats.zonas = { [zona]: firebase.firestore.FieldValue.increment(1) };
@@ -4096,6 +4107,10 @@ const perfilesCache = new Map();  /* uid -> datos de la persona */
 let _amistadesSuelta = null;      /* para cortar la escucha al salir */
 
 const CLAVE_VISTOS_AMIGOS = 'ss_amistades_vistas';
+/* El NEW se va al tocarlo, que es la señal de "ya me enteré". Pero quien
+   nunca lo toca lo tendría ahí para siempre, y entonces deja de querer
+   decir nada. A los 7 días se cae solo. */
+const NUEVO_CADUCA = 7 * 24 * 60 * 60 * 1000;
 
 function amistadesYaVistas() {
   try { return new Set(JSON.parse(ls.get(CLAVE_VISTOS_AMIGOS) || '[]')); }
@@ -4136,8 +4151,11 @@ function vigilarAmistades() {
         const d = doc.data();
         const otro = (d.users || []).find(u => u !== uid);
         if (!otro) return;
+        const cuando = d.acceptedAt || d.createdAt;
         filas.push({ docId: doc.id, otro, status: d.status,
-                     requestedBy: d.requestedBy, esDelCreador: !!d.esDelCreador });
+                     requestedBy: d.requestedBy, esDelCreador: !!d.esDelCreador,
+                     creadoEn: cuando?.toMillis ? cuando.toMillis()
+                             : (cuando?.seconds ? cuando.seconds * 1000 : Date.now()) });
       });
 
       /* Solo se piden los perfiles que no se conocen. */
@@ -4298,6 +4316,42 @@ function filaPersona(p, acciones) {
    Ahora la solicitud vive como un círculo gris en el carrusel y esto solo
    se abre si lo tocas. Cerrar con la ✕ no es ni aceptar ni rechazar: la
    solicitud sigue ahí para decidir luego. */
+/* Las solicitudes que hice yo y nadie ha contestado. Solo para mirar y,
+   si quiero, retirarlas: no hay nada más que hacer con ellas. */
+async function abrirEnviadas() {
+  const caja = document.createElement('div');
+  caja.style.cssText = 'text-align:left;position:relative;padding-top:4px';
+  const titulo = document.createElement('div');
+  titulo.style.cssText = 'font-weight:700;margin-bottom:10px;text-align:center';
+  titulo.textContent = t('sol_esperando_titulo');
+  caja.appendChild(titulo);
+
+  enviadasCache.forEach(e => {
+    const fila = document.createElement('div');
+    fila.style.cssText = 'display:flex;align-items:center;gap:11px;padding:9px 0;'
+      + 'border-bottom:1px solid var(--border)';
+    const img = document.createElement('img');
+    img.src = safeUrl(e.photoURL) || genAvatar(e.nombre); img.alt = '';
+    img.style.cssText = 'width:38px;height:38px;border-radius:50%;object-fit:cover;'
+      + 'filter:grayscale(1);opacity:.6;flex:0 0 auto';
+    const nom = document.createElement('div');
+    nom.style.cssText = 'flex:1;min-width:0;font-size:0.88rem;overflow:hidden;text-overflow:ellipsis';
+    nom.textContent = '@' + (e.username || e.nombre);
+    const quitar = document.createElement('button');
+    quitar.className = 'settings-row-action';
+    quitar.textContent = t('sol_retirar');
+    quitar.addEventListener('click', async () => {
+      quitar.disabled = true;
+      try { await rechazarSolicitud(e.docId); fila.remove(); }
+      catch (err) { toast('❌ ' + err.message); quitar.disabled = false; }
+    });
+    fila.append(img, nom, quitar);
+    caja.appendChild(fila);
+  });
+
+  await ssModal('', [{ label: t('nuevos_cerrar'), primary: true }], { nodo: caja });
+}
+
 async function abrirSolicitud(p) {
   const caja = document.createElement('div');
   caja.style.cssText = 'text-align:left;position:relative;padding-top:4px';
@@ -4458,37 +4512,12 @@ function esCreador(username) {
   return String(username || '').toLowerCase() === USUARIO_CREADOR;
 }
 
-/* Empareja a quien acaba de registrarse con el creador. Silenciosa: si algo
-   falla no se le dice nada a quien se está registrando, porque no es culpa
-   suya ni puede hacer nada, y un error justo al entrar asusta. */
-async function emparejarConCreador(uid) {
-  const { db, listo } = contextoFirebase();
-  if (!listo || !uid) return false;
-  try {
-    const snap = await db.collection('users')
-      .where('username', '==', USUARIO_CREADOR).limit(1).get();
-    if (snap.empty) return false;
-    const creador = snap.docs[0].data();
-    if (!creador.uid || creador.uid === uid) return false;   /* el propio creador, no */
+/* El emparejado con el creador lo hace el SERVIDOR, no esto.
 
-    /* Que no se duplique si ya existe por cualquier motivo. */
-    const ya = await db.collection('friendships')
-      .where('users', 'array-contains', uid).get();
-    if (ya.docs.some(d => (d.data().users || []).includes(creador.uid))) return false;
-
-    await db.collection('friendships').add({
-      users: [uid, creador.uid],
-      status: 'accepted',
-      requestedBy: creador.uid,     /* lo ofrece el creador, no lo pide quien llega */
-      esDelCreador: true,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    return true;
-  } catch (e) {
-    console.warn('No se pudo emparejar con el creador:', e.message);
-    return false;
-  }
-}
+   Con las reglas nuevas el navegador ya no puede crear una amistad ya
+   aceptada —es justo lo que se prohibió, porque si cualquiera puede
+   hacerlo entonces "aceptar" no significa nada—. La función
+   emparejarConCreador lo hace al crearse el documento de usuario. */
 
 /* Pinta el carrusel con lo que haya en memoria. No pide nada a la red:
    los datos llegan por la escucha viva, así que esto puede llamarse en
@@ -4517,7 +4546,10 @@ function pintarCarrusel() {
     const chk = document.createElement('div'); chk.className = 'ccheck'; chk.textContent = '✓';
     wrap.appendChild(imgEl); wrap.appendChild(chk);
 
-    const esNuevo = tipo === 'pendiente' || !vistas.has(c.docId);
+    /* Nuevo si no lo has tocado Y la amistad es reciente. */
+    const edad = c.creadoEn ? Date.now() - c.creadoEn : 0;
+    const esNuevo = tipo === 'pendiente'
+      || (!vistas.has(c.docId) && edad < NUEVO_CADUCA);
     if (tipo !== 'enviada' && esNuevo) {
       const et = document.createElement('span');
       et.className = 'etiqueta-nuevo'; et.textContent = t('sol_nueva');
@@ -4556,7 +4588,20 @@ function pintarCarrusel() {
   const resto  = amigosCache.filter(a =>  vistas.has(a.docId));
   nuevos.forEach(c => carouselEl.appendChild(circulo(c, 'amigo')));
   resto.forEach(c => carouselEl.appendChild(circulo(c, 'amigo')));
-  enviadasCache.forEach(c => carouselEl.appendChild(circulo(c, 'enviada')));
+  /* Todas las enviadas en UN círculo, no uno por persona: son cosas sobre
+     las que no puedes hacer nada, y cada una ocupaba un hueco en una fila
+     donde todo lo demás sí se puede tocar para enviarle. */
+  if (enviadasCache.length) {
+    const esp = document.createElement('div');
+    esp.className = 'citem esperando';
+    esp.innerHTML = '<div class="cwrap" style="background:var(--surface2);'
+      + 'border:2px dashed var(--border);border-radius:50%;display:flex;'
+      + 'align-items:center;justify-content:center;"><span style="font-size:1.1rem">⏳</span>'
+      + '<span class="cuenta-esperando">' + enviadasCache.length + '</span></div>'
+      + '<span class="cname">' + esc(t('sol_esperando')) + '</span>';
+    esp.addEventListener('click', abrirEnviadas);
+    carouselEl.appendChild(esp);
+  }
 
   /* Botón + para agregar amigo */
   const addBtn = document.createElement('div');
@@ -4568,14 +4613,6 @@ function pintarCarrusel() {
   });
   carouselEl.appendChild(addBtn);
 
-  /* Botón compartir.
-     NUNCA pasar 'text' junto a 'url' a navigator.share: al elegir "copiar",
-     muchos destinos los pegan en una sola cadena y el enlace acaba con
-     palabras detrás, dejando de abrir el dibujo. */
-  const share = document.createElement('div'); share.className='sharebtn';
-  share.innerHTML=`<div class="sharecircle">🔗</div><span class="cname" style="max-width:52px">${esc(t('share_label'))}</span>`;
-  share.addEventListener('click', () => compartirEnlace('SketchSend', getBaseUrl()));
-  carouselEl.appendChild(share);
 }
 
 /* Se mantiene el nombre viejo porque lo llaman desde varios sitios; ahora
