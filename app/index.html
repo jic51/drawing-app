@@ -1191,6 +1191,24 @@
     .settings-friend-av {
       width:22px; height:22px; border-radius:50%; display:block;
     }
+    /* El puntito de conectado. Va pegado al borde del avatar, abajo a la
+       derecha, con un aro del color del fondo para que se despegue de la
+       foto y no parezca parte de ella. */
+    .punto-presencia {
+      position:absolute; right:-1px; bottom:-1px;
+      width:10px; height:10px; border-radius:50%;
+      background:var(--online); border:2px solid var(--surface);
+      z-index:2; pointer-events:none;
+    }
+    /* Quien estuvo hace poco, en ámbar y hueco: distinto de "está ahora",
+       que es lo que de verdad cambia si le escribes. */
+    .punto-presencia.reciente { background:#f59e0b; opacity:.85; }
+    .cwrap .punto-presencia { width:12px; height:12px; border:2px solid var(--bg); }
+    .inbox-av-wrap .punto-presencia { width:12px; height:12px; border:2px solid var(--surface); }
+
+    /* El avatar de la bandeja necesita envoltorio para colgar el punto. */
+    .inbox-av-wrap { position:relative; display:inline-flex; flex-shrink:0; }
+
     .settings-friend-av-wrap {
       position:relative; display:inline-flex; border-radius:50%;
       width:26px; height:26px; align-items:center; justify-content:center; flex-shrink:0;
@@ -2814,6 +2832,9 @@ function mostrarPantallaUsername(nombre, fotoUrl) {
       /* Contadores de la landing. Van en el mismo documento que los
          dibujos enviados; cada zona horaria se cuenta una vez para poder
          saber cuántas distintas hay sin guardar a quién pertenece. */
+      /* Que no entre a una app vacía: queda emparejado con el creador. */
+      emparejarConCreador(uid).catch(() => {});
+
       const zona = paisAproximado();
       const stats = { usuarios: firebase.firestore.FieldValue.increment(1) };
       if (zona) stats.zonas = { [zona]: firebase.firestore.FieldValue.increment(1) };
@@ -2857,6 +2878,7 @@ function finalizarLogin(username, displayName, photoURL) {
   ocultarTodasLasPantallas();
   appEl.style.display = 'flex';
   setupCanvas(); buildCarousel(); cargarBandeja(); iniciarPromptsCanvas();
+  arrancarPresencia(); refrescarPuntos();
   const elapsed = Date.now() - (window._splashStart || 0);
   const wait = Math.max(0, 3000 - elapsed);
   setTimeout(() => {
@@ -3910,7 +3932,8 @@ async function cargarAmigos() {
         const userDoc = await db.collection('users').doc(otroUid).get();
         if (userDoc.exists) {
           const u = userDoc.data();
-          amigos.push({ id: otroUid, nombre: u.username || u.displayName, username: u.username, photoURL: u.photoURL });
+          amigos.push({ id: otroUid, nombre: u.username || u.displayName, username: u.username,
+                        photoURL: u.photoURL, lastSeen: u.lastSeen });
         }
       } catch(e) { /* skip usuario no encontrado */ }
     }
@@ -3966,6 +3989,145 @@ async function agregarAmigo(input) {
   }
 }
 
+/* ══════════════════════════════════════════════════════
+   QUIÉN ESTÁ CONECTADO
+   ────────────────────────────────────────────────────
+   Cada quien deja una marca de hora en SU propio documento mientras tiene
+   la app abierta. No hace falta ninguna colección nueva —y por tanto
+   ninguna regla nueva—, porque los amigos ya se leen enteros.
+
+   Se escribe cada 4 minutos y solo con la pestaña a la vista: escribir en
+   cada movimiento serían miles de escrituras al día por persona, y para
+   saber si alguien "está" no hace falta tanta precisión.
+
+   Tres estados, no dos: conectado, hace un rato, y nada. Un punto que solo
+   dice sí/no miente por los pelos — alguien que cerró hace treinta
+   segundos no está "desconectado" en ningún sentido útil.
+══════════════════════════════════════════════════════ */
+const PRESENCIA_ESCRIBIR = 4 * 60 * 1000;   /* cada cuánto dejo mi marca */
+const PRESENCIA_EN_LINEA = 5 * 60 * 1000;   /* hasta aquí, "conectado" */
+const PRESENCIA_RECIENTE = 45 * 60 * 1000;  /* hasta aquí, "hace un rato" */
+
+function estadoPresencia(lastSeen) {
+  const ms = !lastSeen ? 0
+    : (lastSeen.toMillis ? lastSeen.toMillis()
+      : (lastSeen.seconds ? lastSeen.seconds * 1000 : +lastSeen || 0));
+  if (!ms) return 'nada';
+  const desde = Date.now() - ms;
+  if (desde < 0) return 'enlinea';            /* reloj del servidor por delante */
+  if (desde <= PRESENCIA_EN_LINEA) return 'enlinea';
+  if (desde <= PRESENCIA_RECIENTE) return 'reciente';
+  return 'nada';
+}
+
+/* Vuelve a leer a los amigos y repinta solo los puntos, sin rehacer nada
+   más: rehacer el carrusel entero cada tres minutos tiraría la selección
+   de a quién le estás enviando. */
+let _puntosTimer = null;
+async function refrescarPuntos() {
+  clearInterval(_puntosTimer);
+  const tic = async () => {
+    if (document.visibilityState !== 'visible') return;
+    if (!firebaseReady || !auth?.currentUser) return;
+    const amigos = await cargarAmigos();
+    const porId = new Map(amigos.map(a => [a.id, a]));
+    document.querySelectorAll('.citem[data-id]').forEach(el => {
+      const a = porId.get(el.dataset.id);
+      if (a) ponerPunto(el.querySelector('.cwrap'), estadoPresencia(a.lastSeen));
+    });
+    if (settingsOverlay && settingsOverlay.classList.contains('activo')) {
+      pintarAmigosAjustes(amigos);
+    }
+  };
+  tic();
+  /* Tres minutos: el estado se escribe cada cuatro, así que mirar más a
+     menudo solo gastaría lecturas sin enterarse de nada nuevo. */
+  _puntosTimer = setInterval(tic, 3 * 60 * 1000);
+}
+
+let _presenciaTimer = null;
+function marcarPresencia() {
+  if (!firebaseReady || !auth?.currentUser) return;
+  if (document.visibilityState !== 'visible') return;
+  db.collection('users').doc(auth.currentUser.uid)
+    .update({ lastSeen: firebase.firestore.FieldValue.serverTimestamp() })
+    .catch(() => {});   /* que falle no rompe nada: solo no se ve el punto */
+}
+
+function arrancarPresencia() {
+  if (_presenciaTimer) return;
+  marcarPresencia();
+  _presenciaTimer = setInterval(marcarPresencia, PRESENCIA_ESCRIBIR);
+  /* Al volver a la pestaña se marca enseguida, sin esperar los 4 minutos. */
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') marcarPresencia();
+  });
+}
+
+/* Pone (o quita) el puntito sobre un avatar. Se mete DENTRO del envoltorio
+   del avatar para que viaje con él y quede pegado al círculo. */
+function ponerPunto(envoltorio, estado) {
+  if (!envoltorio) return;
+  let p = envoltorio.querySelector('.punto-presencia');
+  if (estado === 'nada') { if (p) p.remove(); return; }
+  if (!p) {
+    p = document.createElement('span');
+    p.className = 'punto-presencia';
+    envoltorio.appendChild(p);
+  }
+  p.classList.toggle('reciente', estado === 'reciente');
+  p.title = estado === 'enlinea'
+    ? (lang === 'es' ? 'Conectado ahora' : 'Online now')
+    : (lang === 'es' ? 'Estuvo hace poco' : 'Here recently');
+}
+
+/* ══════════════════════════════════════════════════════
+   LA CUENTA DEL CREADOR
+   ────────────────────────────────────────────────────
+   Toda cuenta nueva queda emparejada con la del creador, para que quien
+   acaba de llegar no entre a una app vacía y sepa quién la hizo.
+
+   Se busca por @usuario y no por un uid escrito a mano: así sigue
+   funcionando si algún día esa cuenta se rehace, y no hay un identificador
+   suelto en el código que nadie sepa de dónde salió.
+══════════════════════════════════════════════════════ */
+const USUARIO_CREADOR = 'jose';
+
+function esCreador(username) {
+  return String(username || '').toLowerCase() === USUARIO_CREADOR;
+}
+
+/* Empareja a quien acaba de registrarse con el creador. Silenciosa: si algo
+   falla no se le dice nada a quien se está registrando, porque no es culpa
+   suya ni puede hacer nada, y un error justo al entrar asusta. */
+async function emparejarConCreador(uid) {
+  if (!firebaseReady || !uid) return false;
+  try {
+    const snap = await db.collection('users')
+      .where('username', '==', USUARIO_CREADOR).limit(1).get();
+    if (snap.empty) return false;
+    const creador = snap.docs[0].data();
+    if (!creador.uid || creador.uid === uid) return false;   /* el propio creador, no */
+
+    /* Que no se duplique si ya existe por cualquier motivo. */
+    const ya = await db.collection('friendships')
+      .where('users', 'array-contains', uid).get();
+    if (ya.docs.some(d => (d.data().users || []).includes(creador.uid))) return false;
+
+    await db.collection('friendships').add({
+      users: [uid, creador.uid],
+      status: 'accepted',
+      requestedBy: creador.uid,     /* lo ofrece el creador, no lo pide quien llega */
+      esDelCreador: true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    return true;
+  } catch (e) {
+    console.warn('No se pudo emparejar con el creador:', e.message);
+    return false;
+  }
+}
+
 async function buildCarousel() {
   /* Skeleton loading */
   carouselEl.innerHTML = '<div style="display:flex;gap:8px;padding:4px 0;">' +
@@ -3995,6 +4157,7 @@ async function buildCarousel() {
     const wrap = document.createElement('div'); wrap.className='cwrap';
     const chk = document.createElement('div'); chk.className='ccheck'; chk.textContent='✓';
     wrap.appendChild(imgEl); wrap.appendChild(chk);
+    ponerPunto(wrap, estadoPresencia(c.lastSeen));
     const nameEl = document.createElement('span'); nameEl.className='cname';
     nameEl.textContent = '@' + (c.username || c.nombre);
     el.appendChild(wrap); el.appendChild(nameEl);
@@ -4342,7 +4505,7 @@ function renderInbox() {
       <div class="inbox-mitad">
         ${!msg.visto ? '<div class="inbox-card-new"></div>' : ''}
         <div class="inbox-quien" title="${esc(t('prof_open'))}">
-          <img class="inbox-card-av" src="${esc(safeUrl(genAvatar(msg.sender)))}" alt="${esc(msg.sender)}">
+          <span class="inbox-av-wrap"><img class="inbox-card-av" src="${esc(safeUrl(genAvatar(msg.sender)))}" alt="${esc(msg.sender)}"></span>
           <div class="inbox-card-info">
             <div class="inbox-card-name">@${esc(msg.sender)}</div>
             <div class="inbox-card-sub">${esc(t('inbox_sent_you'))} · ${esc(agoText)}</div>
@@ -4357,6 +4520,14 @@ function renderInbox() {
         <button class="inbox-report-btn" title="${esc(t('report'))}">⚑</button>
         <button class="inbox-borrar" title="${esc(t('inbox_del'))}">✕</button>
       </div>`;
+
+    /* El dibujo no guarda el lastSeen de quien lo mandó, así que el punto
+       sale de los amigos ya cargados. Si no es tu amigo, no hay punto y
+       está bien: no tienes por qué saber si está conectado. */
+    const amigoDelMsg = (amigosCache || []).find(a => a.id === msg.senderId);
+    if (amigoDelMsg) {
+      ponerPunto(card.querySelector('.inbox-av-wrap'), estadoPresencia(amigoDelMsg.lastSeen));
+    }
 
     /* Tocar a la persona abre su perfil, no el dibujo: antes cualquier
        toque abría el replay y no había forma de ver quién era. */
@@ -5436,6 +5607,7 @@ function pintarAmigosAjustes(amigos) {
     const avImg = document.createElement('img'); avImg.className='settings-friend-av';
     avImg.src = safeUrl(c.photoURL) || genAvatar(c.nombre); avImg.alt = c.nombre;
     avWrap.appendChild(avImg);
+    ponerPunto(avWrap, estadoPresencia(c.lastSeen));
     const nameNode = document.createTextNode(c.nombre);
     const rmSpan = document.createElement('span'); rmSpan.textContent='✕';
     rmSpan.style.cssText='margin-left:4px;opacity:0.4;font-size:0.7rem;';
