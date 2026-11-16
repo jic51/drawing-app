@@ -338,6 +338,16 @@ por alumno, los alumnos dibujan SIN cuenta, y él lo ve todo desde un panel.
 
 ---
 
+## 🙋 AMISTADES — lo que sigue pendiente (2026-11-17)
+
+| # | Qué | Estado |
+|---|-----|--------|
+| F-a | **Amigos en común en el popup de solicitud** | Decidido que sí, pero aún sin hacer. Es lo que ayuda a decidir si aceptas, mucho más que saber quién ya es tu amigo |
+| F-b | **No dejar repetir una solicitud rechazada** | Hoy rechazar borra el documento, así que se puede volver a pedir una y otra vez: eso es acoso. Hace falta un registro callado que no vea ninguno de los dos |
+| F-c | **Las reglas de `friendships` siguen abiertas** | `allow read, write: if request.auth != null`: cualquiera con cuenta puede escribir en amistades ajenas, así que "aceptar" no está protegido de verdad. Es el S3 de SEGURIDAD y ahora importa más que antes |
+
+---
+
 ## 🗣️ A DECIDIR (planteado por Jose 2026-11-16)
 
 | # | Qué | Estado |

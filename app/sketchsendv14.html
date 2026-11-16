@@ -1190,6 +1190,27 @@
     .settings-friend-av {
       width:22px; height:22px; border-radius:50%; display:block;
     }
+    /* Una solicitud sin contestar: en gris, porque todavía no es nadie tuyo.
+       Al tocarla se abre quién es y qué hacer. */
+    .citem.pendiente .cimg { filter:grayscale(1); opacity:.55; }
+    .citem.pendiente .cwrap { border:2px dashed var(--border); }
+    .citem.pendiente .cname { color:var(--muted); }
+
+    /* La etiqueta de nuevo: para solicitudes sin contestar Y para amigos
+       recién llegados, que es lo que hace falta para no tener que ir a
+       mirar la lista a ver si cambió algo. */
+    .etiqueta-nuevo {
+      position:absolute; top:-5px; right:-7px; z-index:3;
+      background:var(--danger); color:#fff;
+      font-size:0.52rem; font-weight:800; letter-spacing:.4px;
+      padding:2px 5px; border-radius:7px; text-transform:uppercase;
+      border:2px solid var(--bg); pointer-events:none; line-height:1;
+    }
+    /* La que YO envié y aún no contestan: gris y sin etiqueta roja, porque
+       no hay nada que yo tenga que hacer. */
+    .citem.enviada .cimg { filter:grayscale(1); opacity:.4; }
+    .citem.enviada .cname { color:var(--muted); font-style:italic; }
+
     /* El puntito de conectado. Va pegado al borde del avatar, abajo a la
        derecha, con un aro del color del fondo para que se despegue de la
        foto y no parezca parte de ella. */
@@ -1965,9 +1986,15 @@ const I18N = {
     prompt_sub: '✏️ empieza a dibujar',
     aviso_llego: 'te envió un dibujo · toca para verlo',
     friend_requested: 'Solicitud enviada a {u} · te avisamos cuando acepte',
+    friend_requested_corto: 'solicitud enviada · te avisamos cuando acepte',
     sol_titulo: 'Te quieren agregar',
     sol_uno: 'quiere ser tu amigo',
     nuevos_sub: 'ya es tu amigo',
+    sol_te_acepto: 'aceptó tu solicitud 🎉',
+    sol_nueva: 'nuevo',
+    sol_enviada_corta: 'enviada',
+    sol_ya_pedida: 'Ya le enviaste una solicitud a {u}',
+    sol_ya_amigos: 'Ya eres amigo de {u}',
     sol_aceptar: 'Aceptar',
     sol_rechazar: 'Ahora no',
     sol_aceptada: 'Ahora son amigos',
@@ -2115,9 +2142,15 @@ const I18N = {
     prompt_sub: '✏️ start drawing',
     aviso_llego: 'sent you a drawing · tap to see it',
     friend_requested: 'Request sent to {u} · we will tell you when they accept',
+    friend_requested_corto: 'request sent · we will tell you when they accept',
     sol_titulo: 'Someone wants to add you',
     sol_uno: 'wants to be your friend',
     nuevos_sub: 'is your friend now',
+    sol_te_acepto: 'accepted your request 🎉',
+    sol_nueva: 'new',
+    sol_enviada_corta: 'sent',
+    sol_ya_pedida: 'You already sent {u} a request',
+    sol_ya_amigos: 'You are already friends with {u}',
     sol_aceptar: 'Accept',
     sol_rechazar: 'Not now',
     sol_aceptada: 'You are friends now',
@@ -2900,8 +2933,6 @@ function finalizarLogin(username, displayName, photoURL) {
   appEl.style.display = 'flex';
   setupCanvas(); buildCarousel(); cargarBandeja(); iniciarPromptsCanvas();
   arrancarPresencia(); refrescarPuntos();
-  /* Con un respiro: si sale encima del splash no se lee nada. */
-  setTimeout(() => mostrarVentanaAmigos().catch(() => {}), 2200);
   const elapsed = Date.now() - (window._splashStart || 0);
   const wait = Math.max(0, 3000 - elapsed);
   setTimeout(() => {
@@ -3996,8 +4027,17 @@ async function agregarAmigo(input) {
     const existing = await db.collection('friendships')
       .where('users', 'array-contains', uid)
       .get();
-    const yaExiste = existing.docs.some(doc => doc.data().users.includes(otroUser.uid));
-    if (yaExiste) { toast('Ya tienes una amistad con @' + username); return; }
+    /* Distinguir las dos cosas. Antes decía "ya son amigos" tanto si lo
+       eran como si solo había una solicitud sin contestar, que es
+       justamente lo que confunde. */
+    const previa = existing.docs.map(d => d.data())
+      .find(d => (d.users || []).includes(otroUser.uid));
+    if (previa) {
+      toast(previa.status === 'accepted'
+        ? t('sol_ya_amigos').replace('{u}', '@' + username)
+        : t('sol_ya_pedida').replace('{u}', '@' + username));
+      return;
+    }
     /* Crear friendship pendiente */
     await db.collection('friendships').add({
       users: [uid, otroUser.uid],
@@ -4005,7 +4045,10 @@ async function agregarAmigo(input) {
       requestedBy: uid,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    toast(t('friend_requested').replace('{u}', '@' + username));
+    /* Como aviso flotante y no como toast: el toast es una línea estrecha
+       y el texto se salía por encima del botón de enviar. */
+    aviso({ quien: username, texto: t('friend_requested_corto'),
+            foto: otroUser.photoURL });
     if (window.posthog) posthog.capture('friend_added', { method: isCode ? 'shortcode' : 'username' });
     buildCarousel();
   } catch(e) {
@@ -4024,6 +4067,104 @@ async function agregarAmigo(input) {
    No cambia nada en producción: devuelve exactamente lo mismo. */
 function contextoFirebase() {
   return { db, auth, listo: firebaseReady };
+}
+
+/* ══════════════════════════════════════════════════════
+   LAS AMISTADES, EN VIVO
+   ────────────────────────────────────────────────────
+   Antes todo esto se leía UNA vez con .get(), y de ahí salían casi todos
+   los fallos que se vieron probando:
+
+   - Al eliminar a alguien, su lista no se enteraba: seguía viéndote y
+     podía seguir mandándote dibujos.
+   - Al aceptar una solicitud, el otro tardaba en verte.
+   - Al pedir amistad dos veces decía "ya son amigos" sin serlo, porque la
+     lista que miraba estaba vieja.
+
+   Con una escucha viva, los tres desaparecen de raíz: Firestore avisa en
+   cuanto algo cambia, en los dos lados.
+
+   Los documentos de amistad son diminutos (cuatro campos, sin trazos), así
+   que escucharlos no cuesta casi nada. Lo que sí costaría es releer el
+   perfil de cada amigo en cada cambio, así que los perfiles se guardan y
+   solo se piden los que faltan.
+══════════════════════════════════════════════════════ */
+let amistadesVivas = [];          /* los documentos tal cual */
+let solicitudesCache = [];        /* las que me han hecho a MÍ */
+let enviadasCache = [];           /* las que hice yo y no han contestado */
+const perfilesCache = new Map();  /* uid -> datos de la persona */
+let _amistadesSuelta = null;      /* para cortar la escucha al salir */
+
+const CLAVE_VISTOS_AMIGOS = 'ss_amistades_vistas';
+
+function amistadesYaVistas() {
+  try { return new Set(JSON.parse(ls.get(CLAVE_VISTOS_AMIGOS) || '[]')); }
+  catch (e) { return new Set(); }
+}
+function marcarAmistadVista(id) {
+  const v = amistadesYaVistas(); v.add(id);
+  try { ls.set(CLAVE_VISTOS_AMIGOS, JSON.stringify([...v].slice(-300))); } catch (e) {}
+}
+
+async function perfilDe(uid) {
+  if (perfilesCache.has(uid)) return perfilesCache.get(uid);
+  const { db } = contextoFirebase();
+  try {
+    const d = await db.collection('users').doc(uid).get();
+    if (!d.exists) return null;
+    const u = d.data();
+    const perfil = { id: uid, nombre: u.username || u.displayName || '?',
+                     username: u.username, photoURL: u.photoURL, lastSeen: u.lastSeen };
+    perfilesCache.set(uid, perfil);
+    return perfil;
+  } catch (e) { return null; }
+}
+
+function vigilarAmistades() {
+  const { db, auth, listo } = contextoFirebase();
+  if (!listo || !auth?.currentUser) return;
+  if (_amistadesSuelta) return;
+  const uid = auth.currentUser.uid;
+
+  _amistadesSuelta = db.collection('friendships')
+    .where('users', 'array-contains', uid)
+    .onSnapshot(async snap => {
+      const antes = new Map(amistadesVivas.map(a => [a.docId, a.status]));
+
+      const filas = [];
+      snap.forEach(doc => {
+        const d = doc.data();
+        const otro = (d.users || []).find(u => u !== uid);
+        if (!otro) return;
+        filas.push({ docId: doc.id, otro, status: d.status,
+                     requestedBy: d.requestedBy, esDelCreador: !!d.esDelCreador });
+      });
+
+      /* Solo se piden los perfiles que no se conocen. */
+      await Promise.all(filas.filter(f => !perfilesCache.has(f.otro)).map(f => perfilDe(f.otro)));
+
+      amistadesVivas = filas;
+      const conPerfil = f => ({ ...f, ...(perfilesCache.get(f.otro) || { id: f.otro, nombre: '?' }) });
+
+      amigosCache       = filas.filter(f => f.status === 'accepted').map(conPerfil);
+      solicitudesCache  = filas.filter(f => f.status === 'pendiente' && f.requestedBy !== uid).map(conPerfil);
+      enviadasCache     = filas.filter(f => f.status === 'pendiente' && f.requestedBy === uid).map(conPerfil);
+
+      /* Si una que pedí YO pasó a aceptada, avisarlo: antes no te enterabas
+         nunca de que te habían aceptado. */
+      filas.forEach(f => {
+        if (f.status === 'accepted' && antes.get(f.docId) === 'pendiente' && f.requestedBy === uid) {
+          const per = perfilesCache.get(f.otro);
+          aviso({ quien: per?.username || per?.nombre || '', texto: t('sol_te_acepto'),
+                  foto: per?.photoURL });
+        }
+      });
+
+      pintarCarrusel();
+      if (settingsOverlay && settingsOverlay.classList.contains('activo')) {
+        pintarAmigosAjustes(amigosCache);
+      }
+    }, err => console.warn('Escucha de amistades:', err.message));
 }
 
 /* ══════════════════════════════════════════════════════
@@ -4082,8 +4223,9 @@ async function aceptarSolicitud(docId) {
     status: 'accepted',
     acceptedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
-  amigosCache = null;          /* la lista cambió: que se relea */
-  buildCarousel();
+  /* No hace falta vaciar nada ni repintar a mano: la escucha viva ve el
+     cambio y repinta sola. Vaciar el caché además dejaba pintarCarrusel
+     leyendo .length de null. */
 }
 
 async function rechazarSolicitud(docId) {
@@ -4146,58 +4288,66 @@ function filaPersona(p, acciones) {
   return fila;
 }
 
-async function mostrarVentanaAmigos() {
-  const { auth, listo } = contextoFirebase();
-  if (!listo || !auth?.currentUser) return;
+/* Abre UNA solicitud: quién es y qué hacer con ella.
 
-  const pendientes = await solicitudesPendientes();
-  const amigos = await cargarAmigos();
-  const yaVistos = amigosYaEnseñados();
-  const nuevos = amigos.filter(a => !yaVistos.has(a.id));
+   Sustituye a la ventana que salía al entrar. Esa interrumpía para decir
+   cosas que no hacían falta —como quién ya era tu amigo, que para eso
+   están Ajustes y el carrusel— y el botón "Entendido" no servía de nada:
+   ni aceptaba ni rechazaba.
 
-  /* Se apuntan SIEMPRE, se enseñe o no la ventana: si no, la primera vez
-     que alguien abra la app le saldrían todos sus amigos como "nuevos". */
-  const apuntarTodos = () => guardarAmigosEnseñados(new Set([...yaVistos, ...amigos.map(a => a.id)]));
-
-  if (!pendientes.length && !nuevos.length) { apuntarTodos(); return; }
-
+   Ahora la solicitud vive como un círculo gris en el carrusel y esto solo
+   se abre si lo tocas. Cerrar con la ✕ no es ni aceptar ni rechazar: la
+   solicitud sigue ahí para decidir luego. */
+async function abrirSolicitud(p) {
   const caja = document.createElement('div');
-  caja.style.textAlign = 'left';
+  caja.style.cssText = 'text-align:left;position:relative;padding-top:4px';
 
-  const titulo = document.createElement('div');
-  titulo.style.cssText = 'font-weight:700;font-size:1rem;margin-bottom:4px;text-align:center';
-  titulo.textContent = pendientes.length ? t('sol_titulo') : t('nuevos_titulo');
-  caja.appendChild(titulo);
+  const cerrarX = document.createElement('button');
+  cerrarX.textContent = '✕';
+  cerrarX.setAttribute('aria-label', lang === 'es' ? 'Cerrar' : 'Close');
+  cerrarX.style.cssText = 'position:absolute;top:-14px;right:-10px;background:none;border:none;'
+    + 'color:var(--muted);font-size:1.1rem;cursor:pointer;padding:6px;line-height:1';
+  caja.appendChild(cerrarX);
 
-  pendientes.forEach(p => {
-    const botones = document.createElement('div');
-    botones.style.cssText = 'display:flex;gap:6px;flex:0 0 auto';
-    const si = document.createElement('button');
-    si.className = 'settings-row-action accion';
-    si.textContent = t('sol_aceptar');
-    const no = document.createElement('button');
-    no.className = 'settings-row-action';
-    no.textContent = t('sol_rechazar');
-    const fila = filaPersona(p, () => botones);
-    const responder = async (fn, mensaje) => {
-      si.disabled = no.disabled = true;
-      try { await fn(p.docId); toast(mensaje); fila.remove(); }
-      catch (e) { toast('❌ ' + e.message); si.disabled = no.disabled = false; }
-    };
-    si.addEventListener('click', () => responder(aceptarSolicitud, '✅ ' + t('sol_aceptada')));
-    no.addEventListener('click', () => responder(rechazarSolicitud, t('sol_rechazada')));
-    botones.append(si, no);
-    caja.appendChild(fila);
-  });
+  const fila = document.createElement('div');
+  fila.style.cssText = 'display:flex;align-items:center;gap:13px;margin:6px 0 18px';
+  const img = document.createElement('img');
+  img.src = safeUrl(p.photoURL) || genAvatar(p.nombre);
+  img.alt = '';
+  img.style.cssText = 'width:60px;height:60px;border-radius:50%;object-fit:cover;'
+    + 'border:2px solid var(--accent);flex:0 0 auto';
+  const txt = document.createElement('div');
+  /* min-width:0 para que el nombre pueda encogerse en vez de empujar a los
+     botones fuera de la caja, que es lo que pasaba antes. */
+  txt.style.cssText = 'flex:1;min-width:0;line-height:1.4';
+  const nom = document.createElement('div');
+  nom.style.cssText = 'font-weight:700;color:var(--accent2);font-size:1rem;'
+    + 'overflow:hidden;text-overflow:ellipsis';
+  nom.textContent = '@' + (p.username || p.nombre);
+  const sub = document.createElement('div');
+  sub.style.cssText = 'font-size:0.8rem;color:var(--muted)';
+  sub.textContent = p.esDelCreador || esCreador(p.username)
+    ? '✨ ' + t('sol_creador') : t('sol_uno');
+  txt.append(nom, sub);
+  fila.append(img, txt);
+  caja.appendChild(fila);
 
-  /* Los que ya son amigos van sin botones: no hay nada que decidir, solo
-     enterarse de quién es. */
-  nuevos.forEach(a => caja.appendChild(
-    filaPersona({ ...a, esCreador: esCreador(a.username), yaEsAmigo: true }, null)
-  ));
+  /* Los botones van ABAJO y a lo ancho, en el sitio donde estaba el
+     "Entendido": al lado del nombre quedaban apretados y partían el texto. */
+  const resp = await ssModal('', [
+    { label: t('sol_rechazar'), value: 'no' },
+    { label: t('sol_aceptar'), primary: true, value: 'si' },
+  ], { nodo: caja, alCerrar: cerrarX });
 
-  apuntarTodos();
-  await ssModal('', [{ label: t('nuevos_cerrar'), primary: true }], { nodo: caja });
+  if (resp === 'si') {
+    try { await aceptarSolicitud(p.docId); toast('✅ ' + t('sol_aceptada')); }
+    catch (e) { toast('❌ ' + e.message); }
+  } else if (resp === 'no') {
+    try { await rechazarSolicitud(p.docId); toast(t('sol_rechazada')); }
+    catch (e) { toast('❌ ' + e.message); }
+  }
+  /* Cualquier otra cosa (la ✕, o tocar fuera) es "no he decidido": la
+     solicitud se queda donde estaba. */
 }
 
 /* ══════════════════════════════════════════════════════
@@ -4340,48 +4490,73 @@ async function emparejarConCreador(uid) {
   }
 }
 
-async function buildCarousel() {
-  /* Skeleton loading */
-  carouselEl.innerHTML = '<div style="display:flex;gap:8px;padding:4px 0;">' +
-    Array(3).fill('<div style="width:52px;height:72px;border-radius:12px;background:var(--surface2);animation:pulse 1.5s infinite;"></div>').join('') + '</div>';
-
-  let amigos = [];
-  if (firebaseReady && auth.currentUser) {
-    amigos = await cargarAmigos();
-  } else {
-    /* Fallback a datos simulados */
-    amigos = CONTACTOS.map(c => ({ id: c.id, nombre: c.nombre, username: c.nombre.toLowerCase(), photoURL: '' }));
-  }
+/* Pinta el carrusel con lo que haya en memoria. No pide nada a la red:
+   los datos llegan por la escucha viva, así que esto puede llamarse en
+   cada cambio sin coste. */
+function pintarCarrusel() {
+  const vistas = amistadesYaVistas();
+  const sel = new Set(seleccionados);
 
   carouselEl.innerHTML = '';
 
-  if (amigos.length === 0 && firebaseReady) {
+  const hayAlgo = amigosCache.length || solicitudesCache.length || enviadasCache.length;
+  if (!hayAlgo && firebaseReady) {
     const empty = document.createElement('div');
     empty.style.cssText = 'display:flex;align-items:center;gap:8px;color:var(--muted);font-size:0.8rem;padding:4px 0;';
     empty.textContent = t('no_friends');
     carouselEl.appendChild(empty);
   }
 
-  amigos.forEach(c => {
-    const el = document.createElement('div'); el.className='citem'; el.dataset.id=c.id;
-    const imgEl = document.createElement('img'); imgEl.className='cimg';
+  const circulo = (c, tipo) => {
+    const el = document.createElement('div');
+    el.className = 'citem' + (tipo !== 'amigo' ? ' ' + tipo : '');
+    el.dataset.id = c.id;
+    const imgEl = document.createElement('img'); imgEl.className = 'cimg';
     imgEl.src = safeUrl(c.photoURL) || genAvatar(c.nombre); imgEl.alt = c.nombre;
-    const wrap = document.createElement('div'); wrap.className='cwrap';
-    const chk = document.createElement('div'); chk.className='ccheck'; chk.textContent='✓';
+    const wrap = document.createElement('div'); wrap.className = 'cwrap';
+    const chk = document.createElement('div'); chk.className = 'ccheck'; chk.textContent = '✓';
     wrap.appendChild(imgEl); wrap.appendChild(chk);
-    ponerPunto(wrap, estadoPresencia(c.lastSeen));
-    const nameEl = document.createElement('span'); nameEl.className='cname';
-    nameEl.textContent = '@' + (c.username || c.nombre);
-    el.appendChild(wrap); el.appendChild(nameEl);
-    el.addEventListener('click', () => {
-      if (el.classList.contains('disabled')) return;
-      seleccionados.has(c.id) ? seleccionados.delete(c.id) : seleccionados.add(c.id);
-      el.classList.toggle('sel', seleccionados.has(c.id));
-      selCount.textContent = seleccionados.size > 0 ? `(${seleccionados.size})` : '';
-      enviarBtn.disabled = seleccionados.size === 0;
-    });
-    carouselEl.appendChild(el);
-  });
+
+    const esNuevo = tipo === 'pendiente' || !vistas.has(c.docId);
+    if (tipo !== 'enviada' && esNuevo) {
+      const et = document.createElement('span');
+      et.className = 'etiqueta-nuevo'; et.textContent = t('sol_nueva');
+      wrap.appendChild(et);
+    }
+    if (tipo === 'amigo') ponerPunto(wrap, estadoPresencia(c.lastSeen));
+
+    const nameEl = document.createElement('span'); nameEl.className = 'cname';
+    nameEl.textContent = tipo === 'enviada'
+      ? '@' + (c.username || c.nombre) + ' · ' + t('sol_enviada_corta')
+      : '@' + (c.username || c.nombre);
+    el.append(wrap, nameEl);
+
+    if (tipo === 'pendiente') {
+      /* Tocar una solicitud abre quién es y qué hacer, no la selecciona:
+         todavía no se le puede mandar nada. */
+      el.addEventListener('click', () => abrirSolicitud(c));
+    } else if (tipo === 'amigo') {
+      el.addEventListener('click', () => {
+        if (el.classList.contains('disabled')) return;
+        /* Tocarlo ya cuenta como haberlo visto: la etiqueta se va. */
+        if (!vistas.has(c.docId)) { marcarAmistadVista(c.docId); el.querySelector('.etiqueta-nuevo')?.remove(); }
+        seleccionados.has(c.id) ? seleccionados.delete(c.id) : seleccionados.add(c.id);
+        el.classList.toggle('sel', seleccionados.has(c.id));
+        selCount.textContent = seleccionados.size > 0 ? `(${seleccionados.size})` : '';
+        enviarBtn.disabled = seleccionados.size === 0;
+      });
+      if (sel.has(c.id)) el.classList.add('sel');
+    }
+    return el;
+  };
+
+  /* Primero lo que pide una decisión, después lo nuevo, después el resto. */
+  solicitudesCache.forEach(c => carouselEl.appendChild(circulo(c, 'pendiente')));
+  const nuevos = amigosCache.filter(a => !vistas.has(a.docId));
+  const resto  = amigosCache.filter(a =>  vistas.has(a.docId));
+  nuevos.forEach(c => carouselEl.appendChild(circulo(c, 'amigo')));
+  resto.forEach(c => carouselEl.appendChild(circulo(c, 'amigo')));
+  enviadasCache.forEach(c => carouselEl.appendChild(circulo(c, 'enviada')));
 
   /* Botón + para agregar amigo */
   const addBtn = document.createElement('div');
@@ -4393,17 +4568,21 @@ async function buildCarousel() {
   });
   carouselEl.appendChild(addBtn);
 
-  /* Botón compartir */
-  /* NUNCA pasar 'text' junto a 'url' a navigator.share: al elegir "copiar",
+  /* Botón compartir.
+     NUNCA pasar 'text' junto a 'url' a navigator.share: al elegir "copiar",
      muchos destinos los pegan en una sola cadena y el enlace acaba con
-     palabras detrás, dejando de abrir el dibujo. El contexto va en 'title',
-     que los destinos tratan como metadato y no concatenan. */
+     palabras detrás, dejando de abrir el dibujo. */
   const share = document.createElement('div'); share.className='sharebtn';
   share.innerHTML=`<div class="sharecircle">🔗</div><span class="cname" style="max-width:52px">${esc(t('share_label'))}</span>`;
-  share.addEventListener('click', () => {
-    compartirEnlace('SketchSend', getBaseUrl());
-  });
+  share.addEventListener('click', () => compartirEnlace('SketchSend', getBaseUrl()));
   carouselEl.appendChild(share);
+}
+
+/* Se mantiene el nombre viejo porque lo llaman desde varios sitios; ahora
+   solo asegura que la escucha esté en pie y repinta. */
+async function buildCarousel() {
+  vigilarAmistades();
+  pintarCarrusel();
 }
 
 /* ══════════════════════════════════════════════════════
@@ -5648,7 +5827,7 @@ function aviso({ quien, texto, foto, alTocar }) {
    Con `html` el contenido se inyecta como texto y luego no hay forma de
    recuperar el nodo para colgarle nada: eso obligaba a buscarlo con
    selectores frágiles después de pintarlo. */
-function ssModal(html, buttons, {input = false, placeholder = '', multiline = false, value = '', maxlength = 0, nodo = null} = {}) {
+function ssModal(html, buttons, {input = false, placeholder = '', multiline = false, value = '', maxlength = 0, nodo = null, alCerrar = null} = {}) {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);animation:ssmFadeIn .2s ease';
@@ -5699,6 +5878,10 @@ function ssModal(html, buttons, {input = false, placeholder = '', multiline = fa
     box.appendChild(row);
     overlay.appendChild(box);
     overlay.addEventListener('click', e => { if (e.target === overlay) close(input ? null : false); });
+    /* Un botón de cierre que vive DENTRO del contenido (una ✕ en una
+       esquina, por ejemplo). Cerrar así devuelve `false`, igual que tocar
+       fuera: no es ni que sí ni que no, es que no decidió. */
+    if (alCerrar) alCerrar.addEventListener('click', () => close(input ? null : false));
     document.body.appendChild(overlay);
     if (inp) setTimeout(() => inp.focus(), 100);
   });

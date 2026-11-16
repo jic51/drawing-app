@@ -59,6 +59,15 @@ const STUB = () => {
   const consulta = (col, filtros) => ({
     where: (campo, op, val) => consulta(col, [...filtros, { campo, op, val }]),
     limit: () => consulta(col, filtros),
+    /* La escucha viva: lo que de verdad arregla que el otro lado se entere.
+       Se guarda el aviso y se dispara con window.__emitir(). */
+    onSnapshot: (cb) => {
+      const lanzar = () => consulta(col, filtros).get().then(cb);
+      window.__oyentes = window.__oyentes || [];
+      window.__oyentes.push(lanzar);
+      lanzar();
+      return () => {};
+    },
     get: () => {
       let filas = col === 'friendships' ? window.__db.amistades
                 : Object.values(window.__db.usuarios);
@@ -66,10 +75,13 @@ const STUB = () => {
         if (ft.op === 'array-contains') filas = filas.filter(r => (r[ft.campo]||[]).includes(ft.val));
         else filas = filas.filter(r => r[ft.campo] === ft.val);
       }
+      const docs = filas.map(r => ({ id: r.id, data: () => r, ref: docRef(col, r.id) }));
       return Promise.resolve({
-        empty: filas.length === 0,
-        size: filas.length,
-        docs: filas.map(r => ({ id: r.id, data: () => r, ref: docRef(col, r.id) })),
+        empty: docs.length === 0,
+        size: docs.length,
+        docs,
+        /* El código real recorre el snapshot con forEach, no con .docs. */
+        forEach: fn => docs.forEach(fn),
       });
     },
   });
@@ -79,6 +91,7 @@ const STUB = () => {
       window.__db.escrituras.push({ tipo:'add', col, datos }); return Promise.resolve({ id }); } }) };
   /* Se sustituye la costura, no las variables: db y auth son `let` de
      módulo y no se pueden reemplazar desde fuera. */
+  window.__emitir = () => (window.__oyentes || []).forEach(f => f());
   window.contextoFirebase = () => ({ db: miDb, auth: { currentUser: { uid: 'yo' } }, listo: true });
   window.db = miDb;
   window.auth = { currentUser: { uid: 'yo' } };
@@ -135,38 +148,99 @@ const STUB = () => {
   });
   chk(nueva === 'pendiente', 'la amistad nueva nace pendiente', nueva);
 
-  console.log('\n— La ventana al entrar —');
-  const vent = await p.evaluate(async () => {
-    try { localStorage.removeItem('ss_amigos_vistos'); } catch (e) {}
-    /* SIN await: la ventana no se resuelve hasta que alguien pulsa cerrar,
-       así que esperarla aquí colgaría la prueba para siempre. */
-    mostrarVentanaAmigos();
-    await new Promise(r => setTimeout(r, 400));
+  console.log('\n— El carrusel distingue los tres estados —');
+  const car = await p.evaluate(async () => {
+    try { localStorage.removeItem('ss_amistades_vistas'); } catch (e) {}
+    /* Se alimenta a mano lo que normalmente trae la escucha viva. */
+    const per = n => ({ id:n, docId:'d'+n, nombre:n, username:n, photoURL:'' });
+    amigosCache = [per('ana'), per('luis')];
+    solicitudesCache = [per('marta')];
+    enviadasCache = [per('pedro')];
+    pintarCarrusel();
+    const items = [...document.querySelectorAll('#carousel .citem')];
+    return {
+      orden: items.map(e => e.dataset.id || '+'),
+      pendientes: items.filter(e => e.classList.contains('pendiente')).map(e => e.dataset.id),
+      enviadas: items.filter(e => e.classList.contains('enviada')).map(e => e.dataset.id),
+      conEtiqueta: items.filter(e => e.querySelector('.etiqueta-nuevo')).map(e => e.dataset.id),
+    };
+  });
+  chk(car.pendientes.join() === 'marta', 'la solicitud recibida sale en gris', car.pendientes);
+  chk(car.enviadas.join() === 'pedro', 'la que envié yo sale aparte', car.enviadas);
+  chk(car.orden[0] === 'marta', 'y la solicitud va PRIMERA', car.orden);
+  chk(!car.conEtiqueta.includes('pedro'),
+      'la que envié yo no lleva etiqueta de nuevo: no tengo nada que hacer', car.conEtiqueta);
+  chk(car.conEtiqueta.includes('marta') && car.conEtiqueta.includes('ana'),
+      'la solicitud y los amigos sin ver sí la llevan', car.conEtiqueta);
+
+  console.log('\n— Tocar un amigo le quita la etiqueta —');
+  const trasTocar = await p.evaluate(() => {
+    const el = [...document.querySelectorAll('#carousel .citem')].find(e => e.dataset.id === 'ana');
+    el.click();
+    const sigue = !!el.querySelector('.etiqueta-nuevo');
+    pintarCarrusel();   /* y tampoco vuelve al repintar */
+    const tras = [...document.querySelectorAll('#carousel .citem')]
+      .find(e => e.dataset.id === 'ana').querySelector('.etiqueta-nuevo');
+    return { sigue, trasRepintar: !!tras };
+  });
+  chk(!trasTocar.sigue, 'la etiqueta se va al tocarlo', trasTocar);
+  chk(!trasTocar.trasRepintar, 'y no vuelve al repintar', trasTocar);
+
+  console.log('\n— Tocar una solicitud abre el popup, no la selecciona —');
+  const pop = await p.evaluate(async () => {
+    const el = [...document.querySelectorAll('#carousel .citem')].find(e => e.dataset.id === 'marta');
+    el.click();
+    await new Promise(r => setTimeout(r, 300));
     const modal = [...document.body.children].find(e => {
       const cs = getComputedStyle(e);
       return cs.position === 'fixed' && +cs.zIndex >= 99999;
     });
-    return { texto: (modal ? modal.textContent : '').slice(0, 220), hayModal: !!modal };
+    return { hay: !!modal, texto: (modal ? modal.textContent : '').slice(0, 120),
+             seSeleccionó: el.classList.contains('sel') };
   });
-  chk(vent.hayModal, 'se abre la ventana', vent.texto.slice(0, 60));
-  chk(/ana|luis/i.test(vent.texto), 'lista a los amigos que no conocías', vent.texto.slice(0, 80));
-  chk(!/wants to be|quiere ser/i.test(vent.texto),
-      'a quien YA es amigo no le dice "quiere ser tu amigo"', vent.texto.slice(0, 90));
+  chk(pop.hay, 'se abre el popup', pop.texto.slice(0, 50));
+  chk(/marta/.test(pop.texto), 'con quién es', pop.texto.slice(0, 60));
+  chk(!/Got it|Entendido/i.test(pop.texto), 'sin el botón "Entendido", que no hacía nada', pop.texto);
+  chk(/Accept|Aceptar/i.test(pop.texto) && /Not now|Ahora no/i.test(pop.texto),
+      'con aceptar y rechazar', pop.texto.slice(0, 90));
+  chk(!pop.seSeleccionó, 'y NO la selecciona para enviarle: todavía no es amiga');
 
-  console.log('\n— No repite a los mismos —');
-  const segunda = await p.evaluate(async () => {
-    [...document.body.children].filter(e => {
-      const cs = getComputedStyle(e);
-      return cs.position === 'fixed' && +cs.zIndex >= 99999;
-    }).forEach(e => e.remove());
-    mostrarVentanaAmigos();
+  console.log('\n— Lo que motivó todo: el otro lado SE ENTERA —');
+  const vivo = await p.evaluate(async () => {
+    window.__db.amistades = [
+      { id:'a1', users:['yo','ana'],   status:'accepted',  requestedBy:'ana' },
+      { id:'a2', users:['yo','luis'],  status:'accepted',  requestedBy:'yo' },
+      { id:'a3', users:['yo','marta'], status:'pendiente', requestedBy:'yo' },
+    ];
+    window.__oyentes = [];
+    _amistadesSuelta = null;
+    vigilarAmistades();
+    await new Promise(r => setTimeout(r, 300));
+    const alPrincipio = amigosCache.map(a => a.id).sort().join();
+
+    /* Alguien me elimina: antes esto no llegaba nunca a mi lista. */
+    window.__db.amistades = window.__db.amistades.filter(a => a.id !== 'a1');
+    window.__emitir();
+    await new Promise(r => setTimeout(r, 300));
+    const trasEliminar = amigosCache.map(a => a.id).sort().join();
+
+    /* Me aceptan la que pedí yo. */
+    window.__db.amistades.find(a => a.id === 'a3').status = 'accepted';
+    document.querySelectorAll('#aviso-pila .aviso').forEach(e => e.remove());
+    window.__emitir();
     await new Promise(r => setTimeout(r, 400));
-    return !![...document.body.children].find(e => {
-      const cs = getComputedStyle(e);
-      return cs.position === 'fixed' && +cs.zIndex >= 99999;
-    });
+    const trasAceptar = amigosCache.map(a => a.id).sort().join();
+    const avisos = [...document.querySelectorAll('#aviso-pila .aviso')].map(e => e.textContent).join(' ');
+
+    return { alPrincipio, trasEliminar, trasAceptar, avisos };
   });
-  chk(!segunda, 'la segunda vez no sale nada nuevo');
+  chk(vivo.alPrincipio === 'ana,luis', 'arranca con los dos amigos', vivo.alPrincipio);
+  chk(vivo.trasEliminar === 'luis',
+      'si alguien me elimina, desaparece de mi lista SIN recargar', vivo.trasEliminar);
+  chk(vivo.trasAceptar === 'luis,marta',
+      'si me aceptan, aparece al momento', vivo.trasAceptar);
+  chk(/marta/.test(vivo.avisos) && /accept|acept/i.test(vivo.avisos),
+      'y avisa de que me aceptaron, que antes no pasaba nunca', vivo.avisos.slice(0, 80));
 
   chk(erroresDeLaApp(errs).length === 0, 'sin errores de JS', erroresDeLaApp(errs)[0] || '');
   await b.close(); if (SITIO) await SITIO.cerrar();
