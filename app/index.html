@@ -799,10 +799,9 @@
       .inbox-mitad, .inbox-otra { flex:1 1 100%; }
       .inbox-reloj { flex:0 0 auto; margin-inline:0; }
     }
-    .inbox-card-new {
-      width:10px; height:10px; border-radius:50%; background:var(--accent2);
-      flex-shrink:0; animation:pulso 2s ease-in-out infinite;
-    }
+    /* El punto de "sin leer" se quitó: chocaba con el de conectado, que
+       va pegado al avatar y dice algo más útil. Lo que no leíste ya se
+       cuenta en el número del botón de la bandeja. */
     .inbox-share-btn {
       background:var(--surface2); border:1px solid var(--border); border-radius:50%;
       width:30px; height:30px; font-size:0.85rem; cursor:pointer; color:var(--text);
@@ -1965,6 +1964,17 @@ const I18N = {
     notif_ok: '🔔 Avisos activados',
     prompt_sub: '✏️ empieza a dibujar',
     aviso_llego: 'te envió un dibujo · toca para verlo',
+    friend_requested: 'Solicitud enviada a {u} · te avisamos cuando acepte',
+    sol_titulo: 'Te quieren agregar',
+    sol_uno: 'quiere ser tu amigo',
+    nuevos_sub: 'ya es tu amigo',
+    sol_aceptar: 'Aceptar',
+    sol_rechazar: 'Ahora no',
+    sol_aceptada: 'Ahora son amigos',
+    sol_rechazada: 'Listo, no se agregó',
+    sol_creador: 'Creador de SketchSend',
+    nuevos_titulo: 'Tienes amigos nuevos',
+    nuevos_cerrar: 'Entendido',
     aviso_visto: 'vio tu dibujo 👀',
 
     reto_titulo: 'Reto de la semana — el mismo para todo el mundo',
@@ -2104,6 +2114,17 @@ const I18N = {
     notif_ok: '🔔 Alerts on',
     prompt_sub: '✏️ start drawing',
     aviso_llego: 'sent you a drawing · tap to see it',
+    friend_requested: 'Request sent to {u} · we will tell you when they accept',
+    sol_titulo: 'Someone wants to add you',
+    sol_uno: 'wants to be your friend',
+    nuevos_sub: 'is your friend now',
+    sol_aceptar: 'Accept',
+    sol_rechazar: 'Not now',
+    sol_aceptada: 'You are friends now',
+    sol_rechazada: 'Done, not added',
+    sol_creador: 'Made SketchSend',
+    nuevos_titulo: 'You have new friends',
+    nuevos_cerrar: 'Got it',
     aviso_visto: 'saw your drawing 👀',
 
     reto_titulo: 'Challenge of the week — the same for everyone',
@@ -2879,6 +2900,8 @@ function finalizarLogin(username, displayName, photoURL) {
   appEl.style.display = 'flex';
   setupCanvas(); buildCarousel(); cargarBandeja(); iniciarPromptsCanvas();
   arrancarPresencia(); refrescarPuntos();
+  /* Con un respiro: si sale encima del splash no se lee nada. */
+  setTimeout(() => mostrarVentanaAmigos().catch(() => {}), 2200);
   const elapsed = Date.now() - (window._splashStart || 0);
   const wait = Math.max(0, 3000 - elapsed);
   setTimeout(() => {
@@ -3916,7 +3939,8 @@ let primeraBandeja = true;        /* la primera carga no avisa de nada */
 const idsRecien = new Set();      /* lo llegado hace un momento, para animarlo */
 
 async function cargarAmigos() {
-  if (!firebaseReady || !auth.currentUser) return [];
+  const { db, auth, listo } = contextoFirebase();
+  if (!listo || !auth?.currentUser) return [];
   const uid = auth.currentUser.uid;
   try {
     const snap = await db.collection('friendships')
@@ -3977,16 +4001,203 @@ async function agregarAmigo(input) {
     /* Crear friendship pendiente */
     await db.collection('friendships').add({
       users: [uid, otroUser.uid],
-      status: 'accepted', /* auto-accept por ahora para simplicidad */
+      status: 'pendiente',          /* ahora se pide; el otro acepta */
       requestedBy: uid,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    toast('✅ @' + username + ' agregado como amigo');
+    toast(t('friend_requested').replace('{u}', '@' + username));
     if (window.posthog) posthog.capture('friend_added', { method: isCode ? 'shortcode' : 'username' });
     buildCarousel();
   } catch(e) {
     toast('❌ Error: ' + e.message);
   }
+}
+
+/* Una costura, a propósito y declarada.
+
+   `db` y `auth` son `let` de ámbito de módulo, así que desde una prueba no
+   hay forma de sustituirlos: cualquier intento de ejercitar la lógica de
+   amistades acabaría llamando al Firestore de verdad, o a null.
+
+   Las funciones de aquí abajo leen el contexto por esta función en vez de
+   tocar las variables directamente, y así una prueba puede reemplazarla.
+   No cambia nada en producción: devuelve exactamente lo mismo. */
+function contextoFirebase() {
+  return { db, auth, listo: firebaseReady };
+}
+
+/* ══════════════════════════════════════════════════════
+   SOLICITUDES DE AMISTAD
+   ────────────────────────────────────────────────────
+   Hasta ahora agregar a alguien creaba la amistad de golpe: el otro se
+   enteraba porque le aparecías en la lista. Ahora se pide y se acepta.
+
+   LO QUE NO SE TOCA: las amistades que ya existen. Todas se guardaron con
+   status 'accepted', y cargarAmigos ya filtraba por eso, así que siguen
+   funcionando exactamente igual. Lo nuevo entra como 'pendiente' y solo
+   pasa a 'accepted' cuando alguien dice que sí. No hay migración que
+   hacer ni nada que pueda salir mal con lo viejo.
+
+   Quien PIDE no ve nada distinto hasta que le acepten: su lista de amigos
+   sigue saliendo de las aceptadas.
+══════════════════════════════════════════════════════ */
+
+/* Las solicitudes que me han hecho a MÍ y aún no he contestado. */
+async function solicitudesPendientes() {
+  const { db, auth, listo } = contextoFirebase();
+  if (!listo || !auth?.currentUser) return [];
+  const uid = auth.currentUser.uid;
+  try {
+    const snap = await db.collection('friendships')
+      .where('users', 'array-contains', uid).get();
+    const fuera = [];
+    for (const doc of snap.docs) {
+      const d = doc.data();
+      if (d.status !== 'pendiente') continue;
+      if (d.requestedBy === uid) continue;        /* la pedí yo: no me toca aceptarla */
+      const otroUid = (d.users || []).find(u => u !== uid);
+      if (!otroUid) continue;
+      try {
+        const u = await db.collection('users').doc(otroUid).get();
+        if (!u.exists) continue;
+        const dd = u.data();
+        fuera.push({
+          docId: doc.id, id: otroUid,
+          nombre: dd.username || dd.displayName || '?',
+          username: dd.username, photoURL: dd.photoURL,
+          esCreador: esCreador(dd.username),
+        });
+      } catch (e) { /* usuario borrado: se ignora */ }
+    }
+    return fuera;
+  } catch (e) {
+    console.warn('No se pudieron leer las solicitudes:', e.message);
+    return [];
+  }
+}
+
+async function aceptarSolicitud(docId) {
+  const { db } = contextoFirebase();
+  await db.collection('friendships').doc(docId).update({
+    status: 'accepted',
+    acceptedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  amigosCache = null;          /* la lista cambió: que se relea */
+  buildCarousel();
+}
+
+async function rechazarSolicitud(docId) {
+  const { db } = contextoFirebase();
+  /* Se borra en vez de guardarse como 'rechazada': guardar un rechazo no
+     sirve para nada y deja un rastro incómodo de quién dijo que no. */
+  await db.collection('friendships').doc(docId).delete();
+}
+
+/* ══════════════════════════════════════════════════════
+   LA VENTANA AL ENTRAR
+   ────────────────────────────────────────────────────
+   Dos cosas distintas en la misma ventana:
+
+   - Quien te PIDIÓ ser amigo: con aceptar o rechazar ahí mismo.
+   - Quien YA es amigo tuyo y no lo sabías: solo para enterarte de quién
+     es, con su cara. Sin botones, porque no hay nada que decidir.
+
+   Se guarda a quién ya le enseñaste para no repetir a los mismos cada vez
+   que abre la app. Se guarda en el navegador y no en Firestore porque es
+   una preferencia de esta pantalla, no un dato de la cuenta: que lo veas
+   otra vez al cambiar de teléfono no le hace daño a nadie.
+══════════════════════════════════════════════════════ */
+const CLAVE_AMIGOS_VISTOS = 'ss_amigos_vistos';
+
+function amigosYaEnseñados() {
+  try { return new Set(JSON.parse(ls.get(CLAVE_AMIGOS_VISTOS) || '[]')); }
+  catch (e) { return new Set(); }
+}
+function guardarAmigosEnseñados(conjunto) {
+  try { ls.set(CLAVE_AMIGOS_VISTOS, JSON.stringify([...conjunto].slice(-200))); }
+  catch (e) { /* sin almacenamiento: se repetirá la ventana, no es grave */ }
+}
+
+function filaPersona(p, acciones) {
+  const fila = document.createElement('div');
+  fila.style.cssText = 'display:flex;align-items:center;gap:12px;padding:11px 0;'
+    + 'border-bottom:1px solid var(--border);text-align:left;';
+  const img = document.createElement('img');
+  img.src = safeUrl(p.photoURL) || genAvatar(p.nombre);
+  img.alt = '';
+  img.style.cssText = 'width:44px;height:44px;border-radius:50%;object-fit:cover;'
+    + 'border:2px solid var(--accent);flex:0 0 auto;';
+  const txt = document.createElement('div');
+  txt.style.cssText = 'flex:1;min-width:0;line-height:1.35';
+  const nom = document.createElement('div');
+  nom.style.cssText = 'font-weight:700;color:var(--accent2);font-size:0.92rem';
+  nom.textContent = '@' + (p.username || p.nombre);
+  const sub = document.createElement('div');
+  sub.style.cssText = 'font-size:0.76rem;color:var(--muted)';
+  /* Al creador se le identifica: quien acaba de llegar no tiene por qué
+     saber quién es ese desconocido que ya es su amigo.
+     Y a quien YA es amigo no se le dice "quiere ser tu amigo", que era lo
+     que salía: ya lo es. */
+  sub.textContent = p.esCreador ? '✨ ' + t('sol_creador')
+                  : (p.yaEsAmigo ? t('nuevos_sub') : t('sol_uno'));
+  txt.append(nom, sub);
+  fila.append(img, txt);
+  if (acciones) fila.appendChild(acciones(fila));
+  return fila;
+}
+
+async function mostrarVentanaAmigos() {
+  const { auth, listo } = contextoFirebase();
+  if (!listo || !auth?.currentUser) return;
+
+  const pendientes = await solicitudesPendientes();
+  const amigos = await cargarAmigos();
+  const yaVistos = amigosYaEnseñados();
+  const nuevos = amigos.filter(a => !yaVistos.has(a.id));
+
+  /* Se apuntan SIEMPRE, se enseñe o no la ventana: si no, la primera vez
+     que alguien abra la app le saldrían todos sus amigos como "nuevos". */
+  const apuntarTodos = () => guardarAmigosEnseñados(new Set([...yaVistos, ...amigos.map(a => a.id)]));
+
+  if (!pendientes.length && !nuevos.length) { apuntarTodos(); return; }
+
+  const caja = document.createElement('div');
+  caja.style.textAlign = 'left';
+
+  const titulo = document.createElement('div');
+  titulo.style.cssText = 'font-weight:700;font-size:1rem;margin-bottom:4px;text-align:center';
+  titulo.textContent = pendientes.length ? t('sol_titulo') : t('nuevos_titulo');
+  caja.appendChild(titulo);
+
+  pendientes.forEach(p => {
+    const botones = document.createElement('div');
+    botones.style.cssText = 'display:flex;gap:6px;flex:0 0 auto';
+    const si = document.createElement('button');
+    si.className = 'settings-row-action accion';
+    si.textContent = t('sol_aceptar');
+    const no = document.createElement('button');
+    no.className = 'settings-row-action';
+    no.textContent = t('sol_rechazar');
+    const fila = filaPersona(p, () => botones);
+    const responder = async (fn, mensaje) => {
+      si.disabled = no.disabled = true;
+      try { await fn(p.docId); toast(mensaje); fila.remove(); }
+      catch (e) { toast('❌ ' + e.message); si.disabled = no.disabled = false; }
+    };
+    si.addEventListener('click', () => responder(aceptarSolicitud, '✅ ' + t('sol_aceptada')));
+    no.addEventListener('click', () => responder(rechazarSolicitud, t('sol_rechazada')));
+    botones.append(si, no);
+    caja.appendChild(fila);
+  });
+
+  /* Los que ya son amigos van sin botones: no hay nada que decidir, solo
+     enterarse de quién es. */
+  nuevos.forEach(a => caja.appendChild(
+    filaPersona({ ...a, esCreador: esCreador(a.username), yaEsAmigo: true }, null)
+  ));
+
+  apuntarTodos();
+  await ssModal('', [{ label: t('nuevos_cerrar'), primary: true }], { nodo: caja });
 }
 
 /* ══════════════════════════════════════════════════════
@@ -4101,7 +4312,8 @@ function esCreador(username) {
    falla no se le dice nada a quien se está registrando, porque no es culpa
    suya ni puede hacer nada, y un error justo al entrar asusta. */
 async function emparejarConCreador(uid) {
-  if (!firebaseReady || !uid) return false;
+  const { db, listo } = contextoFirebase();
+  if (!listo || !uid) return false;
   try {
     const snap = await db.collection('users')
       .where('username', '==', USUARIO_CREADOR).limit(1).get();
@@ -4353,6 +4565,10 @@ function cargarBandeja() {
             visto: false
           };
         })
+        /* Un dibujo visto sale de la bandeja: es de ENTRADA, y lo que ya
+           abriste deja de estar entrando. Decisión de diseño confirmada por
+           el usuario, no un efecto secundario. Lo enviado y su estado de
+           "visto" irán en su propio sitio (ver bandeja de salida). */
         .filter(m => !m.viewed && m.expiresAt > ahora);
 
       /* Lo que acaba de llegar, para avisarlo y para animar su fila. La
@@ -4360,8 +4576,12 @@ function cargarBandeja() {
          "nuevos" y saldrían diez avisos de golpe. */
       const recien = primeraBandeja ? [] : bandejaEntrada.filter(m => !conocidos.has(m.id));
       primeraBandeja = false;
+      /* Con la bandeja abierta sobra el aviso: la fila nueva aparece delante
+         de los ojos y además se anima. Dos cosas diciendo lo mismo. */
+      const bandejaAbierta = inboxOverlay && inboxOverlay.classList.contains('activo');
       recien.forEach(m => {
         idsRecien.add(m.id);
+        if (bandejaAbierta) return;
         aviso({
           quien: m.sender,
           texto: t('aviso_llego'),
@@ -4503,7 +4723,6 @@ function renderInbox() {
     const enlace = getBaseUrl() + '?view=' + msg.id;
     card.innerHTML = `
       <div class="inbox-mitad">
-        ${!msg.visto ? '<div class="inbox-card-new"></div>' : ''}
         <div class="inbox-quien" title="${esc(t('prof_open'))}">
           <span class="inbox-av-wrap"><img class="inbox-card-av" src="${esc(safeUrl(genAvatar(msg.sender)))}" alt="${esc(msg.sender)}"></span>
           <div class="inbox-card-info">
@@ -5425,7 +5644,11 @@ function aviso({ quien, texto, foto, alTocar }) {
 }
 
 /* ── SketchSend Modal System (replaces native prompt/confirm/alert) ── */
-function ssModal(html, buttons, {input = false, placeholder = '', multiline = false, value = '', maxlength = 0} = {}) {
+/* `nodo` sirve para pasar contenido VIVO, con sus botones ya enganchados.
+   Con `html` el contenido se inyecta como texto y luego no hay forma de
+   recuperar el nodo para colgarle nada: eso obligaba a buscarlo con
+   selectores frágiles después de pintarlo. */
+function ssModal(html, buttons, {input = false, placeholder = '', multiline = false, value = '', maxlength = 0, nodo = null} = {}) {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);animation:ssmFadeIn .2s ease';
@@ -5433,7 +5656,7 @@ function ssModal(html, buttons, {input = false, placeholder = '', multiline = fa
     box.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:340px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.4);animation:ssmSlideUp .25s ease';
     const msg = document.createElement('div');
     msg.style.cssText = 'color:var(--text);font-size:0.95rem;line-height:1.5;margin-bottom:16px;text-align:center;word-break:break-word';
-    msg.innerHTML = html;
+    if (nodo) msg.appendChild(nodo); else msg.innerHTML = html;
     box.appendChild(msg);
     let inp;
     if (input) {

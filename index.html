@@ -172,6 +172,15 @@
 [data-i18n="foot_how"] { min-width: 99px; }
 [data-i18n="foot_privacy"] { min-width: 140px; }
 [data-i18n="foot_terms"] { min-width: 140px; }
+/* El sitio reservado se reparte a los dos lados. Sin esto, el texto corto
+   ("Dibujar" frente a "Start Drawing") se quedaba pegado al borde izquierdo
+   del ancho reservado y el botón se veía descentrado. */
+[data-i18n="nav_cta"], [data-i18n="hero_cta"], [data-i18n="try_clear"],
+[data-i18n="try_cta"], [data-i18n="lista_btn"], [data-i18n="foot_open"],
+[data-i18n="foot_how"], [data-i18n="foot_privacy"], [data-i18n="foot_terms"] {
+  text-align: center;
+}
+
 /* Si no caben (pantalla estrecha), manda la pantalla: más vale que se
    mueva algo a que un botón se salga por el lado. */
 @media (max-width: 560px) {
@@ -1497,16 +1506,32 @@ function montarCarrusel(grid, filas = 1) {
   };
 
   const parar  = () => { quieto = true; };
-  /* Retomar desde donde quedó si lo movieron a mano, no desde la
-     posición que creíamos tener. */
-  const seguir = () => { quieto = false; ultimo = 0; pos = grid.scrollLeft; };
+
+  /* Al retomar solo se re-sincroniza la posición si de verdad arrastraron
+     ESTE carrusel.
+
+     Antes se hacía siempre, y el escuchador de "soltar" está en toda la
+     ventana: cualquier clic en cualquier sitio —cambiar de idioma, tocar un
+     botón, lo que fuera— acababa aquí. Y `pos` crece por encima de
+     scrollLeft a propósito, porque scrollLeft está topado al máximo y hace
+     falta pasarse para saber cuándo rotar la columna. Copiar el scrollLeft
+     topado en `pos` borraba todo ese avance, y el carrusel se quedaba
+     clavado. Se veía como si se parara al cambiar de idioma; en realidad
+     pasaba con cualquier clic. */
+  let arrastrado = false;
+  const empezarArrastre = () => { arrastrado = true; quieto = true; };
+  const seguir = () => {
+    quieto = false; ultimo = 0;
+    if (arrastrado) { pos = grid.scrollLeft; arrastrado = false; }
+  };
 
   grid.addEventListener('mouseenter', parar);
   grid.addEventListener('mouseleave', seguir);
   grid.addEventListener('touchstart', parar, { passive: true });
   grid.addEventListener('touchend', seguir);
-  /* Arrastrar con el ratón también cuenta como mirar. */
-  grid.addEventListener('pointerdown', parar);
+  /* Arrastrar con el ratón también cuenta como mirar. Solo lo que empieza
+     DENTRO del carrusel cuenta como arrastre. */
+  grid.addEventListener('pointerdown', empezarArrastre);
   addEventListener('pointerup', seguir);
 
   /* Fuera de pantalla no gasta nada. */

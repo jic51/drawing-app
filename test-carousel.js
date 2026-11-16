@@ -169,6 +169,24 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
     }
     return false;
   });
+  console.log('\n— Un clic en cualquier parte no lo para —');
+  /* El escuchador de "soltar" está en toda la ventana. Antes, cualquier clic
+     —cambiar de idioma, tocar un botón— copiaba scrollLeft en la posición
+     interna. Y esa posición crece POR ENCIMA de scrollLeft a propósito,
+     porque scrollLeft está topado al máximo y hay que pasarse para saber
+     cuándo rotar. Copiarlo borraba el avance y el carrusel se clavaba. */
+  const ordenAntesDeClics = await p.evaluate(() =>
+    [...document.querySelectorAll('#gallery-grid > *')].map(c => c.dataset.marca).join(','));
+  for (let i = 0; i < 8; i++) {
+    await p.evaluate(() => document.body.dispatchEvent(new PointerEvent('pointerup', { bubbles: true })));
+    await p.waitForTimeout(600);
+  }
+  const ordenTrasClics = await p.evaluate(() =>
+    [...document.querySelectorAll('#gallery-grid > *')].map(c => c.dataset.marca).join(','));
+  chk(ordenAntesDeClics !== ordenTrasClics,
+      'sigue girando aunque se clique por toda la página',
+      { antes: ordenAntesDeClics, despues: ordenTrasClics });
+
   chk(mueve, 'los dibujos siguen reproduciéndose tras la rotación (no son clones muertos)');
 
   await b.close(); if (SITIO) await SITIO.cerrar();
