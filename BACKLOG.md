@@ -382,6 +382,12 @@ pensado — el ID tiene 20 caracteres aleatorios y `list` sí exige ser parte.
 
 ## 🔧 DEUDA TÉCNICA
 
+- **`firebase-functions` desactualizado.** Al desplegar (2026-11-16) la CLI
+  avisa de que `^6.0.0` está viejo y sugiere `@latest`. El mismo aviso dice
+  que la subida trae cambios que rompen. No se toca ahora: no gana nada y
+  arriesga lo que acaba de funcionar. Hacerlo en un momento tranquilo,
+  leyendo antes qué cambia, y desplegando justo después para comprobarlo.
+
 | Tarea | Detalle |
 |-------|---------|
 | `sketchsendv14.html` duplicado de `index.html` | Mantener solo uno como fuente. Decidir si renombramos o eliminamos el .html numerado. |
