@@ -115,8 +115,9 @@ Las funciones piden **Node 22**. Si imprime `v22.algo`, bien.
 
 - **Si no imprime nada o dice `command not found`** → instala Node 22 desde
   https://nodejs.org (elige la versión LTS) y vuelve a abrir la Terminal.
-- **Si imprime otra versión** (`v18`, `v20`…) puede funcionar igual, pero si
-  el despliegue se queja de la versión, instala la 22.
+- **Si imprime otra versión** puede funcionar igual, pero si el despliegue
+  se queja de la versión, ese es el motivo. Ojo con las MÁS nuevas también:
+  con Node 25, `firebase-tools` avisa de que solo admite 20, 22 o 24.
 
 ---
 
@@ -134,8 +135,17 @@ firebase --version
 npm install -g firebase-tools
 ```
 
-Si eso falla por permisos, prueba con `sudo npm install -g firebase-tools`
-y te pedirá la contraseña del Mac.
+Si eso falla por permisos, usa `sudo npm install -g firebase-tools` y te
+pedirá **la contraseña de tu Mac** (la de desbloquearlo; al escribirla no se
+ve nada, ni puntos — es normal).
+
+⚠️ **Ese `sudo` deja un rastro.** Crea archivos a nombre de root en el
+almacén de npm, y el siguiente `npm install` normal falla con `EACCES` o
+`EEXIST`. Si te pasa, devuélvete la propiedad:
+
+```bash
+sudo chown -R $(whoami) ~/.npm
+```
 
 Vuelve a comprobar con `firebase --version`.
 
@@ -190,6 +200,11 @@ cd functions && npm install && cd ..
 
 Tarda un minuto la primera vez. Si al final no sale ninguna línea con
 `ERR!`, fue bien.
+
+**Si falla, SÁLTATELO.** Este paso es opcional: Firebase instala las
+dependencias en su propio servidor al desplegar, y esa carpeta local solo
+sirve para comprobar antes. Si `npm` se resiste, pasa directo al paso 10;
+lo único que de verdad hace falta es la comprobación de aquí abajo.
 
 **Comprobación — ¿el código no tiene errores de escritura?**
 
