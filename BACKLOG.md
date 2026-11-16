@@ -322,11 +322,36 @@ que decidir si eso importa.
 
 ---
 
+## 🎓 CLASES Y PROFESORES (idea de Jose, 2026-11-16)
+
+**Está analizada en MONETIZACION.md y es la vía de ingresos más fuerte que
+hay sobre la mesa.** Resumen: un profesor crea una clase, genera un enlace
+por alumno, los alumnos dibujan SIN cuenta, y él lo ve todo desde un panel.
+
+| # | Qué | Detalle |
+|---|-----|---------|
+| C1 | **Versión mínima** | Crear clase → N enlaces → los alumnos dibujan → cuadrícula con todos los dibujos, reproducibles y descargables. **Sin tiempo real ni cronómetro en la v1** |
+| C2 | ⚠️ **Menores: resolver ANTES de programar** | Los términos dicen 13+ y una clase son niños. El diseño ya esquiva casi todo (sin cuenta, sin correo, sin nombre), pero eso hay que mantenerlo a propósito y escribirlo en la política, no que pase por accidente. COPPA y RGPD-K |
+| C3 | **Enlaces de clase que caducan** | Uno por alumno, de un solo uso y con fecha de caducidad. Si no, es un lienzo público con el nombre del colegio |
+| C4 | **Ver en vivo: aplazado** | Un documento por trazo sale carísimo en Firestore. El replay ya da el grueso del valor pedagógico |
+| C5 | **Validar antes de construir** | Añadir "¿Eres profesor/a?" al formulario de la landing. Y hablar con UN profesor de arte de verdad: eso vale más que el análisis entero |
+
+---
+
+## 🗣️ A DECIDIR (planteado por Jose 2026-11-16)
+
+| # | Qué | Estado |
+|---|-----|--------|
+| D-a | **La ventana al entrar enseña amigos que ya tienes** | Jose tiene razón: para eso están Ajustes y el carrusel. Mejor enseñar los **amigos en común** con quien te envía la solicitud, que es lo que ayuda a decidir. Mantener solo al creador, que sí es un desconocido. **Y verificar que la ventana funciona de verdad: aún no se ha probado con datos reales** |
+| D-b | **Qué pasa con quien envió una solicitud rechazada** | Hoy: nada, nunca se entera, y el documento se borra. Eso permite **volver a pedirlo una y otra vez**, que es acoso. Dije que guardar un "no" no servía de nada y me faltaba ese caso. Lo razonable: un registro callado que no ve ninguno de los dos y que solo sirve para no repetir |
+
+---
+
 ## 💰 MONETIZACIÓN Y BANDEJA DE SALIDA (pedido 2026-11-16)
 
 | # | Qué | Detalle |
 |---|-----|---------|
-| M1 | **Bandeja de SALIDA** | La de entrada es solo de entrada, y está bien así: lo visto se va. Pero hoy no hay dónde ver lo que ENVIASTE ni si lo vieron. Dos formas: una pestaña dentro de la bandeja (Recibidos / Enviados), o una lista aparte. **Ojo al coste**: listar lo enviado descarga los dibujos ENTEROS, cientos de KB cada uno, porque los trazos viven en el mismo documento. Para una lista hace falta separar los trazos del resto, o guardar un resumen aparte |
+| M1 | **Bandeja de SALIDA** | Solución de Jose, y resuelve el problema de coste: la lista guarda solo "enviado a @usuario" + una **miniatura**, nada más. Lo caro era descargar los trazos enteros; una miniatura PNG generada al enviar pesa ~8 KB frente a los ~400 KB del dibujo. Va en su propio documento ligero, con el mismo `expiresAt`, así el TTL lo borra solo. Se marca como leído cuando el otro lo abre |
 | M2 | **Agrupar la bandeja por persona** | Quien te escribió último arriba, con todos sus dibujos listados debajo. Evita repetir avatar y punto en cada fila. Pedido para la siguiente versión |
 
 ---
