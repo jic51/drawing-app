@@ -75,6 +75,14 @@
 </head>
 <body>
 
+<!-- El panel nace OCULTO en el propio HTML, no por JavaScript. Si el SDK de
+     Firebase no carga —red caída, bloqueador, lo que sea—, la comprobación
+     de quién eres nunca llega a correr. Si el ocultado dependiera de ese
+     mismo JavaScript, el fallo dejaría la página abierta de par en par.
+     Así, lo que falla deja la puerta CERRADA. -->
+<div id="puerta"></div>
+<div id="panel" hidden>
+
 <h1>Moderar SketchSend</h1>
 <div class="sub">Lo que está esperando aprobación, pintado. La consola de Firebase
 guarda los trazos como una lista de números, así que ahí no se puede ver nada.</div>
@@ -100,7 +108,10 @@ Para publicar uno, copia su ID y pon <code>approved</code> en <code>true</code> 
 <h2>Lista de denuncias <span class="cuenta" id="n-denuncias">…</span></h2>
 <div id="denuncias"><div class="vacio">Comprobando…</div></div>
 
+</div><!-- /#panel -->
+
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script>
 /* Misma configuración que la app. Es pública por diseño: lo que protege los
@@ -114,7 +125,68 @@ firebase.initializeApp({
   appId: "1:445386471766:web:6f8c0681a676d5a5b67ef7"
 });
 const db = firebase.firestore();
+const auth = firebase.auth();
 
+/* ══ QUIÉN PUEDE ENTRAR AQUÍ ══
+   Antes: cualquiera. Es un archivo del sitio público, y el `noindex` evita
+   que salga en Google pero no impide abrirlo.
+
+   Conviene ser preciso sobre qué protege esto y qué no:
+
+   - Lo que SÍ: que alguien que tropiece con la dirección vea un panel de
+     moderación y se ponga a curiosear.
+   - Lo que NO: los datos. La galería y las opiniones son de lectura
+     pública por las reglas de Firestore, así que quien sepa usar la API
+     los ve igual. Esta puerta es de la PÁGINA, no de los datos.
+
+   Se comprueba por @usuario y no por un identificador escrito a mano, igual
+   que el emparejado con el creador. */
+const USUARIO_ADMIN = 'jose';
+
+function pantallaEntrada(mensaje, conBoton) {
+  const puerta = document.getElementById('puerta');
+  puerta.innerHTML = '';
+  const caja = document.createElement('div');
+  caja.style.cssText = 'max-width:380px;margin:18vh auto;text-align:center;line-height:1.6';
+  const h = document.createElement('h1');
+  h.textContent = 'Moderar SketchSend';
+  h.style.marginBottom = '10px';
+  const p = document.createElement('p');
+  p.className = 'sub'; p.textContent = mensaje;
+  caja.append(h, p);
+  if (conBoton) {
+    const b = document.createElement('button');
+    b.textContent = 'Entrar con Google';
+    b.style.cssText = 'margin-top:16px;padding:11px 22px;font-size:0.92rem;'
+      + 'background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer';
+    b.addEventListener('click', () =>
+      auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => {
+        p.textContent = 'No se pudo entrar: ' + e.message;
+      }));
+    caja.appendChild(b);
+  }
+  puerta.appendChild(caja);
+}
+
+auth.onAuthStateChanged(async user => {
+  if (!user) { pantallaEntrada('Esta página es privada.', true); return; }
+  try {
+    const d = await db.collection('users').doc(user.uid).get();
+    const quien = d.exists ? (d.data().username || '').toLowerCase() : '';
+    if (quien !== USUARIO_ADMIN) {
+      pantallaEntrada('Tu cuenta (@' + (quien || '?') + ') no puede entrar aquí.', false);
+      return;
+    }
+  } catch (e) {
+    pantallaEntrada('No se pudo comprobar la cuenta: ' + e.message, false);
+    return;
+  }
+  document.getElementById('puerta').innerHTML = '';
+  document.getElementById('panel').hidden = false;
+  arrancarModeracion();
+});
+
+function arrancarModeracion() {
 const esc = v => String(v == null ? '' : v)
   .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
   .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -296,6 +368,7 @@ db.collection('_reports').orderBy('createdAt', 'desc').limit(40).get()
       + '<code>request.auth.uid == &quot;TU_UID&quot;</code> y esta página '
       + 'necesitará además que inicies sesión.</div>';
   });
+}   /* fin de arrancarModeracion */
 </script>
 </body>
 </html>

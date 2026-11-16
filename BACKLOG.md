@@ -403,6 +403,24 @@ Firebase se quedan igual. Lo que cambia es el envoltorio y las notificaciones.
 
 ---
 
+## 📨 ENVIAR A QUIEN NO ES TU AMIGO (encontrado 2026-11-17)
+
+Jose lo vio así: si te eliminan justo después de mandarte algo, **puedes
+seguir respondiendo aunque ya no seáis amigos**. Mirándolo, el agujero es
+más ancho:
+
+**No hay NINGUNA comprobación de amistad al enviar**, ni en el código ni en
+las reglas. El carrusel solo enseña amigos, pero eso es cosmética: quien
+tenga el uid de alguien puede mandarle dibujos sin ser nada suyo.
+
+| # | Qué | Detalle |
+|---|-----|---------|
+| E1 | **Arreglo de verdad: comprobarlo en las reglas** | La regla tendría que mirar si existe la amistad. Para eso Firestore necesita poder construir la RUTA del documento, y hoy las amistades tienen ID automático. Hay que pasar a un ID deducible (los dos uid ordenados, `uidA_uidB`) y migrar las que ya existen. No es difícil pero toca datos vivos |
+| E2 | **Parche mientras tanto: en el cliente** | Al responder, comprobar que la amistad sigue viva. Arregla lo que se ve, pero NO es seguridad: cualquiera puede saltarse el navegador |
+| E3 | **Decidir qué pasa con lo ya enviado** | Un dibujo que llegó ANTES de dejar de ser amigos, ¿se puede seguir abriendo? Yo diría que sí: ya se envió, y borrarlo retroactivamente sorprende más de lo que protege |
+
+---
+
 ## 🔴 SEGURIDAD — hallazgos en las reglas de Firestore (2026-11-11)
 
 Revisadas las reglas que me pasaste. Lo primero está **comprobado en vivo**,

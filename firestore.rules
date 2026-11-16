@@ -151,9 +151,14 @@ service cloud.firestore {
        desde el navegador, así que no se puede cosechar. */
     match /landing_emails/{correo} {
       allow read: if false;
-      allow create: if request.resource.data.email is string
-                    && request.resource.data.email.size() < 200;
-      allow update, delete: if false;
+      /* `update` se queda permitido: la landing guarda con set(merge) y el
+         correo es el ID del documento, así que apuntarse DOS VECES cuenta
+         como actualización. Quitarlo rompía el segundo intento. Sobrescribir
+         la fila de otro no da nada: solo contiene el mismo correo que ya es
+         el nombre del documento. */
+      allow create, update: if request.resource.data.email is string
+                            && request.resource.data.email.size() < 200;
+      allow delete: if false;
     }
 
     /* ── FCM ─────────────────────────────────────────────────────────
