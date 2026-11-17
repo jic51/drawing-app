@@ -634,6 +634,16 @@
       display:flex; gap:13px; overflow-x:auto; padding-bottom:3px;
       scrollbar-width:none; -webkit-overflow-scrolling:touch;
       flex-shrink:0; max-width:100%;
+      /* La etiqueta NEW sobresale del avatar por arriba y por la derecha, y
+         `overflow-x:auto` obliga al navegador a recortar TAMBIÉN en
+         vertical (la regla de CSS: si un eje no es `visible`, el otro pasa
+         a `auto`). Por eso salía cortada por la mitad.
+
+         El relleno le hace sitio DENTRO de la caja que recorta, y el margen
+         negativo se lo quita por fuera: así se ve entera y no se mueve
+         nada de su sitio. */
+      padding-top:9px; margin-top:-9px;
+      padding-right:9px; margin-right:-9px;
     }
     .carousel::-webkit-scrollbar { display:none; }
     .citem { display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; flex-shrink:0; transition:transform 0.15s; }
@@ -2437,6 +2447,57 @@ function getScaleTransform(origW, origH, targetW, targetH) {
   return { scale, ox, oy };
 }
 
+/* La caja que de verdad ocupan los trazos, en sus propias coordenadas.
+   Tiene en cuenta el grosor, porque media línea sobresale del centro. */
+function cajaDeTrazos(segs) {
+  let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+  for (const s of segs) {
+    const r = (s.gw || 1) / 2;
+    for (const p of [s.de, s.a]) {
+      if (!p) continue;
+      if (p.x - r < x1) x1 = p.x - r;
+      if (p.y - r < y1) y1 = p.y - r;
+      if (p.x + r > x2) x2 = p.x + r;
+      if (p.y + r > y2) y2 = p.y + r;
+    }
+  }
+  if (x1 === Infinity) return null;
+  return { x1, y1, x2, y2 };
+}
+
+/* El encuadre para exportar o reproducir.
+
+   Lo normal es usar el lienzo en que se dibujó (`origW`×`origH`): así un
+   garabato pequeño sigue viéndose pequeño y centrado, que es como lo hizo
+   quien dibuja. El problema es cuando ese dato falta o está mal —dibujos
+   viejos, o el lienzo cambió de tamaño a mitad— y entonces hay trazos
+   FUERA de esa caja, que salían cortados por el borde.
+
+   La solución es la UNIÓN de las dos cajas: la del lienzo y la de los
+   trazos. Mientras todo quepa dentro del lienzo, el encuadre no cambia en
+   absoluto; y si algo se sale, se aleja lo justo para que entre. Nunca
+   recorta, y no reencuadra los dibujos que ya estaban bien. */
+function encuadrar(segs, origW, origH, destW, destH, margen) {
+  const m = margen || 0;
+  let x1 = 0, y1 = 0, x2 = origW || 0, y2 = origH || 0;
+  const caja = cajaDeTrazos(segs);
+  if (caja) {
+    /* Sin lienzo declarado, el encuadre son los trazos y punto. */
+    if (!origW || !origH) { x1 = caja.x1; y1 = caja.y1; x2 = caja.x2; y2 = caja.y2; }
+    else {
+      x1 = Math.min(x1, caja.x1); y1 = Math.min(y1, caja.y1);
+      x2 = Math.max(x2, caja.x2); y2 = Math.max(y2, caja.y2);
+    }
+  }
+  const w = Math.max(1, x2 - x1), h = Math.max(1, y2 - y1);
+  const scale = Math.min((destW - 2*m) / w, (destH - 2*m) / h);
+  return {
+    scale,
+    ox: (destW - w * scale) / 2 - x1 * scale,
+    oy: (destH - h * scale) / 2 - y1 * scale
+  };
+}
+
 /* Bandeja de mensajes recibidos (simulados — Firebase los reemplazará en Paso 2) */
 let bandejaEntrada = [];
 
@@ -2803,6 +2864,51 @@ async function estadoUsername(raw, uidPropio) {
     /* El propio no cuenta como ocupado: deja guardar sin cambiarlo. */
     return (uidPropio && snap.docs[0].id === uidPropio) ? 'libre' : 'tomado';
   } catch (e) { return 'error'; }
+}
+
+/* ¿A quién corresponde lo que se está escribiendo para agregar a alguien?
+   Acepta @usuario y código corto, igual que `agregarAmigo`.
+
+   Devuelve 'formato' | 'buscando' | 'nadie' | 'yo' | 'amigo' | 'pedida'
+   | {ok, nombre, foto}. La idea es que el que escribe se entere ANTES de
+   darle al botón, no después de que la ventana se cierre. */
+async function buscarDestinatario(raw) {
+  const limpio = String(raw || '').trim().replace(/^@/, '');
+  if (!limpio) return 'formato';
+
+  const { db, auth, listo } = contextoFirebase();
+  if (!listo || !auth?.currentUser) return 'error';
+
+  try {
+    /* EXACTAMENTE la misma búsqueda que hace `agregarAmigo`: primero el
+       código, luego el nombre. Si aquí se adivinara de otra forma, lo que
+       dice el aviso en vivo y lo que pasa al dar al botón podrían no
+       coincidir, que es peor que no avisar. */
+    let snap = await db.collection('users')
+      .where('shortCode', '==', limpio.toUpperCase()).limit(1).get();
+    if (snap.empty) {
+      snap = await db.collection('users')
+        .where('username', '==', limpio.toLowerCase()).limit(1).get();
+    }
+    if (snap.empty) return 'nadie';
+
+    const d = snap.docs[0].data();
+    const otro = snap.docs[0].id;
+    if (otro === auth.currentUser.uid) return 'yo';
+
+    /* El caché de amistades está vivo, así que esto no cuesta una lectura. */
+    const yaAmigo   = (amigosCache     || []).some(a => a.id === otro);
+    const yaPedida  = (enviadasCache   || []).some(a => a.id === otro);
+    const mePidio   = (solicitudesCache|| []).some(a => a.id === otro);
+    if (yaAmigo)  return 'amigo';
+    if (yaPedida) return 'pedida';
+    if (mePidio)  return 'tepidio';
+
+    return { ok: true, nombre: d.username || d.displayName || limpio, foto: d.photoURL };
+  } catch (e) {
+    console.warn('buscarDestinatario:', e.message);
+    return 'error';
+  }
 }
 
 /* Conecta un input con su indicador. Devuelve () => estado actual. */
@@ -4012,6 +4118,85 @@ async function cargarAmigos() {
   }
 }
 
+/* La ventana de agregar a alguien, con la comprobación en vivo.
+
+   Antes esto era un `ssPrompt` pelado: escribías, dabas a Aceptar, la
+   ventana se cerraba y ENTONCES aparecía un aviso diciendo si existía o
+   no. Es el peor momento para enterarse, porque ya no puedes corregir lo
+   que escribiste.
+
+   Ahora busca mientras escribes, con la misma espera de 400 ms que el
+   registro, y el botón de Agregar solo se enciende si hay a quién. */
+async function abrirAgregarAmigo() {
+  let destino = null;
+
+  const r = await ssModal(t('add_friend_prompt'),
+    [{ label: lang === 'es' ? 'Cancelar' : 'Cancel' },
+     { label: t('add_friend'), primary: true }],
+    {
+      input: true,
+      placeholder: lang === 'en' ? '@username or code' : '@usuario o código',
+      alMontar: (inp, caja) => {
+        const salida = document.createElement('div');
+        salida.style.cssText = 'font-size:0.78rem;min-height:1.1rem;margin:-8px 0 14px;text-align:center;line-height:1.3';
+        inp.insertAdjacentElement('afterend', salida);
+
+        const botones = caja.querySelectorAll('button');
+        const btnOk = botones[botones.length - 1];
+        const encender = on => {
+          if (!btnOk) return;
+          btnOk.disabled = !on;
+          btnOk.style.opacity = on ? '1' : '0.4';
+          btnOk.style.cursor = on ? 'pointer' : 'default';
+        };
+        encender(false);
+
+        const textos = {
+          formato:  ['', 'var(--muted)'],
+          buscando: [t('u_checking'), 'var(--muted)'],
+          nadie:    [lang === 'es' ? '✕ No existe nadie con ese nombre' : '✕ Nobody with that name', 'var(--danger)'],
+          yo:       [lang === 'es' ? '✕ Ese eres tú' : '✕ That is you', 'var(--danger)'],
+          amigo:    [lang === 'es' ? '✓ Ya es tu amigo' : '✓ Already your friend', 'var(--muted)'],
+          pedida:   [lang === 'es' ? '⏳ Ya le enviaste una solicitud' : '⏳ Request already sent', 'var(--muted)'],
+          tepidio:  [lang === 'es' ? '👋 Te envió una solicitud: contéstala en el carrusel'
+                                   : '👋 They sent you a request — answer it in the carousel', 'var(--accent2)'],
+          error:    [lang === 'es' ? 'No se pudo comprobar' : "Couldn't check", 'var(--muted)'],
+        };
+        const pintar = (txt, color) => { salida.textContent = txt; salida.style.color = color; };
+
+        let pedido = 0, timer = null;
+        const alEscribir = () => {
+          const raw = inp.value;
+          destino = null; encender(false);
+          clearTimeout(timer);
+          if (!raw.trim()) { pintar('', 'var(--muted)'); return; }
+          pintar(...textos.buscando);
+          timer = setTimeout(async () => {
+            const mio = ++pedido;
+            const res = await buscarDestinatario(raw);
+            if (mio !== pedido || inp.value !== raw) return;   /* llegó tarde */
+            if (res && res.ok) {
+              destino = raw;
+              pintar('✓ @' + res.nombre, 'var(--ok)');
+              encender(true);
+            } else {
+              pintar(...(textos[res] || textos.error));
+            }
+          }, 400);
+        };
+        inp.addEventListener('input', alEscribir);
+        /* Enter solo vale si hay a quién: si no, no hace nada. */
+        inp.addEventListener('keydown', e => {
+          if (e.key === 'Enter' && !destino) e.preventDefault();
+        });
+      }
+    });
+
+  /* `r` es lo que haya en el campo, pero solo se agrega si la comprobación
+     en vivo dijo que sí. Así el botón y el Enter no pueden colarse. */
+  if (r && destino) agregarAmigo(destino.replace(/^@/, '').trim());
+}
+
 async function agregarAmigo(input) {
   if (!firebaseReady || !auth.currentUser) { toast(t('need_login')); return; }
   const uid = auth.currentUser.uid;
@@ -4607,10 +4792,7 @@ function pintarCarrusel() {
   const addBtn = document.createElement('div');
   addBtn.className = 'citem';
   addBtn.innerHTML = `<div class="cwrap" style="background:var(--surface2);border:2px dashed var(--border);border-radius:50%;display:flex;align-items:center;justify-content:center;"><span style="font-size:1.5rem">+</span></div><span class="cname">${esc(t('add_friend'))}</span>`;
-  addBtn.addEventListener('click', async () => {
-    const raw = await ssPrompt(t('add_friend_prompt'), lang === 'en' ? '@username or code' : '@usuario o código');
-    if (raw) agregarAmigo(raw.replace(/^@/,'').toLowerCase().trim());
-  });
+  addBtn.addEventListener('click', abrirAgregarAmigo);
   carouselEl.appendChild(addBtn);
 
 }
@@ -4709,10 +4891,18 @@ async function enviarSketchFirestore(toUid) {
     || auth.currentUser.email?.split('@')[0]
     || 'Usuario';
   try {
+    /* El nombre de quien recibe, para poder leer Firestore sin tener que ir
+       a buscar cada uid en `users`. Sale del caché de amigos, que está vivo;
+       si por lo que sea no está, se queda sin poner antes que retrasar el
+       envío con otra lectura. */
+    const destino = (Array.isArray(amigosCache) ? amigosCache : [])
+      .find(a => a.id === toUid);
+
     await db.collection('sketches').add({
       from: uid,
       fromName: senderName,
       to: toUid,
+      toName: (destino && (destino.username || destino.nombre)) || null,
       strokes: trazos,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       expiresAt: new Date(Date.now() + 24*3600*1000),
@@ -5336,6 +5526,8 @@ pngBtn.addEventListener('click', () => {
 const VIDEO_W = 1080, VIDEO_H = 1920;
 const VIDEO_MAX_MS = 10000;      /* lo que dura mirar sin aburrirse */
 const VIDEO_COLA_MS = 1300;      /* el dibujo terminado se queda quieto */
+const VIDEO_PASO_MAX = 50;       /* ms de dibujo que puede avanzar un cuadro */
+const VIDEO_MARGEN = 48;         /* para que nada quede pegado al borde */
 /* Sin franja. La marca va ENCIMA del dibujo, abajo a la izquierda, como
    hacen las redes. Una franja opaca partía el cuadro en dos y le robaba
    el 10% del alto al dibujo solo para poner dos líneas de texto.
@@ -5449,16 +5641,29 @@ vidBtn.addEventListener('click', async () => {
     const ow = (meta && meta.origW) || Math.round(cv.width / DPR);
     const oh = (meta && meta.origH) || Math.round(cv.height / DPR);
 
-    /* El dibujo usa el alto ENTERO: la marca va encima, no debajo. */
-    const zonaH = VIDEO_H;
-    const k = Math.min(VIDEO_W / ow, zonaH / oh);
-    const ox = (VIDEO_W - ow * k) / 2;
-    const oy = (zonaH - oh * k) / 2;
+    /* El dibujo usa el alto ENTERO: la marca va encima, no debajo. Se deja
+       un margen para que un trazo que acabe justo en el borde no quede
+       pegado al canto del video. */
+    const { scale: k, ox, oy } = encuadrar(comp, ow, oh, VIDEO_W, VIDEO_H, VIDEO_MARGEN);
 
     const tmp = document.createElement('canvas');
     tmp.width = VIDEO_W; tmp.height = VIDEO_H;
     const tc = tmp.getContext('2d');
     tc.lineCap = 'round'; tc.lineJoin = 'round';
+
+    /* Lienzo acumulador: los trazos se pintan AQUÍ una sola vez cada uno y
+       nunca se borra. El cuadro del video es fondo + esta capa + la marca.
+
+       Antes cada cuadro repintaba los N trazos desde cero. Con 26.000
+       trazos eso son 26.000 operaciones por cuadro, 30 veces por segundo:
+       el navegador se atasca, y como el reloj iba pegado al reloj de pared,
+       al volver del atasco aparecía medio segundo de dibujo de golpe. Era
+       el "salto" que se veía. */
+    const capa = document.createElement('canvas');
+    capa.width = VIDEO_W; capa.height = VIDEO_H;
+    const cc = capa.getContext('2d');
+    cc.lineCap = 'round'; cc.lineJoin = 'round';
+    cc.setTransform(k, 0, 0, k, ox, oy);
 
     const fondo = canvasBg();
     const oscuro = esDark();
@@ -5489,7 +5694,7 @@ vidBtn.addEventListener('click', async () => {
     toast(`⏳ ${lang === 'es' ? 'Grabando video' : 'Recording video'} (${durSec}s)...`);
 
     return new Promise(resolve => {
-      let raf = 0, siguiente = 0, t0 = 0, finEn = 0;
+      let raf = 0, siguiente = 0, tPrev = 0, transcurrido = 0, finEn = 0;
 
       recorder.onstop = () => {
         cancelAnimationFrame(raf);
@@ -5504,29 +5709,32 @@ vidBtn.addEventListener('click', async () => {
          segmentos eran 6000 temporizadores, y además así se puede acelerar
          el conjunto con un solo factor. */
       function cuadro(ahora) {
-        if (!t0) t0 = ahora;
-        const transcurrido = (ahora - t0) * (1 / factor);
+        if (!tPrev) tPrev = ahora;
+
+        /* El reloj del dibujo avanza con el de pared, PERO nunca más de un
+           cuadro largo de golpe. Si el navegador se atasca —una pausa del
+           recolector de basura, otra pestaña, lo que sea—, el video hace
+           una pausa y sigue por donde iba, en vez de saltarse medio segundo
+           de trazos y enseñarlos ya hechos. Medido en un video real: el
+           hueco normal entre cuadros era de 33 ms y hubo uno de 687 ms. */
+        transcurrido += Math.min(ahora - tPrev, VIDEO_PASO_MAX) / factor;
+        tPrev = ahora;
+
+        /* Solo lo NUEVO se pinta, y sobre la capa que se conserva. */
+        while (siguiente < comp.length && comp[siguiente].tRel <= transcurrido) {
+          const sg = comp[siguiente];
+          cc.beginPath();
+          cc.moveTo(sg.de.x, sg.de.y);
+          cc.lineTo(sg.a.x, sg.a.y);
+          cc.strokeStyle = sg.color;
+          cc.lineWidth = sg.gw;
+          cc.stroke();
+          siguiente++;
+        }
 
         tc.fillStyle = fondo;
         tc.fillRect(0, 0, VIDEO_W, VIDEO_H);
-
-        /* Se repinta todo lo dibujado hasta este instante. Repintar desde
-           cero cada cuadro evita que la franja o el fondo borren trazos. */
-        tc.save();
-        tc.translate(ox, oy);
-        tc.scale(k, k);
-        for (let i = 0; i < comp.length; i++) {
-          const sg = comp[i];
-          if (sg.tRel > transcurrido) break;
-          tc.beginPath();
-          tc.moveTo(sg.de.x, sg.de.y);
-          tc.lineTo(sg.a.x, sg.a.y);
-          tc.strokeStyle = sg.color;
-          tc.lineWidth = sg.gw;
-          tc.stroke();
-          siguiente = i + 1;
-        }
-        tc.restore();
+        tc.drawImage(capa, 0, 0);
 
         pintarMarcaVideo(tc, (ahora / 2500) % 1, oscuro, usuario);
 
@@ -5787,14 +5995,17 @@ function reproducirLoop(strokes, rc, rctx, cssW, cssH) {
   const segs = strokes.filter(s => s.tipo === 'seg' && s.t !== undefined);
   if (!segs.length) return;
 
-  /* Escala contain: ajustar dibujo del emisor al canvas del receptor */
-  const meta = strokes.find(s => s.tipo === 'inicio' && s.origW);
-  const { scale, ox, oy } = getScaleTransform(
-    meta ? meta.origW : cssW, meta ? meta.origH : cssH, cssW, cssH
-  );
-
   /* Comprimir gaps */
   const compressed = comprimirGaps(segs);
+
+  /* Escala contain: ajustar dibujo del emisor al canvas del receptor.
+     Por `encuadrar` y no por `getScaleTransform` para que un trazo que se
+     salga del lienzo declarado se vea entero en vez de cortado por el
+     borde: cuando todo cabe, el encuadre es exactamente el mismo. */
+  const meta = strokes.find(s => s.tipo === 'inicio' && s.origW);
+  const { scale, ox, oy } = encuadrar(
+    compressed, meta ? meta.origW : cssW, meta ? meta.origH : cssH, cssW, cssH, 0
+  );
   const duracionMs = compressed[compressed.length - 1].tRel;
 
   /* Programar cada segmento con setTimeout (coordenadas pre-transformadas) */
@@ -5887,7 +6098,7 @@ function aviso({ quien, texto, foto, alTocar }) {
    Con `html` el contenido se inyecta como texto y luego no hay forma de
    recuperar el nodo para colgarle nada: eso obligaba a buscarlo con
    selectores frágiles después de pintarlo. */
-function ssModal(html, buttons, {input = false, placeholder = '', multiline = false, value = '', maxlength = 0, nodo = null, alCerrar = null} = {}) {
+function ssModal(html, buttons, {input = false, placeholder = '', multiline = false, value = '', maxlength = 0, nodo = null, alCerrar = null, alMontar = null} = {}) {
   return new Promise(resolve => {
     const overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);animation:ssmFadeIn .2s ease';
@@ -5942,6 +6153,10 @@ function ssModal(html, buttons, {input = false, placeholder = '', multiline = fa
        esquina, por ejemplo). Cerrar así devuelve `false`, igual que tocar
        fuera: no es ni que sí ni que no, es que no decidió. */
     if (alCerrar) alCerrar.addEventListener('click', () => close(input ? null : false));
+    /* Para poder enganchar algo al campo mientras está abierto —validar lo
+       que se escribe, por ejemplo— sin que ssModal tenga que saber de qué
+       va. Recibe el campo, la caja y una forma de cerrar desde dentro. */
+    if (alMontar) try { alMontar(inp, box, close); } catch (e) { console.warn('alMontar:', e.message); }
     document.body.appendChild(overlay);
     if (inp) setTimeout(() => inp.focus(), 100);
   });
