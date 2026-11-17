@@ -161,6 +161,23 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    /* ── ERRORES ─────────────────────────────────────────────────────
+       La app guarda aquí lo que se rompe en el navegador de la gente
+       (`logRemoteError`). Esta colección NO estaba declarada en las reglas
+       publicadas el 2026-11-16, así que desde ese día se deniega y los
+       errores se pierden en silencio: justo lo contrario de lo que hace
+       falta después de un cambio grande de reglas.
+
+       Se puede escribir sin sesión a propósito: la mitad de los fallos
+       interesantes pasan ANTES de entrar. Leer, nadie desde el navegador;
+       se miran desde la consola de Firebase. */
+    match /_errors/{doc} {
+      allow create: if request.resource.data.keys()
+                       .hasOnly(['uid','context','msg','stack','ua','createdAt','ts','url'])
+                    && request.resource.size() < 20000;
+      allow read, update, delete: if false;
+    }
+
     /* ── FCM ─────────────────────────────────────────────────────────
        CAMBIO: la colección no se usa (los tokens viven en `users`) y estaba
        abierta a cualquiera con cuenta, que podía leer y SOBRESCRIBIR los de

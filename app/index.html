@@ -1970,6 +1970,14 @@ const I18N = {
     /* Textos que estaban escritos a mano en el HTML, unos siempre en inglés
        y otros siempre en español. Se notaba: los colores decían "Rainbow"
        en una interfaz en español. */
+    /* Lo que se le dice a una persona cuando algo falla. El mensaje
+       interno de Firebase no vale: «Missing or insufficient permissions»
+       no le dice nada a nadie. */
+    err_generico: 'Algo salió mal. Inténtalo otra vez.',
+    err_permiso:  'No tienes permiso para hacer eso.',
+    err_sin_red:  'Sin conexión. Revisa tu internet e inténtalo otra vez.',
+    err_no_esta:  'Eso ya no existe.',
+    err_saturado: 'Hay demasiada gente ahora mismo. Prueba en un momento.',
     tt_arcoiris: 'Arcoíris', tt_blanco: 'Blanco', tt_negro: 'Negro',
     tt_cancelar_resp: 'Cancelar respuesta', tt_cambiar_foto: 'Cambiar foto',
     ph_tu_nombre: 'Tu nombre', ph_tu_nombre_ej: 'Tu nombre (ej: Joselo)',
@@ -2133,6 +2141,11 @@ const I18N = {
     err_username_fmt: 'Only lowercase letters, numbers and _ · minimum 3 chars',
     err_username_taken: 'That @username is taken, choose another',
     u_free: 'Available', u_taken: 'Already taken', u_checking: 'Checking…',
+    err_generico: 'Something went wrong. Please try again.',
+    err_permiso:  "You don't have permission to do that.",
+    err_sin_red:  'No connection. Check your internet and try again.',
+    err_no_esta:  'That no longer exists.',
+    err_saturado: 'Too many people right now. Try again in a moment.',
     tt_arcoiris: 'Rainbow', tt_blanco: 'White', tt_negro: 'Black',
     tt_cancelar_resp: 'Cancel reply', tt_cambiar_foto: 'Change photo',
     ph_tu_nombre: 'Your name', ph_tu_nombre_ej: 'Your name (e.g. Joselo)',
@@ -3069,10 +3082,19 @@ async function mostrarApp(nombre, fotoUrl) {
 
 function finalizarLogin(username, displayName, photoURL) {
   usuario = username || displayName;
-  const nombreMostrar = displayName || username;
-  const avatarSrc = photoURL || genAvatar(nombreMostrar);
-  unameEl.textContent = nombreMostrar; avatarEl.src = avatarSrc;
-  unameMob.textContent = nombreMostrar; avMob.src = avatarSrc;
+  /* En la cabecera sales con TU @usuario, no con tu nombre de Google.
+
+     Antes ponía «JOSE CASTRO» mientras el carrusel, justo debajo, llamaba
+     «@jose» a todo el mundo: el mismo tipo de descuido que el del código.
+     Y además así ves tu propio @, que es lo que hay que darle a alguien
+     para que te agregue, sin tener que entrar en Ajustes a buscarlo.
+
+     Las iniciales del avatar siguen saliendo del nombre completo porque
+     «JC» se lee mejor que «J», y un avatar no es una etiqueta. */
+  const comoMeLlamo = etiquetaDe({ username, displayName });
+  const avatarSrc = photoURL || genAvatar(displayName || username);
+  unameEl.textContent = comoMeLlamo; avatarEl.src = avatarSrc;
+  unameMob.textContent = comoMeLlamo; avMob.src = avatarSrc;
   ocultarTodasLasPantallas();
   appEl.style.display = 'flex';
   setupCanvas(); buildCarousel(); cargarBandeja(); iniciarPromptsCanvas();
@@ -3290,7 +3312,7 @@ document.getElementById('verify-resend-btn').addEventListener('click', async () 
     const actionCodeSettings = { url: getBaseUrl(), handleCodeInApp: true };
     await auth.sendSignInLinkToEmail(email, actionCodeSettings);
     toast('📬 ' + (lang==='es' ? 'Enlace reenviado a ' : 'Link resent to ') + email);
-  } catch(e) { toast('⚠️ ' + e.message); }
+  } catch(e) { fallo('magicLink', e); }
 });
 
 document.getElementById('verify-logout-btn').addEventListener('click', () => {
@@ -3405,7 +3427,7 @@ document.getElementById('google-btn').addEventListener('click', async () => {
       }
     } else {
       logRemoteError('signInWithPopup', e);
-      toast('⚠️ Error con Google: ' + e.message);
+      fallo('loginGoogle', e, lang === 'es' ? 'No se pudo entrar con Google.' : "Couldn't sign in with Google.");
     }
   }
 });
@@ -4101,12 +4123,6 @@ function limpiarCanvas() {
 /* ══════════════════════════════════════════════════════
    CARRUSEL DE CONTACTOS
 ══════════════════════════════════════════════════════ */
-const CONTACTOS = [
-  {id:'1',nombre:'Ana',online:true},{id:'2',nombre:'Carlos',online:true},
-  {id:'3',nombre:'Sofía',online:false},{id:'4',nombre:'Miguel',online:true},
-  {id:'5',nombre:'Lucía',online:false},{id:'6',nombre:'Diego',online:true},
-  {id:'7',nombre:'Valentina',online:false},{id:'8',nombre:'Mateo',online:true},
-];
 
 /* ── SISTEMA DE AMIGOS ── */
 let amigosCache = null;   /* lo último que devolvió Firestore */
@@ -4243,8 +4259,11 @@ async function agregarAmigo(input) {
         .where('username', '==', limpio.toLowerCase()).limit(1).get();
     }
     if (snap.empty) { toast(t('friend_not_found') + ' ' + limpio); return; }
-    const username = isCode ? limpio.toUpperCase() : limpio.toLowerCase();
     const otroUser = snap.docs[0].data();
+    /* Cómo se le llama NO depende de cómo lo encontraste. Antes esto era
+       el texto que escribiste, así que al agregar por código salía
+       «@XK9P2M y tú ya son amigos» en vez de «@roger». */
+    const comoSeLlama = etiquetaDe(otroUser);
     if (otroUser.uid === uid) { toast('❌ No puedes agregarte a ti mismo'); return; }
     /* Verificar si ya hay amistad */
     const existing = await db.collection('friendships')
@@ -4257,8 +4276,8 @@ async function agregarAmigo(input) {
       .find(d => (d.users || []).includes(otroUser.uid));
     if (previa) {
       toast(previa.status === 'accepted'
-        ? t('sol_ya_amigos').replace('{u}', '@' + username)
-        : t('sol_ya_pedida').replace('{u}', '@' + username));
+        ? t('sol_ya_amigos').replace('{u}', comoSeLlama)
+        : t('sol_ya_pedida').replace('{u}', comoSeLlama));
       return;
     }
     /* Crear friendship pendiente */
@@ -4270,12 +4289,12 @@ async function agregarAmigo(input) {
     });
     /* Como aviso flotante y no como toast: el toast es una línea estrecha
        y el texto se salía por encima del botón de enviar. */
-    aviso({ quien: username, texto: t('friend_requested_corto'),
+    aviso({ quien: comoSeLlama, texto: t('friend_requested_corto'),
             foto: otroUser.photoURL });
     if (window.posthog) posthog.capture('friend_added', { method: isCode ? 'shortcode' : 'username' });
     buildCarousel();
   } catch(e) {
-    toast('❌ Error: ' + e.message);
+    fallo('agregarAmigo', e);
   }
 }
 
@@ -4385,7 +4404,7 @@ function vigilarAmistades() {
       filas.forEach(f => {
         if (f.status === 'accepted' && antes.get(f.docId) === 'pendiente' && f.requestedBy === uid) {
           const per = perfilesCache.get(f.otro);
-          aviso({ quien: per?.username || per?.nombre || '', texto: t('sol_te_acepto'),
+          aviso({ quien: per, texto: t('sol_te_acepto'),
                   foto: per?.photoURL });
         }
       });
@@ -4503,7 +4522,7 @@ function filaPersona(p, acciones) {
   txt.style.cssText = 'flex:1;min-width:0;line-height:1.35';
   const nom = document.createElement('div');
   nom.style.cssText = 'font-weight:700;color:var(--accent2);font-size:0.92rem';
-  nom.textContent = '@' + (p.username || p.nombre);
+  nom.textContent = etiquetaDe(p);
   const sub = document.createElement('div');
   sub.style.cssText = 'font-size:0.76rem;color:var(--muted)';
   /* Al creador se le identifica: quien acaba de llegar no tiene por qué
@@ -4548,14 +4567,14 @@ async function abrirEnviadas() {
       + 'filter:grayscale(1);opacity:.6;flex:0 0 auto';
     const nom = document.createElement('div');
     nom.style.cssText = 'flex:1;min-width:0;font-size:0.88rem;overflow:hidden;text-overflow:ellipsis';
-    nom.textContent = '@' + (e.username || e.nombre);
+    nom.textContent = etiquetaDe(e);
     const quitar = document.createElement('button');
     quitar.className = 'settings-row-action';
     quitar.textContent = t('sol_retirar');
     quitar.addEventListener('click', async () => {
       quitar.disabled = true;
       try { await rechazarSolicitud(e.docId); fila.remove(); }
-      catch (err) { toast('❌ ' + err.message); quitar.disabled = false; }
+      catch (err) { fallo('retirarSolicitud', err); quitar.disabled = false; }
     });
     fila.append(img, nom, quitar);
     caja.appendChild(fila);
@@ -4589,7 +4608,7 @@ async function abrirSolicitud(p) {
   const nom = document.createElement('div');
   nom.style.cssText = 'font-weight:700;color:var(--accent2);font-size:1rem;'
     + 'overflow:hidden;text-overflow:ellipsis';
-  nom.textContent = '@' + (p.username || p.nombre);
+  nom.textContent = etiquetaDe(p);
   const sub = document.createElement('div');
   sub.style.cssText = 'font-size:0.8rem;color:var(--muted)';
   sub.textContent = p.esDelCreador || esCreador(p.username)
@@ -4607,10 +4626,10 @@ async function abrirSolicitud(p) {
 
   if (resp === 'si') {
     try { await aceptarSolicitud(p.docId); toast('✅ ' + t('sol_aceptada')); }
-    catch (e) { toast('❌ ' + e.message); }
+    catch (e) { fallo('aceptarSolicitud', e); }
   } else if (resp === 'no') {
     try { await rechazarSolicitud(p.docId); toast(t('sol_rechazada')); }
-    catch (e) { toast('❌ ' + e.message); }
+    catch (e) { fallo('rechazarSolicitud', e); }
   }
   /* Cualquier otra cosa (la ✕, o tocar fuera) es "no he decidido": la
      solicitud se queda donde estaba. */
@@ -4724,6 +4743,73 @@ function esCreador(username) {
   return String(username || '').toLowerCase() === USUARIO_CREADOR;
 }
 
+/* ══════════════════════════════════════════════════════
+   CÓMO SE LLAMA UNA PERSONA — un solo sitio, una sola regla
+   ────────────────────────────────────────────────────
+   Antes cada parte de la app decidía por su cuenta, y salían cosas así:
+
+   - Al agregar por CÓDIGO, el código hacía de nombre: «@XK9P2M y tú ya son
+     amigos» en vez de «@roger». Fue lo que vio Jose.
+   - En la bandeja se ponía una arroba delante de `fromName`, que es lo que
+     se guardó al enviar y puede ser un nombre con espacios: «@Jose Castro».
+   - Y `fromName` admitía como último recurso el principio del CORREO, así
+     que a alguien sin nombre de usuario se le enseñaba a sus amigos como
+     «@joseisrael5101». Un correo no es un nombre y además no es público.
+   - En Ajustes los amigos salían sin arroba y en el carrusel con ella.
+   - Y en la cabecera tú salías con tu nombre de Google mientras el resto
+     del mundo te llama por tu @usuario.
+
+   La regla, de una vez: **manda el nombre de usuario**. Si no lo hay, el
+   nombre a secas y SIN arroba, porque «@Jose Castro» no es nada. El correo
+   no se usa nunca. El código tampoco: el código sirve para encontrar a
+   alguien, no para llamarlo.
+   ══════════════════════════════════════════════════════ */
+function identidad(p) {
+  if (!p) return { user: null, nombre: '?', etiqueta: '?' };
+  if (typeof p === 'string') {
+    /* Una cadena suelta solo se acepta como nombre de usuario si de verdad
+       lo parece. Un código (MAYÚSCULAS con dígitos) o algo con espacios o
+       arroba no pasa por nombre. */
+    const s = p.replace(/^@/, '').trim();
+    const esUser = RE_USERNAME.test(s.toLowerCase()) && s === s.toLowerCase();
+    return esUser
+      ? { user: s, nombre: s, etiqueta: '@' + s }
+      : { user: null, nombre: s || '?', etiqueta: s || '?' };
+  }
+  const user = p.username || null;
+  if (user) return { user, nombre: user, etiqueta: '@' + user };
+  const nombre = p.nombre || p.displayName || '?';
+  return { user: null, nombre, etiqueta: nombre };
+}
+
+/* Lo que se enseña: «@roger», o «Roger» si no tiene nombre de usuario. */
+function etiquetaDe(p) { return identidad(p).etiqueta; }
+
+/* ══════════════════════════════════════════════════════
+   CÓMO SE AVISA DE UN ERROR — también un solo sitio
+   ────────────────────────────────────────────────────
+   Había cuatro formas distintas, y trece sitios enseñaban el mensaje
+   interno tal cual. Desde que se publicaron las reglas de Firestore eso
+   significa que a alguien le puede salir un aviso que dice «Missing or
+   insufficient permissions», que no le dice nada y además asusta.
+
+   La regla: a la persona se le dice algo que entienda; el mensaje de
+   verdad va a la consola y al registro. */
+function fallo(donde, e, textoHumano) {
+  const code = String((e && e.code) || '').replace(/^[a-z-]+\//, '');
+  console.warn(donde + ':', (e && (e.message || e)) || 'sin detalle');
+  try { logRemoteError(donde, e); } catch (_) {}
+  const conocidos = {
+    'permission-denied':  t('err_permiso'),
+    'unauthenticated':    t('need_login'),
+    'unavailable':        t('err_sin_red'),
+    'deadline-exceeded':  t('err_sin_red'),
+    'not-found':          t('err_no_esta'),
+    'resource-exhausted': t('err_saturado'),
+  };
+  toast('⚠️ ' + (conocidos[code] || textoHumano || t('err_generico')));
+}
+
 /* El emparejado con el creador lo hace el SERVIDOR, no esto.
 
    Con las reglas nuevas el navegador ya no puede crear una amistad ya
@@ -4771,8 +4857,8 @@ function pintarCarrusel() {
 
     const nameEl = document.createElement('span'); nameEl.className = 'cname';
     nameEl.textContent = tipo === 'enviada'
-      ? '@' + (c.username || c.nombre) + ' · ' + t('sol_enviada_corta')
-      : '@' + (c.username || c.nombre);
+      ? etiquetaDe(c) + ' · ' + t('sol_enviada_corta')
+      : etiquetaDe(c);
     el.append(wrap, nameEl);
 
     if (tipo === 'pendiente') {
@@ -4912,11 +4998,13 @@ async function enviarSketchFirestore(toUid) {
       : '⚠️ You are not friends anymore');
     return;
   }
-  /* fromName: usar @usuario, si no está disponible usar displayName, si no el email */
-  const senderName = usuario
-    || auth.currentUser.displayName
-    || auth.currentUser.email?.split('@')[0]
-    || 'Usuario';
+  /* El nombre que viaja con el dibujo y que verá quien lo reciba.
+
+     Ya NO se usa el principio del correo como último recurso. Dos motivos:
+     un correo no es un nombre, y sobre todo es un dato privado —a alguien
+     sin nombre de usuario se le estaba enseñando a sus amigos como
+     «@joseisrael5101», que es medio correo de verdad regalado. */
+  const senderName = usuario || auth.currentUser.displayName || 'Usuario';
   try {
     /* El nombre de quien recibe, para poder leer Firestore sin tener que ir
        a buscar cada uid en `users`. Sale del caché de amigos, que está vivo;
@@ -4944,7 +5032,7 @@ async function enviarSketchFirestore(toUid) {
     if (window.posthog) posthog.capture('sketch_sent', { strokeCount: trazos.length });
   } catch(e) {
     logRemoteError('enviarSketch', e);
-    toast('⚠️ ' + (lang === 'es' ? 'Error al enviar: ' : 'Error sending: ') + e.message);
+    fallo('enviarSketch', e, lang === 'es' ? 'No se pudo enviar el dibujo.' : "Couldn't send the drawing.");
     if (window.posthog) posthog.capture('sketch_send_failed', { error: e.code || e.message });
   }
 }
@@ -4956,40 +5044,6 @@ async function enviarSketchFirestore(toUid) {
    Tocar una → replay limpio. Tocar canvas → responder.
    El timer de expiración solo es visible aquí.
 ══════════════════════════════════════════════════════ */
-
-/* Generar dibujos simulados de los contactos (Firebase los reemplazará) */
-function generarDibujoSimulado(senderName) {
-  const strokes = [];
-  let t = Date.now() - Math.floor(Math.random()*3600000); /* hace 0-60 min */
-  let sid = 0;
-  let localHue = Math.random() * 360;
-  const numStrokes = 3 + Math.floor(Math.random()*4);
-
-  for (let s = 0; s < numStrokes; s++) {
-    sid++;
-    const startX = 50 + Math.random()*200;
-    const startY = 50 + Math.random()*200;
-    t += 200 + Math.random()*500;
-    strokes.push({ tipo:'inicio', x:startX, y:startY, sid, t, origW:300, origH:300 });
-    let cx = startX, cy = startY;
-    const points = 10 + Math.floor(Math.random()*30);
-    for (let p = 0; p < points; p++) {
-      const nx = cx + (Math.random()-0.5)*40;
-      const ny = cy + (Math.random()-0.5)*40;
-      localHue = (localHue + 2) % 360;
-      t += 15 + Math.random()*30;
-      strokes.push({
-        tipo:'seg', de:{x:cx,y:cy}, a:{x:nx,y:ny},
-        color:`hsl(${localHue},100%,55%)`, gw:2+Math.random()*4, sid, t
-      });
-      cx = nx; cy = ny;
-    }
-    t += 100;
-    strokes.push({ tipo:'fin', sid, t });
-    t += 500 + Math.random()*1500; /* pausa entre trazos */
-  }
-  return strokes;
-}
 
 function cargarBandeja() {
   if (!firebaseReady || !auth.currentUser) {
@@ -5182,7 +5236,7 @@ function renderInbox() {
         <div class="inbox-quien" title="${esc(t('prof_open'))}">
           <span class="inbox-av-wrap"><img class="inbox-card-av" src="${esc(safeUrl(genAvatar(msg.sender)))}" alt="${esc(msg.sender)}"></span>
           <div class="inbox-card-info">
-            <div class="inbox-card-name">@${esc(msg.sender)}</div>
+            <div class="inbox-card-name">${esc(etiquetaDe(msg.sender))}</div>
             <div class="inbox-card-sub">${esc(t('inbox_sent_you'))} · ${esc(agoText)}</div>
           </div>
         </div>
@@ -5616,7 +5670,7 @@ function pintarMarcaVideo(tc, fase, oscuro, quien) {
   tc.textBaseline = 'middle';
   tc.textAlign = 'left';
   tc.fillStyle = oscuro ? 'rgba(255,255,255,0.92)' : 'rgba(20,20,30,0.92)';
-  tc.fillText('@' + (quien || ''), x, VIDEO_H - 132);
+  tc.fillText(etiquetaDe(quien), x, VIDEO_H - 132);
 
   /* "Hecho con" + el logo con los colores moviéndose. Syne llega hasta 800:
      pedir 900 no existe y el navegador lo falsea engordando el trazo. */
@@ -5851,7 +5905,7 @@ galBtn.addEventListener('click', async () => {
     sharedAt: firebase.firestore.FieldValue.serverTimestamp()
   }).catch(e => {
     logRemoteError('galeria', e);
-    toast('⚠️ ' + t('gal_fail') + ': ' + e.message);
+    fallo('galeria', e, t('gal_fail'));
   });
   if (window.posthog) posthog.capture('gallery_shared', { strokeCount: copia.length });
 });
@@ -5901,7 +5955,7 @@ async function abrirOpinion() {
     : db.collection('landing_testimonials').add(datos);
   op.catch(e => {
     logRemoteError('opinionEscribir', e);
-    toast('⚠️ ' + t('review_fail') + ': ' + e.message);
+    fallo('opinion', e, t('review_fail'));
   });
   if (window.posthog) posthog.capture('review_submitted');
 }
@@ -6097,12 +6151,17 @@ function aviso({ quien, texto, foto, alTocar }) {
   const el = document.createElement('div');
   el.className = 'aviso';
   const img = document.createElement('img');
-  img.src = safeUrl(foto) || genAvatar(quien || '?');
+  /* Para las iniciales va el nombre sin arroba: con ella, la inicial de
+     «@roger» sería una arroba. */
+  img.src = safeUrl(foto) || genAvatar(identidad(quien).nombre);
   img.alt = '';
   const txt = document.createElement('div');
   txt.className = 'aviso-txt';
   const q = document.createElement('div');
-  q.className = 'aviso-quien'; q.textContent = '@' + (quien || '');
+  /* La arroba la decide `identidad`, no esto: si llega un nombre con
+     espacios o un código, ponerle una arroba delante lo empeora. Admite
+     tanto un perfil como un texto ya resuelto. */
+  q.className = 'aviso-quien'; q.textContent = etiquetaDe(quien);
   const d = document.createElement('div');
   d.className = 'aviso-que'; d.textContent = texto;
   txt.append(q, d);
@@ -6316,7 +6375,10 @@ function pintarAmigosAjustes(amigos) {
     avImg.src = safeUrl(c.photoURL) || genAvatar(c.nombre); avImg.alt = c.nombre;
     avWrap.appendChild(avImg);
     ponerPunto(avWrap, estadoPresencia(c.lastSeen));
-    const nameNode = document.createTextNode(c.nombre);
+    /* Con arroba, igual que en el carrusel y en la bandeja. Antes aquí
+       salían a secas y era el mismo amigo con dos nombres distintos en
+       dos pantallas de la misma app. */
+    const nameNode = document.createTextNode(etiquetaDe(c));
     const rmSpan = document.createElement('span'); rmSpan.textContent='✕';
     rmSpan.style.cssText='margin-left:4px;opacity:0.4;font-size:0.7rem;';
     chip.appendChild(avWrap); chip.appendChild(nameNode); chip.appendChild(rmSpan);
@@ -6325,7 +6387,7 @@ function pintarAmigosAjustes(amigos) {
     rmSpan.style.cursor = 'pointer';
 
     const eliminar = async () => {
-      if (!await ssConfirm(lang === 'es' ? `¿Eliminar a <b>${esc(c.nombre)}</b> de tus amigos?` : `Remove <b>${esc(c.nombre)}</b> from your friends?`)) return;
+      if (!await ssConfirm(lang === 'es' ? `¿Eliminar a <b>${esc(etiquetaDe(c))}</b> de tus amigos?` : `Remove <b>${esc(etiquetaDe(c))}</b> from your friends?`)) return;
       try {
         const uid = auth.currentUser.uid;
         const snap = await db.collection('friendships')
@@ -6336,7 +6398,7 @@ function pintarAmigosAjustes(amigos) {
         chip.remove();
         amigosCache = (amigosCache || []).filter(a => a.id !== c.id);
         buildCarousel();
-      } catch(e) { toast('❌ ' + e.message); }
+      } catch(e) { fallo('eliminarAmigo', e); }
     };
 
     /* Solo la ✕ elimina; el resto del chip abre el perfil. */
@@ -6489,7 +6551,7 @@ async function borrarCuenta() {
       return;
     }
     logRemoteError('borrarCuenta', e);
-    toast('⚠️ ' + t('del_fail') + ': ' + e.message);
+    fallo('borrarCuenta', e, t('del_fail'));
   }
 }
 document.getElementById('settings-delete-account').addEventListener('click', borrarCuenta);
@@ -6653,7 +6715,7 @@ document.getElementById('rename-save-btn').addEventListener('click', async () =>
     try {
       await auth.currentUser.updateProfile({ displayName: n });
       await db.collection('users').doc(auth.currentUser.uid).update({ displayName: n });
-    } catch(e) { toast('❌ ' + e.message); return; }
+    } catch(e) { fallo('cambiarNombre', e); return; }
   }
   usuario = n;
   const av = auth?.currentUser?.photoURL || genAvatar(n);
@@ -6800,8 +6862,7 @@ photoFileInput.addEventListener('change', async () => {
     avatarEl.src = avatarSrc; avMob.src = avatarSrc;
     toast(t('photo_updated'));
   } catch(e) {
-    console.error('Error subiendo foto:', e);
-    toast(t('err_upload_photo') + e.message);
+    fallo('subirFoto', e, t('err_upload_photo'));
   }
   photoFileInput.value = '';
 });
