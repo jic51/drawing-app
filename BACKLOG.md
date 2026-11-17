@@ -2,7 +2,96 @@
 
 > Este archivo es la fuente de verdad del proyecto.
 > Se actualiza en cada sesión de trabajo con Claude.
-> Última actualización: 2026-11-11
+> Última actualización: 2026-11-17
+
+---
+
+## 🟠 B1 — El dibujo de bienvenida del creador
+
+Pedido por Jose el 2026-11-17: *«al crear una cuenta nueva, yo aparezco como
+amigo, pero el usuario no sabe por qué o quién soy; deberíamos enviar un
+primer dibujo y un mensaje del creador dando la bienvenida»*.
+
+Tiene razón, y además arregla medio R1: un dibujo esperando en la bandeja
+**enseña para qué sirve la app en lugar de explicarlo**. Es lo mejor que
+puede pasarle a alguien que entra por primera vez.
+
+**Cómo lo haría (el reparto importa):**
+
+| Pieza | Quién |
+|---|---|
+| Jose dibuja el saludo UNA vez en la app y le da a un botón nuevo, «Guardar como bienvenida» (visible solo para @jose), que escribe los trazos en `config/bienvenida` | **Jose** |
+| `emparejarConCreador` —que ya existe y ya corre al crearse una cuenta— lee ese documento y crea el `sketch` de @jose hacia el nuevo, además de la amistad | Claude |
+| El `sketch` lleva un campo `mensaje` de texto, y la bandeja lo pinta debajo del dibujo | Claude |
+| Reglas: `config/bienvenida` abierto a lectura, escritura solo para el uid de Jose | Claude |
+
+**Por qué el dibujo lo tiene que hacer él:** es el saludo del creador. Uno
+generado por código se nota a la legua y hace justo lo contrario de lo que
+se busca.
+
+**Decisión pendiente:** ¿caduca a las 24 h como todos? Yo diría que **no**
+para este: es lo único que tiene alguien que acaba de entrar, y que
+desaparezca al día siguiente lo deja otra vez con la bandeja vacía.
+
+---
+
+## 🔴 LO QUE DICEN LOS DE FUERA (2026-11-17)
+
+Roger, amigo de Jose, probó la app sin que nadie le dijera qué mirar. Es la
+**primera opinión de alguien de fuera** que tenemos. Lo que dijo, separado
+en lo que es un hecho y lo que es gusto suyo:
+
+| # | Qué | Tipo | Estado |
+|---|-----|------|--------|
+| R1 | **«¿Para quién es la app? ¿Chicos? ¿Artistas?»** Lo preguntó **tres veces** en la misma conversación, y también «¿cómo se usaría o quién lo usaría?». No es una duda: es que no se entiende para qué es | 🔴 **El problema más grande que tenemos** | ⬜ Sin resolver |
+| R2 | **«Users have to log in»** — dicho por él como «lo único importante que no me gusta» | 🔴 Hecho, y coincide con el análisis de competencia | ⬜ Sin resolver |
+| R3 | **«El inglés y el español están todo mezclado»** | 🔴 Hecho, objetivo | ✅ Arreglado 2026-11-17, con prueba |
+| R4 | «I hate the AI emojis/icons» | 🟡 Hecho a medias: los emojis del sistema se ven distintos en cada aparato y parecen pegados | ⬜ Anotado (los iconos propios ya estaban aplazados) |
+| R5 | «I'd adjust the +Add and text at the bottom» | 🟡 Coincide con que Jose pidió quitar cosas del carrusel | ⬜ Anotado |
+| R6 | «No me gusta que el nombre esté animado» | 🟢 Gusto suyo, él mismo lo dice. **Yo no lo cambiaría**: es de lo poco que da personalidad | ⬜ No hacer salvo que lo diga alguien más |
+| R7 | «You could easily make an Inktober with this» | 💡 **Idea buena**: el reto semanal ya es eso. Un reto diario en octubre con etiqueta propia | ⬜ Para octubre |
+
+**Lo que le gustó, que también es información:** la sencillez, los retos, el
+arcoíris por defecto, que el grosor cambie con la velocidad, dónde están los
+iconos, y **que grabe el dibujo en video desde el navegador** («Impressive!»).
+Eso último es lo que hay que enseñar primero en cualquier sitio.
+
+### R1 — por qué es lo más urgente
+
+No es un problema de texto en la landing. Es que **la app no tiene una
+respuesta**. Hoy sirve para todo y para nada: mandar dibujos a amigos, hacer
+retos, compartir en redes, y pronto clases. Cuando alguien entra y no sabe
+qué hacer, se va.
+
+Hay que **elegir una** y que todo lo demás venga detrás. Las tres que veo:
+
+| Si es… | Entonces lo primero es | Y sobra |
+|---|---|---|
+| **Mensajes con amigos** (lo que es hoy) | Que entrar con amigos sea trivial: invitar por WhatsApp, probar sin cuenta | El video para redes |
+| **Un reto de dibujo diario** (lo de Roger) | El reto en portada, una galería pública del día, sin necesitar amigos | Que haga falta a quién mandarlo |
+| **Una herramienta para clases** (el plan de monetización) | El panel del profesor y los enlaces por alumno | Casi todo lo social |
+
+**Yo elegiría la segunda como puerta de entrada y la primera como lo que
+retiene.** El reto resuelve el problema de llegar solo —que es lo que mata a
+quien entra hoy— y da un motivo para volver mañana. Pero es una decisión de
+Jose, no mía, y hasta que esté tomada todo lo demás se construye a ciegas.
+
+### R2 — el login
+
+Dos señales independientes apuntan a lo mismo: Roger, y el análisis de
+competencia (quien llega solo no tiene nada que hacer).
+
+**Lo que yo haría, por orden:**
+
+1. **Dibujar sin cuenta.** Entras, dibujas, y la cuenta solo se pide al
+   ENVIAR. Lo que se tarda en pedir es lo que se pierde.
+2. **Que el enlace `?view=` lleve a un lienzo**, no a un cartel de registro.
+   Quien recibe un dibujo ya está dentro de la idea; es el mejor momento.
+3. **Probar sin cuenta antes de publicar en r/InternetIsBeautiful.** Ahí se
+   entra, se prueba y se cierra: con login obligatorio, la publicación se
+   desperdicia, y solo se puede publicar una vez.
+
+---
 >
 > **Orden de trabajo acordado (2026-11-04):**
 > 1. 🔴 Safari — la app está rota para la mayoría de iPhones

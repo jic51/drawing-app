@@ -1967,6 +1967,13 @@ const I18N = {
     err_username_fmt: 'Solo letras minúsculas, números y _ · mínimo 3 chars',
     err_username_taken: 'Ese @usuario ya está tomado, elige otro',
     u_free: 'Disponible', u_taken: 'Ya está tomado', u_checking: 'Comprobando…',
+    /* Textos que estaban escritos a mano en el HTML, unos siempre en inglés
+       y otros siempre en español. Se notaba: los colores decían "Rainbow"
+       en una interfaz en español. */
+    tt_arcoiris: 'Arcoíris', tt_blanco: 'Blanco', tt_negro: 'Negro',
+    tt_cancelar_resp: 'Cancelar respuesta', tt_cambiar_foto: 'Cambiar foto',
+    ph_tu_nombre: 'Tu nombre', ph_tu_nombre_ej: 'Tu nombre (ej: Joselo)',
+    ph_correo: 'tu@correo.com',
     err_saving: 'Error al guardar: ',
     link_expired: '❌ El enlace expiró o ya fue usado. Pide uno nuevo.',
     canvas_clean: 'El canvas ya está limpio',
@@ -2126,6 +2133,10 @@ const I18N = {
     err_username_fmt: 'Only lowercase letters, numbers and _ · minimum 3 chars',
     err_username_taken: 'That @username is taken, choose another',
     u_free: 'Available', u_taken: 'Already taken', u_checking: 'Checking…',
+    tt_arcoiris: 'Rainbow', tt_blanco: 'White', tt_negro: 'Black',
+    tt_cancelar_resp: 'Cancel reply', tt_cambiar_foto: 'Change photo',
+    ph_tu_nombre: 'Your name', ph_tu_nombre_ej: 'Your name (e.g. Joselo)',
+    ph_correo: 'you@email.com',
     err_saving: 'Error saving: ',
     link_expired: '❌ The link expired or was already used. Request a new one.',
     canvas_clean: 'Canvas is already clean',
@@ -2347,6 +2358,22 @@ function applyLang() {
      opacidad a medias que parecía un botón deshabilitado. */
   const langEs = q('lang-es-btn'); if (langEs) langEs.classList.toggle('activo', lang === 'es');
   const langEn = q('lang-en-btn'); if (langEn) langEn.classList.toggle('activo', lang === 'en');
+
+  /* Los textos que viven en atributos del HTML. Estaban escritos a mano y
+     por eso no cambiaban nunca de idioma: los colores decían "Rainbow" con
+     la app en español y los campos decían "Tu nombre" con la app en inglés.
+     Un amigo de Jose lo resumió como «el inglés y el español están todo
+     mezclado», y tenía razón. */
+  const attr = (sel, a, key) => document.querySelectorAll(sel)
+    .forEach(el => el.setAttribute(a, t(key)));
+  attr('[data-color="rainbow"]',  'title', 'tt_arcoiris');
+  attr('[data-color="#ffffff"]',  'title', 'tt_blanco');
+  attr('[data-color="#1a1a2e"]',  'title', 'tt_negro');
+  attr('#strip-back',             'title', 'tt_cancelar_resp');
+  attr('#settings-edit-photo',    'title', 'tt_cambiar_foto');
+  attr('#rename-inp',       'placeholder', 'ph_tu_nombre');
+  attr('#magic-nombre',     'placeholder', 'ph_tu_nombre_ej');
+  attr('#magic-email',      'placeholder', 'ph_correo');
 
   document.documentElement.lang = lang;
   if (typeof applySeason === 'function') applySeason();
