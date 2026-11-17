@@ -96,12 +96,20 @@ git pull origin main
 
 **Comprobación — ¿tengo de verdad el código nuevo?**
 
+Lo que hace falta subir hoy es **`emparejarConCreador`**: sin ella, quien se
+cree una cuenta nueva ya no te tiene de amigo, entra y no tiene a nadie a
+quien dibujar.
+
 ```bash
-grep -c "exports.notifySketchViewed" functions/index.js
+grep -c "exports.emparejarConCreador" functions/index.js
 ```
 
 Tiene que decir **1**. Si dice `0`, el `git pull` no trajo el código nuevo:
 repite el paso 4.
+
+> Ojo con `grep -c`: cuenta **líneas**, no apariciones. Que diga exactamente
+> `1` es lo correcto; si dijera `2` sería que la función está declarada dos
+> veces, que sería otro problema.
 
 ---
 
@@ -243,15 +251,19 @@ hablamos antes.
 firebase functions:list
 ```
 
-Tienen que salir **las dos**:
+Tienen que salir **las tres**:
 
 | Función | Qué hace |
 |---|---|
 | `sendSketchNotification` | Avisa cuando alguien te manda un dibujo |
 | `notifySketchViewed` | Avisa cuando alguien ve el tuyo |
+| `emparejarConCreador` | Pone a `@jose` de amigo a cada cuenta nueva |
 
-Si solo sale la primera, el despliegue no cogió el código nuevo: vuelve al
-paso 4 y comprueba el `grep`.
+En la salida del paso 10, las dos primeras dirán `Successful **update**
+operation` y la tercera `Successful **create** operation`, porque es nueva.
+
+**Si `emparejarConCreador` no sale**, el despliegue no cogió el código nuevo:
+vuelve al paso 4 y comprueba el `grep`.
 
 ---
 
@@ -269,6 +281,54 @@ Esto es lo único que confirma que funciona:
 
 Si el paso 3 funciona y el 5 no, el despliegue fue bien pero falla el aviso
 de vuelta: dímelo y lo miro.
+
+**Y la prueba de la función nueva**, que es otra cosa y hay que probarla
+aparte:
+
+6. Abre **sketch-send.com/app** en una ventana privada, o con otra cuenta de
+   Google.
+7. Crea una cuenta nueva y ponle un nombre de usuario.
+8. **En el carrusel tiene que aparecer `@jose`, con la etiqueta NEW**, y sin
+   que salte ninguna ventana por encima.
+
+Si no aparece, espera 30 segundos y recarga: la función tarda un momento la
+primera vez que se despierta. Si sigue sin salir:
+
+```bash
+firebase functions:log --only emparejarConCreador
+```
+
+y mándame las últimas líneas.
+
+---
+
+## Paso 13 — La web (esto es aparte, y NO son las funciones)
+
+Las funciones y la web se publican por caminos distintos. Lo de arriba sube
+las funciones; la web se publica sola **al fusionar a `main`**.
+
+Primero mira si hay algo mío esperando:
+
+```bash
+git fetch origin
+git log --oneline origin/main..origin/claude/sharp-hamilton-JPQNj
+```
+
+- **No imprime nada** → no hay nada pendiente, ya está todo en la web.
+- **Imprime una o varias líneas** → eso es trabajo que todavía NO está en
+  vivo. Para publicarlo:
+
+```bash
+git checkout main
+git merge origin/claude/sharp-hamilton-JPQNj
+git push origin main
+```
+
+**Qué debe salir:** el `merge` dice `Fast-forward` y una lista de archivos;
+el `push` acaba con una línea `main -> main`.
+
+Luego espera **1 o 2 minutos** (GitHub Pages tarda en publicar) y recarga
+**sketch-send.com/app** con `Cmd + Shift + R`.
 
 ---
 
