@@ -4,8 +4,9 @@
    Reels sin que nadie se diera cuenta:
    - Marco 1080x1920 FIJO. Antes grababa el lienzo de la pantalla, así que
      en un portátil estrecho salía un video de 266x474.
-   - Un dibujo largo se acorta. Antes, dos minutos de dibujo daban dos
-     minutos de video.
+   - Un dibujo largo se acorta, PERO sin pasarse: nunca más de
+     VIDEO_VEL_MAX aumentos. Antes dos minutos de dibujo daban dos minutos
+     de video; luego se pasó al otro extremo y salían a 6 aumentos.
    - La franja de la marca no se come el dibujo.
    - El archivo tiene contenido de verdad y la extensión coincide con lo
      grabado (un .webm que por dentro es MP4 no abre en iOS).
@@ -91,8 +92,18 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   if (r.video) {
     chk(r.video.size > 20000, 'el archivo tiene contenido', { bytes: r.video.size });
     chk(/\.(webm|mp4)$/.test(r.video.nombre), 'extensión correcta', r.video.nombre);
-    /* 30 s de dibujo acotados a 10 + 1,3 de cola ≈ 11-13 s de reloj. */
-    chk(r.relojMs < 18000, 'un dibujo de 30 s se acorta (no graba 30 s)', { segundosReales: (r.relojMs/1000).toFixed(1) });
+    /* El dibujo de prueba dura 30 s. La regla cambió el 2026-11-17: antes
+       mandaba la DURACIÓN (tope 10 s, o sea 3 aumentos) y Jose dijo que los
+       vídeos salían «muy rápidos». Ahora manda la VELOCIDAD: nunca más de
+       VIDEO_VEL_MAX aumentos, aunque el video salga más largo.
+
+       Así que 30 s a 1,5 aumentos = 20 s + 1,3 de cola ≈ 21-23 s de reloj.
+       Lo que esto sigue vigilando —y es el fallo original— es que un dibujo
+       largo NO se grabe entero a velocidad real. */
+    chk(r.relojMs < 27000, 'un dibujo de 30 s se acorta (no graba 30 s enteros)',
+        { segundosReales: (r.relojMs/1000).toFixed(1) });
+    chk(r.relojMs > 15000, 'pero NO se acelera tanto que no se entienda',
+        { segundosReales: (r.relojMs/1000).toFixed(1) });
   }
 
   /* Comprobar el lienzo de grabación: tamaño y marca abajo. */

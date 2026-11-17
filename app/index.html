@@ -2035,7 +2035,7 @@ const I18N = {
     sol_rechazar: 'Ahora no',
     sol_aceptada: 'Ahora son amigos',
     sol_rechazada: 'Listo, no se agregó',
-    sol_creador: 'Creador de SketchSend',
+    sol_creador: 'Dueño de SketchSend',
     nuevos_titulo: 'Tienes amigos nuevos',
     nuevos_cerrar: 'Entendido',
     aviso_visto: 'vio tu dibujo 👀',
@@ -2203,7 +2203,7 @@ const I18N = {
     sol_rechazar: 'Not now',
     sol_aceptada: 'You are friends now',
     sol_rechazada: 'Done, not added',
-    sol_creador: 'Made SketchSend',
+    sol_creador: 'SketchSend owner',
     nuevos_titulo: 'You have new friends',
     nuevos_cerrar: 'Got it',
     aviso_visto: 'saw your drawing 👀',
@@ -5605,7 +5605,19 @@ pngBtn.addEventListener('click', () => {
       lo que ya se ve en la app.
 ══════════════════════════════════════════════════════ */
 const VIDEO_W = 1080, VIDEO_H = 1920;
-const VIDEO_MAX_MS = 10000;      /* lo que dura mirar sin aburrirse */
+/* Cuánto puede durar el video antes de acelerarlo, y cuánto se puede
+   acelerar como mucho.
+
+   Antes el tope era 10 s a secas, y eso daba vídeos ridículos: un dibujo de
+   un minuto salía a 6 aumentos. Jose: «el video está muy rápido... no está
+   en velocidad normal (la que usó el usuario)». Tenía razón, y es que el
+   tope de DURACIÓN mandaba sobre todo lo demás.
+
+   Ahora manda la VELOCIDAD: nunca más de 2,5 aumentos, pase lo que pase.
+   Un dibujo de un minuto sale en 24 s en vez de en 10, y se entiende lo
+   que pasó. Si dura menos de 20 s va tal cual, a la velocidad real. */
+const VIDEO_MAX_MS = 20000;      /* hasta aquí, velocidad real */
+const VIDEO_VEL_MAX = 2.5;       /* y de ahí, nunca más rápido que esto */
 const VIDEO_COLA_MS = 1300;      /* el dibujo terminado se queda quieto */
 const VIDEO_PASO_MAX = 50;       /* ms de dibujo que puede avanzar un cuadro */
 const VIDEO_MARGEN = 48;         /* para que nada quede pegado al borde */
@@ -5710,8 +5722,11 @@ vidBtn.addEventListener('click', async () => {
   try {
     const comp = comprimirGaps(segs);
     const msReal = comp[comp.length - 1].tRel || 1;
-    /* Si cabe en 10 s va a su ritmo; si no, se acelera por igual. */
-    const factor = msReal > VIDEO_MAX_MS ? VIDEO_MAX_MS / msReal : 1;
+    /* Si cabe en el tope va a su ritmo; si no, se acelera —pero hay un
+       suelo: nunca por encima de VIDEO_VEL_MAX. Prefiero un video más
+       largo que uno que va tan rápido que no se entiende. */
+    const factor = Math.max(1 / VIDEO_VEL_MAX,
+                            msReal > VIDEO_MAX_MS ? VIDEO_MAX_MS / msReal : 1);
     const msVideo = msReal * factor;
     const durSec = Math.ceil((msVideo + VIDEO_COLA_MS) / 1000);
 
@@ -5749,12 +5764,23 @@ vidBtn.addEventListener('click', async () => {
     const fondo = canvasBg();
     const oscuro = esDark();
 
+    /* MP4 PRIMERO, y webm solo si el navegador no sabe hacer MP4.
+
+       Jose: «se sigue quedando, pero creo que fue porque descargué el video
+       y luego lo envié a alguien». Eso encaja: el archivo salía en webm
+       porque Chrome lo ofrece primero, y webm es el formato que NO entienden
+       ni WhatsApp, ni el visor de fotos de iOS, ni muchos reproductores de
+       Android. Lo que no entienden lo reconvierten, y ahí es donde se
+       entrecorta.
+
+       H.264 dentro de MP4 lo reproduce absolutamente todo. Chrome lo admite
+       desde hace años; el orden de antes era una herencia de cuando no. */
     const formatos = [
+      'video/mp4; codecs=avc1.42E01E',   /* el que entiende todo el mundo */
+      'video/mp4',
       'video/webm; codecs=vp9',
       'video/webm; codecs=vp8',
-      'video/webm',
-      'video/mp4; codecs=avc1.42E01E',   /* Safari nunca acepta webm */
-      'video/mp4'
+      'video/webm'
     ];
     const mimeType = formatos.find(f => {
       try { return MediaRecorder.isTypeSupported(f); } catch (e) { return false; }
