@@ -1,0 +1,137 @@
+/* La pregunta del día: el posicionamiento, convertido en prueba.
+ *
+ * El 2026-11-18 Jose decidió para qué es la app, que era el problema más
+ * grande que tenía (su amigo Roger preguntó TRES veces «¿para quién es?»):
+ *
+ *   «Cada día hay una pregunta. La dibujas en 30 segundos y se la mandas a
+ *    tu gente. Ellos te ven dibujarla. Mañana desaparece.»
+ *
+ * Una decisión de producto se deshace sola si nadie la vigila: alguien
+ * cambia el reto a semanal «por simplificar», o el estado vacío vuelve a
+ * decir «no tienes dibujos» en vez de mandarte a dibujar la de hoy. Esto
+ * comprueba lo que de verdad la sostiene.
+ *
+ * Ejecutar:  node test-pregunta-diaria.js   (o NAVEGADOR=webkit node ...)
+ */
+const { chromium, webkit, firefox } = require('playwright');
+const NAVEGADOR = { chromium, webkit, firefox }[process.env.NAVEGADOR || 'chromium'] || chromium;
+const { servir, erroresDeLaApp } = require('./test-server');
+
+let f = 0;
+const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==undefined?'   '+JSON.stringify(d):'')); };
+
+(async () => {
+  const SITIO = await servir();
+  const b = await NAVEGADOR.launch();
+  const p = await b.newPage({ viewport: { width: 1280, height: 860 } });
+  const errs = []; p.on('pageerror', e => errs.push(e.message));
+  await p.goto(SITIO.pagina('app/index.html'));
+  await p.waitForTimeout(2500);
+
+  /* ── 1. Cambia cada DÍA, no cada semana ───────────────────────────── */
+  const ritmo = await p.evaluate(() => {
+    const dia = 86400000;
+    const base = Date.UTC(2026, 5, 15, 12, 0, 0);   /* mediodía en RD */
+    const hoy    = retoDelDia(base);
+    const manana = retoDelDia(base + dia);
+    const semana = retoDelDia(base + 7 * dia);
+
+    /* ¿Cuántos días distintos seguidos antes de repetirse? */
+    const vistos = new Set();
+    let n = 0;
+    for (let i = 0; i < 400; i++) {
+      const r = retoDelDia(base + i * dia);
+      if (vistos.has(r.en)) break;
+      vistos.add(r.en); n++;
+    }
+
+    /* Y que dos momentos del mismo día (en RD) den lo mismo. El corte
+       está a medianoche UTC-4, o sea a las 04:00 UTC. */
+    const manana8  = retoDelDia(Date.UTC(2026, 5, 15, 12, 0, 0));
+    const noche23  = retoDelDia(Date.UTC(2026, 5, 16, 3, 0, 0));
+
+    return {
+      cambiaManana: hoy.en !== manana.en,
+      distintoEnSemana: hoy.en !== semana.en,
+      sinRepetir: n,
+      total: RETOS.length,
+      mismoDiaMismaPregunta: manana8.en === noche23.en
+    };
+  });
+
+  chk(ritmo.cambiaManana, 'la pregunta cambia de un día al siguiente');
+  chk(ritmo.mismoDiaMismaPregunta,
+      'a lo largo del mismo día no cambia (el corte es medianoche en RD, no en UTC)');
+  chk(ritmo.sinRepetir >= 45,
+      'tarda semanas en repetirse',
+      { diasSinRepetir: ritmo.sinRepetir, total: ritmo.total });
+
+  /* ── 2. Es lo primero que se ve al abrir con el lienzo vacío ──────── */
+  const enPantalla = await p.evaluate(async () => {
+    document.querySelectorAll('#splash-screen,#auth-screen').forEach(e => { e.style.display='none'; });
+    document.getElementById('app').style.display = 'flex';
+    usuario = 'jose';
+    setupCanvas();
+    trazos.length = 0;
+    promptsInicializados = false;
+    iniciarPromptsCanvas();
+    await new Promise(r => setTimeout(r, 1400));
+    const caja = document.getElementById('drawing-prompts');
+    const txt  = document.getElementById('prompt-text');
+    const cs = getComputedStyle(caja);
+    return {
+      visible: +cs.opacity > 0.5,
+      esElReto: caja.classList.contains('reto'),
+      texto: (txt.textContent || '').trim(),
+      contieneLaDeHoy: (txt.textContent || '').includes(retoDelDia()[lang] || retoDelDia().en)
+    };
+  });
+
+  chk(enPantalla.visible, 'la pregunta se ve al abrir con el lienzo vacío', enPantalla.texto.slice(0, 70));
+  chk(enPantalla.esElReto, 'y es la pregunta del día, no una idea suelta');
+  chk(enPantalla.contieneLaDeHoy, 'enseña la pregunta que toca hoy', enPantalla.texto.slice(0, 70));
+  chk(/^hoy|^today/i.test(enPantalla.texto),
+      'empieza por «Hoy», no por «Reto de la semana»', enPantalla.texto.slice(0, 40));
+
+  /* ── 3. Los textos vacíos mandan a dibujar, no informan de la nada ── */
+  const textos = await p.evaluate(() => {
+    const r = {};
+    for (const idioma of ['es', 'en']) {
+      lang = idioma;
+      r[idioma] = {
+        vacio: t('inbox_empty_hint'),
+        sinAmigos: t('no_friends_hint'),
+        titulo: t('reto_titulo')
+      };
+    }
+    return r;
+  });
+
+  chk(/pregunta de hoy/i.test(textos.es.vacio) && /today's question/i.test(textos.en.vacio),
+      'la bandeja vacía manda a dibujar la de hoy', textos.es.vacio);
+  chk(!/semana|week/i.test(textos.es.titulo + textos.en.titulo),
+      'ya no queda ningún «de la semana»', textos.es.titulo + ' / ' + textos.en.titulo);
+
+  /* ── 4. La landing dice lo mismo ──────────────────────────────────── */
+  const p2 = await b.newPage({ viewport: { width: 1280, height: 860 } });
+  await p2.goto(SITIO.pagina('index.html'));
+  await p2.waitForTimeout(3200);
+  const landing = await p2.evaluate(() => {
+    const h = document.querySelector('[data-i18n="hero_tagline"]');
+    const s = document.querySelector('[data-i18n="hero_subtitle"]');
+    return { titular: (h && h.textContent || '').trim(), sub: (s && s.textContent || '').trim() };
+  });
+  chk(/question a day|pregunta al día/i.test(landing.titular),
+      'el titular de la landing habla de la pregunta del día', landing.titular);
+  chk(/30 seconds|30 segundos/.test(landing.sub) && /gone|desaparece/i.test(landing.sub),
+      'y el subtítulo dice los 30 segundos y que desaparece', landing.sub);
+  await p2.close();
+
+  const propios = erroresDeLaApp(errs);
+  chk(propios.length === 0, 'sin errores de la app', propios);
+
+  await b.close();
+  await SITIO.cerrar();
+  if (f) { console.log(`\n❌ ${f} fallo(s)`); process.exit(1); }
+  console.log('\n✅ la app dice lo mismo en todas partes: una pregunta al día');
+})();

@@ -1,4 +1,13 @@
-/* Prueba: el reto semanal es EL MISMO para todo el mundo.
+/* Prueba: la pregunta del día es LA MISMA para todo el mundo.
+
+   El 2026-11-18 el reto pasó de semanal a diario. Lo que esta prueba vigila
+   NO cambió: que la pregunta no dependa del reloj de quien mira. Es la
+   regla que puso Jose y la que hace que dos amigos puedan comparar.
+
+   Lo delicado es que ahora hay dos cosas que cumplir a la vez: la misma
+   para todos, Y que cambie a una hora que sea de verdad un día nuevo. Se
+   cuentan los días desde medianoche en RD (UTC-4), igual en todo el
+   planeta.
 
    No hay backend detrás: el reto se calcula a partir de la fecha. Eso solo
    funciona si la cuenta es idéntica en cualquier parte del planeta, así que
@@ -52,37 +61,42 @@ const chk = (cond, msg, dato) => {
   chk(unicos.length === 1, 'mismo reto en ' + husos.length + ' husos horarios',
       unicos.length === 1 ? { reto: unicos[0] } : vistos);
 
-  /* ── 2. El cambio cae exactamente en el lunes 00:00 UTC ─────────── */
-  console.log('\n— El cambio de semana —');
+  /* ── 2. El cambio cae en medianoche de RD, no de UTC ────────────── */
+  console.log('\n— El cambio de día —');
   const ctx = await b.newContext();
   const p = await ctx.newPage();
   await p.goto(ARCHIVO);
   await p.waitForTimeout(3000);
 
   const r = await p.evaluate(() => {
-    const L = Date.UTC(2026, 10, 9);          // lunes 9 nov 2026, 00:00 UTC
+    /* Medianoche en RD = 04:00 UTC. */
+    const M = Date.UTC(2026, 10, 9, 4, 0, 0);
     return {
-      diaEpoca: new Date(RETO_EPOCA).getUTCDay(),
-      semAntes: semanaActual(L - 60000),
-      semJusto: semanaActual(L),
-      semDesp:  semanaActual(L + 60000),
-      retoAntes: retoDeLaSemana(L - 60000).en,
-      retoJusto: retoDeLaSemana(L).en,
+      desfase: RETO_DESFASE_H,
+      diaAntes: diaActual(M - 60000),
+      diaJusto: diaActual(M),
+      diaDesp:  diaActual(M + 60000),
+      retoAntes: retoDelDia(M - 60000).en,
+      retoJusto: retoDelDia(M).en,
+      /* Y que a medianoche UTC NO cambie: ahí todavía son las 8 de la
+         tarde en RD y no ha empezado ningún día. */
+      cambiaEnUtc: diaActual(Date.UTC(2026, 10, 9) - 60000) !== diaActual(Date.UTC(2026, 10, 9)),
     };
   });
-  chk(r.diaEpoca === 1, 'la fecha de origen cae en lunes UTC', { dia: r.diaEpoca });
-  chk(r.semAntes + 1 === r.semJusto, 'la semana avanza justo en ese instante',
-      { antes: r.semAntes, justo: r.semJusto });
-  chk(r.semJusto === r.semDesp, 'y no vuelve a avanzar un minuto después');
-  chk(r.retoAntes !== r.retoJusto, 'el reto cambia al cruzar el lunes',
+  chk(r.desfase === -4, 'el día se cuenta desde medianoche en RD', { desfase: r.desfase });
+  chk(r.diaAntes + 1 === r.diaJusto, 'el día avanza justo en ese instante',
+      { antes: r.diaAntes, justo: r.diaJusto });
+  chk(r.diaJusto === r.diaDesp, 'y no vuelve a avanzar un minuto después');
+  chk(r.retoAntes !== r.retoJusto, 'la pregunta cambia al cruzar la medianoche de RD',
       { antes: r.retoAntes, despues: r.retoJusto });
+  chk(!r.cambiaEnUtc, 'y NO cambia a medianoche UTC, que en RD son las 8 de la tarde');
 
   /* ── 3. El ciclo recorre la lista entera ────────────────────────── */
   console.log('\n— El ciclo de retos —');
   const ciclo = await p.evaluate(() => {
-    const L = Date.UTC(2026, 10, 9), SEM = 7 * 24 * 3600 * 1000;
+    const L = Date.UTC(2026, 10, 9, 12), DIA = 24 * 3600 * 1000;
     const sec = [];
-    for (let i = 0; i < 60; i++) sec.push(retoDeLaSemana(L + i * SEM).en);
+    for (let i = 0; i < RETOS.length + 2; i++) sec.push(retoDelDia(L + i * DIA).en);
     return {
       total: RETOS.length,
       distintos: new Set(sec.slice(0, RETOS.length)).size,
@@ -90,13 +104,13 @@ const chk = (cond, msg, dato) => {
       repiteSeguido: sec.some((x, i) => i > 0 && x === sec[i - 1]),
       /* Fechas muy anteriores a la época dan semana negativa: el módulo debe
          seguir cayendo dentro de la lista, no devolver undefined. */
-      pasado: retoDeLaSemana(Date.UTC(1999, 0, 1)),
+      pasado: retoDelDia(Date.UTC(1999, 0, 1)),
     };
   });
   chk(ciclo.distintos === ciclo.total,
-      'un ciclo usa los ' + ciclo.total + ' retos sin repetir', { distintos: ciclo.distintos });
+      'un ciclo usa las ' + ciclo.total + ' preguntas sin repetir', { distintos: ciclo.distintos });
   chk(ciclo.reinicia, 'y vuelve a empezar al terminar la lista');
-  chk(!ciclo.repiteSeguido, 'nunca repite el mismo reto dos semanas seguidas');
+  chk(!ciclo.repiteSeguido, 'nunca repite la misma pregunta dos días seguidos');
   chk(ciclo.pasado && ciclo.pasado.en,
       'una fecha anterior a la época sigue dando un reto válido', ciclo.pasado);
 
@@ -131,11 +145,11 @@ const chk = (cond, msg, dato) => {
     };
   });
   chk(!m.badgeVisible, 'en móvil la insignia se oculta (se cortaba a la mitad)');
-  chk(/Challenge of the week|Reto de la semana/.test(m.prompt),
-      'en móvil el reto llega por la sugerencia del lienzo', m.prompt);
+  chk(/^Today:|^Hoy:/.test(m.prompt.trim()),
+      'en móvil la pregunta llega por la sugerencia del lienzo', m.prompt);
   await p2.close();
 
   await b.close(); if (SITIO) await SITIO.cerrar();
-  console.log(fallos ? '\n❌ ' + fallos + ' fallo(s)' : '\n✅ Reto semanal correcto');
+  console.log(fallos ? '\n❌ ' + fallos + ' fallo(s)' : '\n✅ La pregunta del día es la misma para todos');
   process.exit(fallos ? 1 : 0);
 })();

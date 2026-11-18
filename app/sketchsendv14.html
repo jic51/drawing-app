@@ -216,7 +216,7 @@
       border:1px solid var(--border); background:var(--surface2); color:var(--accent2); white-space:nowrap;
     }
 
-    /* Reto de la semana. Mismo molde que la insignia de temporada, pero con
+    /* La pregunta de hoy. Mismo molde que la insignia de temporada, pero con
        el color de acento para que se distinga de un vistazo. En pantallas
        estrechas se recorta en vez de empujar al resto de la fila. */
     .reto-badge {
@@ -1928,11 +1928,11 @@ const I18N = {
     save_sks: '📦 Proyecto (.SKS)', cancel: 'Cancelar',
     save_plain: 'Guardar',
     inbox_title: '✉️ Dibujos recibidos', inbox_close: 'Cerrar',
-    inbox_empty: 'No tienes dibujos nuevos', inbox_sent_you: 'Te envió un dibujo',
+    inbox_empty: 'Nada nuevo por ahora', inbox_sent_you: 'Te envió un dibujo',
     inbox_del: 'Borrar sin verlo',
     inbox_del_warn: '¿Borrar el dibujo de <b>{name}</b> sin verlo?<br><br>No se puede recuperar.',
-    inbox_empty_hint: 'Dibuja algo y envíalo: cuando te respondan, aparecerá aquí.',
-    no_friends_hint: 'Comparte tu enlace para que te agreguen →',
+    inbox_empty_hint: 'Dibuja la pregunta de hoy y mándasela a alguien. Lo que te respondan sale aquí.',
+    no_friends_hint: 'Con una sola persona ya funciona. Mándale tu enlace →',
     edit_profile: 'Editar perfil', edit_profile_sub: 'Nombre, @usuario y correo',
     email_row: 'Correo',
     safari_usa_correo: 'Safari bloquea ese camino. Entra con tu correo, justo abajo.',
@@ -1980,7 +1980,7 @@ const I18N = {
     friend_not_found: '❌ Usuario no encontrado', friend_self: '❌ No puedes agregarte a ti mismo',
     friend_exists: 'Ya tienes amistad con ese usuario', copied: '✓ Copiado',
     loading: 'Cargando…', creating: 'Creando cuenta…', entering: 'Entrando…',
-    no_friends_yet: 'Aún no tienes amigos en SketchSend',
+    no_friends_yet: 'Todavía no tienes a nadie aquí',
     login_to_see: 'Inicia sesión para ver tus amigos',
     err_fill_all: 'Completa todos los campos',
     err_email_pass: 'Completa email y contraseña',
@@ -2060,8 +2060,9 @@ const I18N = {
     nuevos_cerrar: 'Entendido',
     aviso_visto: 'vio tu dibujo 👀',
 
-    reto_titulo: 'Reto de la semana — el mismo para todo el mundo',
-    reto_prompt: '🎯 Reto de la semana: dibuja ',
+    reto_titulo: 'La pregunta de hoy — la misma para todo el mundo',
+    reto_hoy: 'Hoy: ',
+    reto_prompt: 'Hoy: dibuja ',
     sin_senal: 'Sin conexión',
     senal_vuelve: 'Conexión restablecida',
     viewer_drawing_by: 'Dibujo de', viewer_tagline: 'Cada mensaje es un dibujo', viewer_cta: '✏️ Envía tu propio dibujo', viewer_hint: 'Crea una cuenta gratis y empieza a dibujar. ¡Es rápido!', viewer_loading: 'Cargando dibujo... ✏️', viewer_expired: '⏳ Este dibujo expiró o no existe.',
@@ -2103,11 +2104,11 @@ const I18N = {
     save_sks: '📦 Project (.SKS)', cancel: 'Cancel',
     save_plain: 'Save',
     inbox_title: '✉️ Received drawings', inbox_close: 'Close',
-    inbox_empty: 'No new drawings', inbox_sent_you: 'sent you a drawing',
+    inbox_empty: 'Nothing new yet', inbox_sent_you: 'sent you a drawing',
     inbox_del: 'Delete without viewing',
     inbox_del_warn: 'Delete <b>{name}</b>\'s drawing without seeing it?<br><br>It cannot be recovered.',
-    inbox_empty_hint: 'Draw something and send it — replies will show up here.',
-    no_friends_hint: 'Share your link so people can add you →',
+    inbox_empty_hint: "Draw today's question and send it to someone. Their replies land here.",
+    no_friends_hint: 'One person is enough to start. Send them your link →',
     edit_profile: 'Edit profile', edit_profile_sub: 'Name, @username and email',
     email_row: 'Email',
     safari_usa_correo: 'Safari blocks that route. Sign in with your email, just below.',
@@ -2154,7 +2155,7 @@ const I18N = {
     friend_not_found: '❌ User not found', friend_self: "❌ You can't add yourself",
     friend_exists: 'Already friends with that user', copied: '✓ Copied',
     loading: 'Loading…', creating: 'Creating account…', entering: 'Logging in…',
-    no_friends_yet: 'You have no friends on SketchSend yet',
+    no_friends_yet: 'Nobody here yet',
     login_to_see: 'Log in to see your friends',
     err_fill_all: 'Fill in all fields',
     err_email_pass: 'Enter your email and password',
@@ -2228,8 +2229,9 @@ const I18N = {
     nuevos_cerrar: 'Got it',
     aviso_visto: 'saw your drawing 👀',
 
-    reto_titulo: 'Challenge of the week — the same for everyone',
-    reto_prompt: '🎯 Challenge of the week: draw ',
+    reto_titulo: "Today's question — the same for everyone",
+    reto_hoy: 'Today: ',
+    reto_prompt: 'Today: draw ',
     sin_senal: 'No connection',
     senal_vuelve: 'Back online',
     viewer_drawing_by: 'Drawing by', viewer_tagline: 'Every message is a drawing', viewer_cta: '✏️ Send your own drawing', viewer_hint: 'Create a free account and start drawing. It\'s quick!', viewer_loading: 'Loading drawing... ✏️', viewer_expired: '⏳ This drawing has expired or doesn\'t exist.',
@@ -2595,51 +2597,126 @@ modoOscuro.addEventListener('change', () => redibujar());
    unas horas no estarían en el mismo. En UTC el cambio ocurre en el mismo
    instante para todos: el lunes a las 00:00 UTC.
 ══════════════════════════════════════════════════════ */
+/* LA PREGUNTA DE HOY.
+
+   60 preguntas, una por día, la misma para todo el mundo. 60 y no 20 porque
+   con una al día se repetirían cada tres semanas y se notaría.
+
+   Qué hace que una pregunta funcione aquí, por si hay que añadir más:
+   - Se contesta en 30 segundos. «Tu desayuno», no «tu ciudad favorita».
+   - Tiene UNA respuesta tuya. Lo genérico («un árbol») no da ganas; lo
+     tuyo («el árbol que ves desde tu ventana») sí.
+   - Se puede dibujar mal y seguir valiendo. Esa es media gracia de la app.
+   - Nada que obligue a pensar mucho: si hay que pensar, se cierra la app. */
 const RETOS = [
-  { es:'tu desayuno',                 en:'your breakfast' },
-  { es:'tu animal favorito',          en:'your favourite animal' },
-  { es:'cómo te sientes hoy',         en:'how you feel today' },
-  { es:'tu lugar favorito',           en:'your favourite place' },
-  { es:'un monstruo simpático',       en:'a friendly monster' },
-  { es:'lo que ves por la ventana',   en:'what you see out the window' },
-  { es:'tu comida favorita',          en:'your favourite food' },
-  { es:'un robot',                    en:'a robot' },
-  { es:'a quien le mandas esto',      en:'whoever you are sending this to' },
-  { es:'tu canción favorita',         en:'your favourite song' },
-  { es:'algo que te dio risa',        en:'something that made you laugh' },
-  { es:'tu casa',                     en:'your house' },
-  { es:'un superhéroe inventado',     en:'a superhero you invent' },
-  { es:'el tiempo que hace',          en:'the weather right now' },
-  { es:'tu planta o tu mascota',      en:'your plant or your pet' },
-  { es:'algo imposible',              en:'something impossible' },
-  { es:'tu taza favorita',            en:'your favourite mug' },
-  { es:'el mejor día de tu semana',   en:'the best day of your week' },
-  { es:'un dinosaurio con sombrero',  en:'a dinosaur wearing a hat' },
-  { es:'lo primero que se te ocurra', en:'the first thing that comes to mind' },
+  { es:'tu desayuno',                   en:'your breakfast' },
+  { es:'cómo te sientes hoy',           en:'how you feel today' },
+  { es:'lo que ves por la ventana',     en:'what you see out your window' },
+  { es:'tu animal favorito',            en:'your favourite animal' },
+  { es:'un monstruo simpático',         en:'a friendly monster' },
+  { es:'tu taza favorita',              en:'your favourite mug' },
+  { es:'el tiempo que hace',            en:'the weather right now' },
+  { es:'tu comida favorita',            en:'your favourite food' },
+  { es:'algo que te dio risa',          en:'something that made you laugh' },
+  { es:'un robot',                      en:'a robot' },
+  { es:'a quien le mandas esto',        en:'whoever you are sending this to' },
+  { es:'lo que tienes en la mano',      en:'what is in your hand' },
+  { es:'tu planta o tu mascota',        en:'your plant or your pet' },
+  { es:'un dinosaurio con sombrero',    en:'a dinosaur wearing a hat' },
+  { es:'tu casa',                       en:'your house' },
+  { es:'algo imposible',                en:'something impossible' },
+  { es:'lo que cenaste anoche',         en:'what you had for dinner' },
+  { es:'un superhéroe inventado',       en:'a superhero you invent' },
+  { es:'tu zapato',                     en:'your shoe' },
+  { es:'lo primero que se te ocurra',   en:'the first thing that comes to mind' },
+  { es:'tu cara ahora mismo',           en:'your face right now' },
+  { es:'el sitio donde estás',          en:'the place you are in' },
+  { es:'algo que te dé miedo',          en:'something that scares you' },
+  { es:'tu canción favorita',           en:'your favourite song' },
+  { es:'un gato haciendo algo raro',    en:'a cat doing something weird' },
+  { es:'lo que harías hoy si pudieras', en:'what you would do today if you could' },
+  { es:'tu desorden',                   en:'your mess' },
+  { es:'una planta que no existe',      en:'a plant that does not exist' },
+  { es:'lo que te falta para dormir',   en:'what you need before you can sleep' },
+  { es:'tu lugar favorito',             en:'your favourite place' },
+  { es:'algo que perdiste',             en:'something you lost' },
+  { es:'un pájaro cualquiera',          en:'any bird at all' },
+  { es:'lo que suena ahora',            en:'what you can hear right now' },
+  { es:'tu mano',                       en:'your own hand' },
+  { es:'una casa en el cielo',          en:'a house in the sky' },
+  { es:'lo que desayunarías siempre',   en:'what you would eat every day' },
+  { es:'alguien que echas de menos',    en:'someone you miss' },
+  { es:'un pez muy raro',               en:'a very strange fish' },
+  { es:'el mejor día de tu semana',     en:'the best day of your week' },
+  { es:'tu despertador',                en:'your alarm clock' },
+  { es:'algo que compraste y no usas',  en:'something you bought and never use' },
+  { es:'una nube con forma de algo',    en:'a cloud shaped like something' },
+  { es:'lo que llevas puesto',          en:'what you are wearing' },
+  { es:'tu bebida de siempre',          en:'your usual drink' },
+  { es:'un bicho inventado',            en:'a bug you invent' },
+  { es:'lo que ves al cerrar los ojos', en:'what you see with your eyes closed' },
+  { es:'tu silla',                      en:'your chair' },
+  { es:'algo que harías mejor hoy',     en:'something you would redo today' },
+  { es:'una puerta a otro sitio',       en:'a door to somewhere else' },
+  { es:'tu pelo hoy',                   en:'your hair today' },
+  { es:'lo que te hizo salir de casa',  en:'what got you out of the house' },
+  { es:'un postre que te inventas',     en:'a dessert you make up' },
+  { es:'el último mensaje que leíste',  en:'the last message you read' },
+  { es:'algo redondo que tengas cerca', en:'something round near you' },
+  { es:'tu versión de ti mismo',        en:'your version of yourself' },
+  { es:'una luna distinta',             en:'a different moon' },
+  { es:'lo que te queda por hacer hoy', en:'what you still have to do today' },
+  { es:'un sombrero para tu mascota',   en:'a hat for your pet' },
+  { es:'algo que te gusta y da pena',   en:'something you like that makes you sad' },
+  { es:'lo que pasó hoy, en un dibujo', en:'today, as one drawing' },
 ];
 
-/* Lunes 00:00 UTC. Desde aquí se cuentan las semanas. */
-const RETO_EPOCA = Date.UTC(2024, 0, 1);
+/* CUÁNDO EMPIEZA «HOY».
 
-function semanaActual(ahora) {
-  const ms = (ahora || Date.now()) - RETO_EPOCA;
-  return Math.floor(ms / (7 * 24 * 60 * 60 * 1000));
+   Dos cosas que había que cumplir a la vez, y chocaban:
+
+   1. **La pregunta es la misma para todo el mundo.** Lo pidió Jose y es lo
+      correcto: no hay servidor detrás, la pregunta se CALCULA a partir de
+      la fecha, y si cada uno calculara con su reloj local, dos amigos en
+      husos distintos verían preguntas distintas y no podrían comparar.
+
+   2. **«Hoy» tiene que cambiar a una hora que sea de verdad un día nuevo.**
+      Contando en UTC a secas, la pregunta cambiaba a las 8 de la tarde en
+      República Dominicana: a media cena, partiendo el día en dos.
+
+   La solución es contar los días desde una medianoche CONCRETA, la misma
+   para todo el planeta. Todos calculan el mismo número —se cumple (1)— y
+   ese número cambia a medianoche en RD, que es donde está casi toda la
+   gente que usa esto —se cumple (2)—.
+
+   República Dominicana no cambia la hora en verano, así que un desfase fijo
+   es exacto todo el año. Si algún día la mayoría de la gente estuviera en
+   otro sitio, se cambia este número y ya. */
+const RETO_DESFASE_H = -4;      /* UTC-4: República Dominicana */
+
+function diaActual(ahora) {
+  const ms = (ahora || Date.now()) + RETO_DESFASE_H * 3600000;
+  return Math.floor(ms / 86400000);
 }
 
-function retoDeLaSemana(ahora) {
-  const i = ((semanaActual(ahora) % RETOS.length) + RETOS.length) % RETOS.length;
+/* Se mantiene el nombre viejo porque los dibujos ya enviados guardan este
+   número en su campo `reto`, y la bandeja agrupa por él. */
+function semanaActual(ahora) { return diaActual(ahora); }
+
+function retoDelDia(ahora) {
+  const i = ((diaActual(ahora) % RETOS.length) + RETOS.length) % RETOS.length;
   return RETOS[i];
 }
 
 function textoReto() {
-  const r = retoDeLaSemana();
+  const r = retoDelDia();
   return r[lang] || r.en;
 }
 
 function pintarReto() {
   const b = document.getElementById('reto-badge');
   if (!b) return;
-  b.textContent = '🎯 ' + textoReto();
+  b.textContent = '🎯 ' + t('reto_hoy') + textoReto();
   b.title = t('reto_titulo');
 }
 

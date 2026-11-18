@@ -90,20 +90,24 @@ productos.
 ## El texto, en inglés
 
 > **Título:**
-> I built a messaging app where every message is a drawing that replays stroke by stroke and disappears in 24h
+> I made an app that asks you one question a day, and you answer it with a drawing your friends watch you draw
 
 > **Cuerpo:**
 >
 > Hi everyone,
 >
-> I built **SketchSend** — a messenger where you can't type. Every message
-> is a drawing, and when your friend opens it they don't see a finished
-> picture: they watch it being drawn, stroke by stroke, at the speed you
-> drew it. After 24 hours it's gone.
+> **SketchSend** asks you one question a day — *your breakfast*, *how you
+> feel today*, *what you see out your window*. You answer it with a drawing,
+> in about thirty seconds, and send it to a couple of people.
+>
+> They don't see a finished picture. They watch it being drawn, stroke by
+> stroke, at the exact speed you drew it. Tomorrow it's gone and there's a
+> new question.
 >
 > The replay is the whole point. Seeing *how* someone drew something — where
 > they started, where they hesitated, what they scribbled out — carries
-> something a finished image doesn't.
+> something a finished image doesn't. And the daily question means you never
+> open it to a blank page wondering what to draw.
 >
 > It's a web app, no install. Vanilla JS and Canvas, Firebase for the
 > backend. The part I'm most happy with: it records your drawing as a
@@ -114,10 +118,10 @@ productos.
 >
 > **I'd really value your opinion on three specific things:**
 >
-> 1. **Is it obvious what it's for within ten seconds?** A friend tried it
->    and asked "who is this for — kids? artists?" and I didn't have a good
->    answer. If it's not clear to you either, that's the most useful thing
->    you can tell me.
+> 1. **Is the daily question enough of a reason to come back?** That's the
+>    bet the whole thing rests on, and I genuinely don't know yet.
+> 1b. **Are the questions any good?** There are 60 of them. If the one you
+>    get today makes you close the tab, tell me which.
 > 2. **Right now you need an account to draw.** I know that's friction. Is
 >    it a dealbreaker, or fair enough for something you send to friends?
 > 3. **Does the drawing itself feel good?** The brush changes thickness with
@@ -134,20 +138,24 @@ productos.
 ## El texto, en español
 
 > **Título:**
-> Hice una app de mensajes donde cada mensaje es un dibujo que se reproduce trazo a trazo y desaparece en 24h
+> Hice una app que te hace una pregunta al día, y la contestas con un dibujo que tus amigos te ven dibujar
 
 > **Cuerpo:**
 >
 > Hola,
 >
-> Hice **SketchSend**, un mensajero donde no se puede escribir. Cada mensaje
-> es un dibujo, y quien lo recibe no ve una imagen terminada: ve cómo se va
-> dibujando, trazo a trazo, a la velocidad a la que lo hiciste. A las 24
-> horas desaparece.
+> **SketchSend** te hace una pregunta al día —*tu desayuno*, *cómo te
+> sientes hoy*, *lo que ves por la ventana*—. La contestas con un dibujo, en
+> unos treinta segundos, y se la mandas a dos o tres personas.
+>
+> Ellos no ven una imagen terminada: ven cómo se va dibujando, trazo a
+> trazo, a la velocidad exacta a la que lo hiciste. Mañana desaparece y hay
+> una pregunta nueva.
 >
 > Lo del replay es la gracia. Ver *cómo* alguien dibujó algo —por dónde
 > empezó, dónde dudó, qué borró— cuenta algo que una imagen terminada no
-> cuenta.
+> cuenta. Y la pregunta del día evita lo peor: abrirla y quedarte mirando un
+> lienzo en blanco sin saber qué dibujar.
 >
 > Es web, no hay que instalar nada. JavaScript y Canvas a pelo, con Firebase
 > detrás. De lo que más contento estoy: graba tu dibujo como video vertical
@@ -157,10 +165,10 @@ productos.
 >
 > **Me vendría muy bien vuestra opinión sobre tres cosas concretas:**
 >
-> 1. **¿Se entiende para qué sirve en diez segundos?** Un amigo la probó y
->    me preguntó «¿para quién es, para niños, para artistas?», y no supe
->    responderle bien. Si a vosotros tampoco os queda claro, eso es lo más
->    útil que me podéis decir.
+> 1. **¿La pregunta del día es motivo suficiente para volver?** Esa es la
+>    apuesta sobre la que se sostiene todo, y sinceramente no lo sé.
+> 1b. **¿Las preguntas son buenas?** Hay 60. Si la de hoy te hace cerrar la
+>    pestaña, dime cuál era.
 > 2. **Ahora mismo hace falta cuenta para dibujar.** Sé que eso estorba.
 >    ¿Es motivo para cerrarla, o os parece razonable para algo que le mandas
 >    a tus amigos?

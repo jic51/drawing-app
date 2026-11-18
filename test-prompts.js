@@ -1,7 +1,7 @@
 /* Prueba: las sugerencias sobre el lienzo.
 
    Son dos cosas distintas que antes se mezclaban:
-   - EL RETO de la semana: la invitación. Sale al abrir con el lienzo vacío,
+   - LA PREGUNTA DE HOY: la invitación. Sale al abrir con el lienzo vacío,
      destacado, y se va al primer trazo.
    - LAS IDEAS: una ayuda. Solo tras un silencio LARGO, y entonces van
      cambiando. Lo que vigila esta prueba es justo lo que molestaba: que una
@@ -57,7 +57,7 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   console.log('— Al abrir con el lienzo vacío —');
   let e = await leer();
   chk(e.visible, 'sale una sugerencia', e.texto);
-  chk(/Challenge of the week|Reto de la semana/.test(e.texto), 'y es el RETO de la semana', e.texto);
+  chk(/^Today:|^Hoy:/.test(e.texto.trim()), 'y es LA PREGUNTA DE HOY', e.texto);
   chk(e.clases.includes('reto'), 'con el estilo destacado', e.clases);
   chk(e.arriba, 'colocada ARRIBA del lienzo', { aDistanciaDelBorde: e.distanciaArriba });
   chk(e.subVisible, 'con el "empieza a dibujar" debajo');
@@ -99,7 +99,7 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   await p.waitForTimeout(300);
   e = await leer();
   chk(e.visible && e.clases.includes('idea'), 'aparece una idea, con otro estilo', e.clases);
-  chk(!/Challenge of the week|Reto de la semana/.test(e.texto), 'y no es el reto', e.texto);
+  chk(!/^Today:|^Hoy:/.test(e.texto.trim()), 'y no es la pregunta de hoy', e.texto);
   chk(!e.subVisible, 'sin el "empieza a dibujar" (ya dibujó)');
   chk(e.arriba, 'también arriba', { aDistanciaDelBorde: e.distanciaArriba });
   const t1 = e.texto;

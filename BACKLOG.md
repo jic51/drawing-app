@@ -6,6 +6,40 @@
 
 ---
 
+## ✅ DECIDIDO EL 2026-11-18 — PARA QUÉ ES LA APP
+
+Era el problema más grande que había (R1: el amigo de Jose preguntó TRES
+veces «¿para quién es?»). Jose eligió:
+
+> **Cada día hay una pregunta. La dibujas en 30 segundos y se la mandas a tu
+> gente. Ellos te ven dibujarla. Mañana desaparece.**
+
+### Lo que ya cambió
+
+| | |
+|---|---|
+| El reto pasa de **semanal a diario** | Y de 20 preguntas a **60**, para que no se repita cada tres semanas |
+| El día es el **local**, no el UTC | «Hoy» tiene que cambiar a TU medianoche. Con UTC cambiaría a las 7 de la tarde en RD |
+| **«Reto de la semana»** → **«Hoy: dibuja …»** | En la app, en el badge y en el título |
+| La bandeja vacía deja de informar de la nada | De «no tienes dibujos nuevos» a «dibuja la pregunta de hoy y mándasela a alguien» |
+| Sin amigos deja de ser un muro | De «comparte tu enlace» a «con una sola persona ya funciona» |
+| El titular de la landing | De «cada mensaje es un dibujo» —que no dice para qué sirve— a la frase de arriba |
+| El texto de Reddit | Abre con la pregunta del día, y pregunta si es motivo suficiente para volver |
+
+`test-pregunta-diaria.js` vigila que no se deshaga: el ritmo diario, que se
+vea al abrir, los textos vacíos y el titular de la landing.
+
+### Lo que falta de esta decisión
+
+| # | Qué | Nota |
+|---|-----|------|
+| **D1** | **La landing no enseña la pregunta de HOY** | Sería lo más convincente: entras y ves la de hoy ya puesta. No lo hice porque obligaría a duplicar las 60 preguntas en la landing y en la app, que es justo el tipo de cosa que acabamos de quitar de en medio. Lo correcto es sacarlas a un archivo que carguen las dos, y eso rompe que la app sea un solo archivo. **Decisión pendiente** |
+| **D2** | **La bandeja no agrupa por día** | Era M2. Ahora encaja mucho mejor: «las respuestas de hoy» |
+| **D3** | **Un aviso diario cuando sale la pregunta nueva** | Es lo que convierte «una app bonita» en «una app a la que vuelves». Pero avisar a diario quema a la gente si la pregunta no es buena: yo lo dejaría para cuando haya señal de que vuelven solos |
+| **D4** | **Lo que se aparca a propósito** | La galería pública, el producto para clases (sigue siendo la mejor vía de dinero, pero después), y el video se queda como lo que es: el motor viral, no el producto |
+
+---
+
 ## 📝 Anotado el 2026-11-18, no arreglado todavía
 
 | # | Qué | Por qué no se hizo ahora |
