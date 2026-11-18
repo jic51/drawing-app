@@ -60,8 +60,10 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
 
     const t0 = performance.now();
     document.getElementById('vid-btn').click();
-    /* Esperar a que termine (máx 30 s de reloj). */
-    for (let i = 0; i < 120 && !window.__video; i++) await new Promise(r => setTimeout(r, 250));
+    /* Esperar a que termine. Desde que el video va a VELOCIDAD REAL, un
+       dibujo de 30 s tarda 30 s de reloj en grabarse: la espera de 30 s que
+       había antes se quedaba corta y el video «no se generaba». */
+    for (let i = 0; i < 240 && !window.__video; i++) await new Promise(r => setTimeout(r, 250));
     return { video: window.__video, relojMs: Math.round(performance.now() - t0) };
   });
 
@@ -92,27 +94,42 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   if (r.video) {
     chk(r.video.size > 20000, 'el archivo tiene contenido', { bytes: r.video.size });
     chk(/\.(webm|mp4)$/.test(r.video.nombre), 'extensión correcta', r.video.nombre);
-    /* El dibujo de prueba dura 30 s. La regla cambió el 2026-11-17: antes
-       mandaba la DURACIÓN (tope 10 s, o sea 3 aumentos) y Jose dijo que los
-       vídeos salían «muy rápidos». Ahora manda la VELOCIDAD: nunca más de
-       VIDEO_VEL_MAX aumentos, aunque el video salga más largo.
+    /* El dibujo de prueba son 300 trazos separados 100 ms: 30 s de reloj,
+       pero esos 100 ms son PAUSA entre trazo y trazo, no trazo.
 
-       Así que 30 s a 1,5 aumentos = 20 s + 1,3 de cola ≈ 21-23 s de reloj.
-       Lo que esto sigue vigilando —y es el fallo original— es que un dibujo
-       largo NO se grabe entero a velocidad real. */
-    chk(r.relojMs < 27000, 'un dibujo de 30 s se acorta (no graba 30 s enteros)',
-        { segundosReales: (r.relojMs/1000).toFixed(1) });
-    chk(r.relojMs > 15000, 'pero NO se acelera tanto que no se entienda',
+       La regla, en su tercera versión (2026-11-18, idea de Jose): la
+       velocidad de los trazos es la REAL, y lo que se recorta son las
+       pausas. Solo si aun así pasa de VIDEO_TOPE_MS se acelera.
+
+       Como 100 ms < GAP_VIDEO (250), aquí no se recorta nada y el video
+       dura lo mismo que el dibujo. Eso es CORRECTO y es lo que se quería.
+       Lo que se vigila es que no se acelere: que NO salga mucho más corto
+       de lo que se dibujó. */
+    chk(r.relojMs > 25000, 'el video va a la VELOCIDAD REAL, no acelerado',
         { segundosReales: (r.relojMs/1000).toFixed(1) });
   }
 
-  /* Comprobar el lienzo de grabación: tamaño y marca abajo. */
-  const marco = await p.evaluate(() => ({ W: VIDEO_W, H: VIDEO_H, velo: VIDEO_MARCA_ALTO, max: VIDEO_MAX_MS }));
+  /* Y que el tope duro siga existiendo: sin él, dos minutos de dibujo
+     darían dos minutos de video. */
+  const tope = await p.evaluate(() => ({
+    tope: VIDEO_TOPE_MS,
+    gapVideo: GAP_VIDEO,
+    gapReplay: GAP_REPLAY,
+    /* lo que pasaría con un dibujo de cinco minutos */
+    factorCincoMin: VIDEO_TOPE_MS > 300000 ? 1 : VIDEO_TOPE_MS / 300000
+  }));
+  chk(tope.tope >= 30000 && tope.tope <= 120000, 'hay un tope duro de duración', tope);
+  chk(tope.factorCincoMin < 1, 'un dibujo larguísimo sí se acelera', tope);
+  chk(tope.gapVideo < tope.gapReplay,
+      'las pausas se aprietan más en el video que en el replay', tope);
+
+  /* Comprobar el lienzo de grabación y la firma. */
+  const marco = await p.evaluate(() => ({ W: VIDEO_W, H: VIDEO_H }));
   chk(marco.W === 1080 && marco.H === 1920, 'marco 1080x1920 (9:16 de redes)', marco);
   chk(Math.abs(marco.W / marco.H - 9/16) < 0.001, 'proporción exacta 9:16');
-  /* Ya no hay franja opaca: el dibujo usa el alto entero y la marca va
-     encima, con un degradado que se desvanece. Lo que se comprueba es que
-     el dibujo NO pierda alto por la marca. */
+  /* Ya no hay franja ni degradado: la firma es la MISMA cajita que lleva
+     la imagen .png, arriba a la izquierda, encima del dibujo. El dibujo
+     usa el alto entero. */
   const zona = await p.evaluate(() => {
     const ow = 424, oh = 754;
     const k = Math.min(VIDEO_W / ow, VIDEO_H / oh);
@@ -120,9 +137,23 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   });
   chk(zona.altoDibujo > marco.H * 0.95,
       'el dibujo usa el alto entero del cuadro, sin franja que se lo coma', zona);
-  chk(marco.velo > 150 && marco.velo < marco.H * 0.25,
-      'el degradado de la marca es suave y no domina el cuadro',
-      { velo: marco.velo, porcentaje: Math.round(marco.velo / marco.H * 100) + '%' });
+  /* La firma del video y la de la imagen tienen que salir de la MISMA
+     función: era el fallo que señaló Jose —dos marcas distintas para el
+     mismo producto— y es lo que esto impide que vuelva. */
+  const firma = await p.evaluate(() => {
+    const src = [...document.querySelectorAll('script')].map(x => x.textContent).join('\n');
+    return {
+      unaSolaFuncion: /function pintarFirmaVideo[\s\S]{0,900}dibujarFirma\(/.test(src),
+      sinMarcaVieja: !/function pintarMarcaVideo/.test(src),
+      escala: typeof VIDEO_FIRMA_ESCALA !== 'undefined' ? VIDEO_FIRMA_ESCALA : null,
+      margen: typeof VIDEO_MARGEN !== 'undefined' ? VIDEO_MARGEN : null
+    };
+  });
+  chk(firma.unaSolaFuncion, 'la firma del video sale de dibujarFirma, la misma que la imagen', firma);
+  chk(firma.sinMarcaVieja, 'la marca vieja del video ya no existe');
+  chk(firma.escala > 1 && firma.escala * 190 < marco.W,
+      'la firma se lee pero no se come el ancho del cuadro',
+      { anchoFirma: Math.round(firma.escala * 190), anchoCuadro: marco.W });
 
   chk(erroresDeLaApp(errs).length === 0, 'sin errores de JS', erroresDeLaApp(errs)[0] || '');
   await b.close(); if (SITIO) await SITIO.cerrar();

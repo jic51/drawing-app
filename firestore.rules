@@ -13,6 +13,17 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    /* ── QUIÉN MANDA ─────────────────────────────────────────────────
+       Tu uid, en UN solo sitio. Lo usan las denuncias y la cola de cosas
+       sin aprobar.
+
+       ⚠️ Cámbialo por el tuyo. No hace falta buscarlo: abre `admin.html`
+       con tu cuenta y la propia página te lo enseña listo para copiar.
+       Mientras siga el hueco de ejemplo, esas lecturas se deniegan —que es
+       el lado seguro: lo público sigue siendo público y lo privado no se
+       abre a nadie, ni siquiera a ti desde el navegador. */
+    function ADMIN_UID() { return 'PON_AQUI_TU_UID'; }
+
     /* ── USUARIOS ─────────────────────────────────────────────────────
        Leer exige sesión (ya lo cambiaste; antes era `if true` y cualquiera
        podía descargarse el correo de todo el mundo con una URL).
@@ -113,7 +124,19 @@ service cloud.firestore {
        Nada se publica sin revisión: se crea con approved:false y solo tú
        lo cambias desde la consola. */
     match /landing_gallery/{doc} {
-      allow read: if true;
+      /* CAMBIO (2026-11-18): solo lo APROBADO es público.
+
+         Antes era `if true`, o sea que un dibujo subido a la galería era
+         legible por cualquiera DESDE EL MOMENTO EN QUE SE SUBÍA, antes de
+         que Jose lo revisara. Hoy no hay ninguno pendiente, así que no se
+         filtró nada; pero el siguiente que alguien suba sí habría sido
+         público mientras esperaba aprobación.
+
+         Las dos consultas de la landing ya filtran por `approved == true`,
+         así que esto no rompe nada. Y para revisar la cola está la consola
+         de Firebase, o `admin.html` si pones tu uid abajo. */
+      allow read: if resource.data.approved == true
+                  || (request.auth != null && request.auth.uid == ADMIN_UID());
       allow create: if request.auth != null
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.approved == false
@@ -122,7 +145,10 @@ service cloud.firestore {
     }
 
     match /landing_testimonials/{doc} {
-      allow read: if true;
+      /* Mismo cambio que en la galería: una opinión sin aprobar no es
+         pública. La landing ya consulta con `where('approved','==',true)`. */
+      allow read: if resource.data.approved == true
+                  || (request.auth != null && request.auth.uid == ADMIN_UID());
       allow create: if request.auth != null
                     && request.resource.data.uid == request.auth.uid
                     && request.resource.data.approved == false
@@ -160,8 +186,7 @@ service cloud.firestore {
        déjalo como está y sigue mirándolas desde la consola. */
     match /_reports/{doc} {
       allow create: if request.auth != null;
-      allow read: if request.auth != null
-                  && request.auth.uid == 'PON_AQUI_TU_UID';
+      allow read: if request.auth != null && request.auth.uid == ADMIN_UID();
       allow update, delete: if false;
     }
 

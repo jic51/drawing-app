@@ -14,7 +14,38 @@
 | **N2** | **La firma del video y la de la imagen siguen siendo distintas** | Jose propuso unificarlas y estoy de acuerdo. Falta que decida la posición: arriba a la izquierda en las dos (yo lo prefiero: abajo es donde TikTok pone su propia interfaz), o cada una donde está |
 | **N3** | **El logo de la landing que se queda al recargar** | No consigo reproducirlo. La prueba `test-logo-vivo.js` recarga cinco veces y el logo se mueve en todas, splash y cabecera; en el video de Jose también se mueve. Hacen falta tres datos: cuál de los dos logos, si se queda para siempre o arranca solo, y en qué navegador |
 | **N4** | **Los emojis de la interfaz** | Roger: «I hate the AI emojis/icons». Hay que cambiarlos por SVG (Lucide). Es trabajo mecánico pero largo, y conviene hacerlo de una vez y no a trozos |
-| **N5** | **La inclinación del Apple Pencil** | La presión ya funciona (`e.pressure` con `pointerType === 'pen'`). `tiltX`/`tiltY` no se leen. Safari los da, así que se puede añadir para el efecto «lápiz de lado» |
+| **N5** | **La inclinación del Apple Pencil** | La presión ya funciona (`e.pressure` con `pointerType === 'pen'`). `tiltX`/`tiltY` no se leen. Safari los da, así que se puede añadir para el efecto «lápiz de lado». Jose lo quiere |
+
+### N6 — 🔴 La presión y la velocidad se pelean por el grosor
+
+Lo encontró Jose probando con el Pencil: *«la presión y la velocidad a veces
+se pelean por el control»*.
+
+**Y tiene razón, está en el código.** `grosor()` hace esto:
+
+```
+si hay presión real (lápiz)  → manda la presión
+si no                        → manda la velocidad
+```
+
+El problema es ese **si**: se evalúa en CADA punto del trazo. El Apple
+Pencil no reporta presión en todos los eventos —un roce flojo puede dar
+`pressure` 0, y los eventos de coalescencia a veces vienen sin ella—, así
+que **dentro de un mismo trazo** el grosor salta de un sistema al otro. Un
+trazo hecho con una presión constante y la mano moviéndose sale con
+escalones.
+
+**Lo que haría:** decidir quién manda **una vez por trazo**, no por punto.
+En cuanto un trazo ve una presión de verdad, ese trazo entero va por
+presión; los huecos sin presión se rellenan con el último valor bueno en
+vez de caer a la velocidad.
+
+**Por qué importa más de lo que parece:** esto es invisible con el dedo y
+con el ratón, que es como se prueba siempre. Solo se ve con un lápiz. Y si
+algún día esto entra en una clase de arte —que es la vía de monetización
+más fuerte—, **lo van a usar todos con lápiz, y es justo lo que un
+profesor de dibujo notaría a los diez segundos.** Va antes que la
+inclinación: de nada sirve añadir el tilt si el grosor ya da escalones.
 
 ---
 

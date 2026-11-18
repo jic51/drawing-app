@@ -1157,7 +1157,29 @@ document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
     }
     requestAnimationFrame(animate);
   }
-  animate();
+
+  /* No se arranca hasta que el splash se ha ido.
+
+     Jose: «el logo grande, la animación se para por un momento y luego
+     sigue, es casi imperceptible pero yo lo veo». No es que se cuelgue: el
+     arcoíris del logo es un degradado sobre `background-clip:text`, y eso
+     el navegador NO lo puede mandar a la tarjeta gráfica —lo repinta en el
+     hilo principal, cuadro a cuadro. Así que cualquier cosa que ocupe ese
+     hilo durante el arranque se le nota como un tirón.
+
+     Y durante el splash el hilo tiene trabajo: las fuentes, el SDK de
+     Firebase, y este dibujo, que pinta en un canvas 60 veces por segundo
+     sin que nadie lo esté viendo todavía. Esperar a que el splash termine
+     no cuesta nada y le quita al logo su competidor más caro.
+
+     No lo pude reproducir en mi entorno (ahí Firebase y las fuentes están
+     bloqueadas, así que falta justo lo pesado), así que esto es la causa
+     más probable, no una confirmada. */
+  const arranca = () => {
+    if (document.documentElement.dataset.heroListo) { animate(); return; }
+    setTimeout(arranca, 120);
+  };
+  arranca();
 })();
 
 /* ── Canvas interactivo ── */

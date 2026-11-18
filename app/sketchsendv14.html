@@ -5607,7 +5607,10 @@ function dibujarFirma(targetCtx, w, h, animated) {
   targetCtx.fillStyle = nameColor;
   targetCtx.font = '500 10px DM Sans, sans-serif';
   targetCtx.textAlign = 'left'; targetCtx.textBaseline = 'middle';
-  targetCtx.fillText(usuario, avX + avSize + 6, avY + avSize/2 + 1);
+  /* Por `etiquetaDe` y no a pelo: la firma es lo único que un desconocido
+     ve de ti cuando le llega el video, así que tiene que decir el mismo
+     «@jose» que dice la app en todas partes. */
+  targetCtx.fillText(etiquetaDe(usuario), avX + avSize + 6, avY + avSize/2 + 1);
 
   targetCtx.restore();
 }
@@ -5682,22 +5685,34 @@ function formatoVideo() {
 }
 
 const VIDEO_W = 1080, VIDEO_H = 1920;
-/* Cuánto puede durar el video antes de acelerarlo, y cuánto se puede
-   acelerar como mucho.
+/* LA VELOCIDAD DEL VIDEO ES LA REAL. Punto.
 
-   Antes el tope era 10 s a secas, y eso daba vídeos ridículos: un dibujo de
-   un minuto salía a 6 aumentos. Jose: «el video está muy rápido... no está
-   en velocidad normal (la que usó el usuario)». Tenía razón, y es que el
-   tope de DURACIÓN mandaba sobre todo lo demás.
+   Esto pasó por tres versiones y la tercera es de Jose, que tiene razón:
 
-   Ahora manda la VELOCIDAD: nunca más de 2,5 aumentos, pase lo que pase.
-   Un dibujo de un minuto sale en 24 s en vez de en 10, y se entiende lo
-   que pasó. Si dura menos de 20 s va tal cual, a la velocidad real. */
-const VIDEO_MAX_MS = 20000;      /* hasta aquí, velocidad real */
-const VIDEO_VEL_MAX = 2.5;       /* y de ahí, nunca más rápido que esto */
+   1. Primero no se acortaba nada: dos minutos de dibujo, dos minutos de
+      video. Nadie lo mira entero.
+   2. Luego mandaba la DURACIÓN —tope de 10 s—, y un dibujo de un minuto
+      salía a 6 aumentos. «El video está muy rápido... no está en velocidad
+      normal (la que usó el usuario)».
+   3. Ahora: «lo que yo preferiría es que los trazos se hagan exactamente en
+      el mismo tiempo que el dibujo, pero reducir los espacios y pausas, así
+      no se siente rápido ni diferente al real».
+
+   Y es lo correcto, no solo una preferencia. La velocidad del trazo ES el
+   dibujo: toda la app existe para que se vea CÓMO lo hiciste, dónde dudaste
+   y dónde fuiste rápido. Acelerarlo destruye justo eso. Las pausas, en
+   cambio, no cuentan nada: son tiempo muerto mirando el lienzo.
+
+   Así que el video va a velocidad real y lo que se recorta son las pausas
+   (GAP_VIDEO). Solo si AUN ASÍ se pasa del tope duro se acelera, lo mínimo
+   necesario, y entonces se le dice a quien lo descarga. */
+const VIDEO_TOPE_MS = 60000;     /* un minuto: a partir de ahí, nadie mira */
 const VIDEO_COLA_MS = 1300;      /* el dibujo terminado se queda quieto */
 const VIDEO_PASO_MAX = 50;       /* ms de dibujo que puede avanzar un cuadro */
 const VIDEO_MARGEN = 48;         /* para que nada quede pegado al borde */
+/* La firma mide 190px de ancho; a 3,2 ocupa ~608 de los 1080 del cuadro:
+   se lee en un teléfono sin comerse el dibujo. */
+const VIDEO_FIRMA_ESCALA = 3.2;
 /* Sin franja. La marca va ENCIMA del dibujo, abajo a la izquierda, como
    hacen las redes. Una franja opaca partía el cuadro en dos y le robaba
    el 10% del alto al dibujo solo para poner dos líneas de texto.
@@ -5706,80 +5721,40 @@ const VIDEO_MARGEN = 48;         /* para que nada quede pegado al borde */
    en la parte baja, de transparente a oscuro. No es una franja: no tiene
    borde, no se nota dónde empieza, y encima de un dibujo claro apenas se
    ve. */
-const VIDEO_MARCA_ALTO = 300;    /* hasta dónde sube el degradado */
 
 const ARCOIRIS = ['#ff0000','#ff7f00','#ffff00','#00ff00','#0000ff','#9400d3','#ff0000'];
-
-/* Texto con el arcoíris en movimiento, igual que el logo de la app.
-   Se pinta el texto y luego se recorta el degradado a su forma con
-   'source-in', que es lo que permite teñir letras sin perder el borde. */
-function textoArcoiris(ctx, texto, x, y, font, fase, alto) {
-  const m = (() => { ctx.save(); ctx.font = font; const w = ctx.measureText(texto).width; ctx.restore(); return w; })();
-  const cap = document.createElement('canvas');
-  cap.width = Math.ceil(m) + 8; cap.height = Math.ceil(alto);
-  const cc = cap.getContext('2d');
-  cc.font = font; cc.textBaseline = 'middle';
-  cc.fillStyle = '#000';
-  cc.fillText(texto, 0, alto / 2);
-  cc.globalCompositeOperation = 'source-in';
-  /* El degradado mide el doble que el texto y se desplaza: así los colores
-     recorren las letras en vez de quedarse clavados. */
-  const g = cc.createLinearGradient(-cap.width + fase * cap.width * 2, 0,
-                                     cap.width + fase * cap.width * 2, 0);
-  ARCOIRIS.forEach((c, i) => g.addColorStop(i / (ARCOIRIS.length - 1), c));
-  cc.fillStyle = g;
-  cc.fillRect(0, 0, cap.width, cap.height);
-  ctx.drawImage(cap, x, y - alto / 2);
-  return m;
-}
 
 /* La franja de marca del video. Va suelta y no dentro del grabador para
    poder pintarla y mirarla sin grabar un video entero, que es la única
    forma de comprobar que se ve bien. */
-function pintarMarcaVideo(tc, fase, oscuro, quien) {
-  const y0 = VIDEO_H - VIDEO_MARCA_ALTO;
-  tc.save();
+/* LA FIRMA DEL VIDEO ES LA MISMA QUE LA DE LA IMAGEN.
 
-  /* Degradado, no franja: se desvanece hacia arriba, así que no hay un
-     borde donde el ojo note "aquí termina el dibujo". */
-  const velo = tc.createLinearGradient(0, y0, 0, VIDEO_H);
-  if (oscuro) {
-    velo.addColorStop(0, 'rgba(0,0,0,0)');
-    velo.addColorStop(1, 'rgba(0,0,0,0.72)');
-  } else {
-    velo.addColorStop(0, 'rgba(255,255,255,0)');
-    velo.addColorStop(1, 'rgba(255,255,255,0.88)');
-  }
-  tc.fillStyle = velo;
-  tc.fillRect(0, y0, VIDEO_W, VIDEO_MARCA_ALTO);
+   Antes eran dos marcas distintas: la imagen llevaba una cajita arriba a la
+   izquierda con el logo, tu avatar y tu nombre; el video llevaba un
+   degradado abajo con «@tu» y «Made with SketchSend». Mismo producto, dos
+   firmas. Jose: «podemos hacer que el video tenga el logo y el nombre
+   exactamente igual a la imagen, solo que el logo es animado».
 
-  const x = 56;
-  /* @usuario a la izquierda, como se pidió. */
-  tc.font = '600 44px "DM Sans", sans-serif';
-  tc.textBaseline = 'middle';
-  tc.textAlign = 'left';
-  tc.fillStyle = oscuro ? 'rgba(255,255,255,0.92)' : 'rgba(20,20,30,0.92)';
-  tc.fillText(etiquetaDe(quien), x, VIDEO_H - 132);
+   Ahora las dos salen de `dibujarFirma`, así que no pueden discrepar. La
+   del video se redibuja en cada cuadro y por eso el arcoíris se mueve: la
+   animación sale gratis de llamarla 30 veces por segundo.
 
-  /* "Hecho con" + el logo con los colores moviéndose. Syne llega hasta 800:
-     pedir 900 no existe y el navegador lo falsea engordando el trazo. */
-  tc.font = '400 34px "DM Sans", sans-serif';
-  tc.fillStyle = oscuro ? 'rgba(255,255,255,0.55)' : 'rgba(20,20,30,0.55)';
-  const etiqueta = lang === 'es' ? 'Hecho con ' : 'Made with ';
-  tc.fillText(etiqueta, x, VIDEO_H - 64);
-  const anchoEtiqueta = tc.measureText(etiqueta).width;
-
-  /* El nombre va con el arcoíris, pero el lápiz NO: 'source-in' tiñe todo
-     lo que haya debajo, y el emoji salía de un solo color en vez del suyo.
-     En la app el lápiz es rojo, y el logo tiene que verse igual en todas
-     partes. Así que se pintan por separado. */
-  const fuenteLogo = '800 40px Syne, sans-serif';
-  const anchoNombre = textoArcoiris(tc, 'SketchSend', x + anchoEtiqueta, VIDEO_H - 64,
-                                    fuenteLogo, fase, 56);
-  tc.font = fuenteLogo;
-  tc.fillStyle = oscuro ? '#fff' : '#111';
-  tc.fillText(' ✏️', x + anchoEtiqueta + anchoNombre, VIDEO_H - 64);
-  tc.restore();
+   Arriba a la izquierda en las dos. Abajo es donde TikTok e Instagram
+   ponen SU interfaz —el texto, el usuario, los botones—, así que una marca
+   ahí acaba tapada justo en el sitio donde más se comparte. */
+function pintarFirmaVideo(tc, escala) {
+  if (!usuario) return;
+  /* La firma se dibuja a su tamaño nativo en un lienzo aparte y se amplía
+     al pegarla. Así `dibujarFirma` no tiene que saber nada del video, y
+     sigue siendo la misma función que usa la imagen. */
+  const W = 190, H = 60;
+  const off = document.createElement('canvas');
+  off.width = Math.ceil(W * DPR); off.height = Math.ceil(H * DPR);
+  const oc = off.getContext('2d');
+  oc.scale(DPR, DPR);
+  dibujarFirma(oc, W, H, false);
+  tc.drawImage(off, 0, 0, off.width, off.height,
+               VIDEO_MARGEN, VIDEO_MARGEN, W * escala, H * escala);
 }
 
 /* ── VIDEO — 1080x1920, duración acotada, marca abajo ── */
@@ -5797,13 +5772,14 @@ vidBtn.addEventListener('click', async () => {
   if (!segs.length) { toast(t('draw_to_export')); _downloading = false; return; }
 
   try {
-    const comp = comprimirGaps(segs);
+    /* Las pausas se aprietan más que en el replay; los trazos, nunca. */
+    const comp = comprimirGaps(segs, GAP_VIDEO);
     const msReal = comp[comp.length - 1].tRel || 1;
-    /* Si cabe en el tope va a su ritmo; si no, se acelera —pero hay un
-       suelo: nunca por encima de VIDEO_VEL_MAX. Prefiero un video más
-       largo que uno que va tan rápido que no se entiende. */
-    const factor = Math.max(1 / VIDEO_VEL_MAX,
-                            msReal > VIDEO_MAX_MS ? VIDEO_MAX_MS / msReal : 1);
+
+    /* Velocidad real. Solo si aun con las pausas apretadas se pasa del tope
+       duro se acelera, y lo mínimo que haga falta. */
+    const factor = msReal > VIDEO_TOPE_MS ? VIDEO_TOPE_MS / msReal : 1;
+    const acelerado = factor < 1;
     const msVideo = msReal * factor;
     const durSec = Math.ceil((msVideo + VIDEO_COLA_MS) / 1000);
 
@@ -5839,7 +5815,6 @@ vidBtn.addEventListener('click', async () => {
     cc.setTransform(k, 0, 0, k, ox, oy);
 
     const fondo = canvasBg();
-    const oscuro = esDark();
 
     const fmt = formatoVideo();
     if (!fmt) { toast(t('no_video_support')); _downloading = false; return; }
@@ -5852,7 +5827,10 @@ vidBtn.addEventListener('click', async () => {
     const chunks = [];
     recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
-    toast(`⏳ ${lang === 'es' ? 'Grabando video' : 'Recording video'} (${durSec}s)...`);
+    /* Si hubo que acelerarlo, se dice. Que un video no vaya a la velocidad
+       a la que dibujaste es información, no un detalle de implementación. */
+    const veces = acelerado ? ' ×' + (1 / factor).toFixed(1) : '';
+    toast(`⏳ ${lang === 'es' ? 'Grabando video' : 'Recording video'} (${durSec}s${veces})...`);
 
     return new Promise(resolve => {
       let raf = 0, siguiente = 0, tPrev = 0, transcurrido = 0, finEn = 0;
@@ -5897,7 +5875,7 @@ vidBtn.addEventListener('click', async () => {
         tc.fillRect(0, 0, VIDEO_W, VIDEO_H);
         tc.drawImage(capa, 0, 0);
 
-        pintarMarcaVideo(tc, (ahora / 2500) % 1, oscuro, usuario);
+        pintarFirmaVideo(tc, VIDEO_FIRMA_ESCALA);
 
         if (siguiente >= comp.length) {
           if (!finEn) finEn = ahora;
@@ -6101,8 +6079,22 @@ sksBtn.addEventListener('click', () => {
 let replayActivo = false, replayTimers = [];
 
 /* Comprime tiempos muertos: cualquier gap > MAX_GAP se recorta */
-function comprimirGaps(segs) {
-  const MAX_GAP = 500;
+/* Cuánto puede durar como mucho una pausa entre dos trazos.
+
+   Son DOS valores a propósito, y la diferencia está declarada aquí para
+   que no parezca un descuido:
+
+   - En el replay de la bandeja, la pausa es parte de la gracia: ves dudar
+     a quien dibujó. Y como el replay se repite en bucle y lo cortas cuando
+     quieres, no tiene presupuesto de duración.
+   - En el video sí lo tiene, porque se comparte. Ahí las pausas se aprietan
+     más para poder conservar la VELOCIDAD REAL de los trazos, que es lo
+     que de verdad cuenta. */
+const GAP_REPLAY = 500;
+const GAP_VIDEO  = 250;
+
+function comprimirGaps(segs, maxGap) {
+  const MAX_GAP = maxGap || GAP_REPLAY;
   if (!segs.length) return [];
 
   const result = [];
