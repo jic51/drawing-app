@@ -167,6 +167,12 @@
       --ok:         #22c55e;   /* disponible: verde del indicador de @usuario */
       --online:     #4ade80;
       --canvas-bg:  #12121a;
+      /* Los botones que flotan SOBRE el lienzo (Deshacer/Rehacer). Van en
+         variables porque su color depende del tema, y antes estaba escrito
+         a mano dentro de un @media del tema del SISTEMA. */
+      --flot-bg:     rgba(26,26,36,0.8);
+      --flot-borde:  rgba(255,255,255,0.12);
+      --flot-texto:  #e8e8f0;
       --r: 14px;
       --sans: 'DM Sans', 'DM Sans respaldo', sans-serif;
       --display: 'Syne', sans-serif;
@@ -181,6 +187,9 @@
         --text:      #1a1a2e;
         --muted:     #7070a0;
         --canvas-bg: #ffffff;
+        --flot-bg:     rgba(255,255,255,0.85);
+        --flot-borde:  rgba(0,0,0,0.12);
+        --flot-texto:  #1a1a2e;
       }
     }
     :root[data-theme="light"] {
@@ -191,6 +200,9 @@
       --text:      #1a1a2e;
       --muted:     #7070a0;
       --canvas-bg: #ffffff;
+      --flot-bg:     rgba(255,255,255,0.85);
+      --flot-borde:  rgba(0,0,0,0.12);
+      --flot-texto:  #1a1a2e;
     }
 
     /* TEMAS ESTACIONALES — cambian los acentos según la época del año */
@@ -551,18 +563,26 @@
     .fbtns.visible { opacity:1; pointer-events:auto; }
     .fbtn {
       display:flex; align-items:center; gap:5px; padding:6px 13px; border-radius:8px;
-      border:2px solid rgba(255,255,255,0.12); background:rgba(26,26,36,0.8);
+      border:2px solid var(--flot-borde); background:var(--flot-bg);
       backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
-      color:var(--text); font-family:var(--sans); font-size:0.78rem; font-weight:500;
+      color:var(--flot-texto); font-family:var(--sans); font-size:0.78rem; font-weight:500;
       cursor:pointer; transition:all 0.2s;
     }
     .fbtn:hover { background:rgba(124,58,237,0.3); border-color:var(--accent); color:var(--accent2); }
     .fbtn:disabled { opacity:0.3; cursor:not-allowed; }
 
+    /* El `#preview` sí sigue mirando el tema del sistema Y el de la app.
+       Los botones flotantes ya no: ahora salen de las variables, que es
+       lo único que entiende los DOS temas a la vez.
+
+       El fallo era justo ese: este bloque solo miraba el tema del SISTEMA
+       (`prefers-color-scheme`), así que con el iPad en oscuro y la app en
+       claro, Deshacer y Rehacer se quedaban oscuros sobre un lienzo
+       blanco. */
     @media (prefers-color-scheme: light) {
-      .fbtn { background:rgba(255,255,255,0.85); border-color:rgba(0,0,0,0.1); color:#1a1a2e; }
-      #preview { border-color:rgba(0,0,0,0.4); mix-blend-mode:normal; }
+      :root:not([data-theme="dark"]) #preview { border-color:rgba(0,0,0,0.4); mix-blend-mode:normal; }
     }
+    :root[data-theme="light"] #preview { border-color:rgba(0,0,0,0.4); mix-blend-mode:normal; }
 
     /* CARRUSEL DE CONTACTOS */
     .strip {
@@ -1550,7 +1570,7 @@
     <h3>💾 Guardar dibujo</h3>
     <p>¿En qué formato?</p>
     <button class="btn btn-p" id="png-btn">⬇️ Imagen (.PNG)</button>
-    <button class="btn btn-s" id="vid-btn">🎬 Video replay (.WEBM)</button>
+    <button class="btn btn-s" id="vid-btn">🎬 Video replay</button>
     <!-- Oculto: el .SKS guarda los trazos en crudo, pero la app aún no
          sabe abrirlo de vuelta ni hay nada que lo consuma, así que para
          el usuario es un botón sin destino. El generador sigue en el
@@ -1904,7 +1924,7 @@ const I18N = {
     gal_confirm: '¿Compartir este dibujo en la galería pública de SketchSend?<br><br>Pasa primero por revisión. Si se aprueba, <b>lo verá cualquiera</b> que entre a nuestra web, junto a tu @usuario, y <b>no se borrará a las 24 horas</b> como los demás.',
     gal_yes: 'Sí, compartir', gal_sent: '🖼️ Enviado para revisión',
     gal_fail: 'No se pudo compartir el dibujo',
-    save_png: '⬇️ Imagen (.PNG)', save_video: '🎬 Video replay (.WEBM)',
+    save_png: '⬇️ Imagen (.PNG)', save_video: '🎬 Video replay',
     save_sks: '📦 Proyecto (.SKS)', cancel: 'Cancelar',
     save_plain: 'Guardar',
     inbox_title: '✉️ Dibujos recibidos', inbox_close: 'Cerrar',
@@ -2079,7 +2099,7 @@ const I18N = {
     gal_confirm: 'Share this drawing in the public SketchSend gallery?<br><br>It goes through review first. If approved, <b>anyone</b> visiting our site will see it next to your @username, and it <b>will not disappear after 24 hours</b> like the others.',
     gal_yes: 'Yes, share it', gal_sent: '🖼️ Sent for review',
     gal_fail: "Couldn't share the drawing",
-    save_png: '⬇️ Image (.PNG)', save_video: '🎬 Video replay (.WEBM)',
+    save_png: '⬇️ Image (.PNG)', save_video: '🎬 Video replay',
     save_sks: '📦 Project (.SKS)', cancel: 'Cancel',
     save_plain: 'Save',
     inbox_title: '✉️ Received drawings', inbox_close: 'Close',
@@ -2306,7 +2326,14 @@ function applyLang() {
   const modalP = document.querySelector('#modal p');
   if (modalP) modalP.textContent = t('save_modal_sub');
   set('png-btn', 'save_png');
-  set('vid-btn', 'save_video');
+  /* La extensión no se escribe a mano: se pregunta al mismo sitio que
+     decide en qué va a grabar. Antes el botón decía «.WEBM» siempre, y
+     desde que se prefiere MP4 estaba mintiendo. */
+  const vb = q('vid-btn');
+  if (vb) {
+    const fv = (typeof formatoVideo === 'function') ? formatoVideo() : null;
+    vb.textContent = t('save_video') + (fv ? ' (.' + fv.ext.toUpperCase() + ')' : '');
+  }
   set('sks-btn', 'save_sks');
   set('gal-btn', 'save_gallery');
   set('cerrar-btn', 'cancel');
@@ -5131,6 +5158,22 @@ function actualizarBadge() {
   [inboxBtn, inboxBtnMob].forEach(btn => {
     btn.classList.toggle('empty', total === 0);
   });
+
+  /* El numerito del icono en la pantalla de inicio.
+
+     Lo ponía SOLO el service worker, contando los avisos del sistema que
+     quedaban sin tocar. Eso no se limpia nunca si no tocas el aviso, así
+     que se iba acumulando: a Jose le llegó a marcar 134 con un dibujo sin
+     leer. Contaba notificaciones, no dibujos.
+
+     Aquí sí se sabe la verdad, porque `bandejaEntrada` ya trae solo los no
+     vistos y sin caducar. Y esto se ejecuta con cada cambio de la bandeja,
+     así que corrige al abrir la app aunque el service worker se hubiera ido
+     por las ramas. */
+  try {
+    if (noVistos > 0) navigator.setAppBadge && navigator.setAppBadge(noVistos);
+    else navigator.clearAppBadge && navigator.clearAppBadge();
+  } catch (_) { /* el navegador no lo admite: no es un fallo */ }
 }
 
 /* Cuenta atrás como hh:mm:ss. Un "3h 20m" quieto no transmite urgencia;
@@ -5604,6 +5647,40 @@ pngBtn.addEventListener('click', () => {
       colores en movimiento. Antes estaba arriba a la izquierda y repetía
       lo que ya se ve en la app.
 ══════════════════════════════════════════════════════ */
+/* En qué formato puede grabar ESTE navegador. Un solo sitio lo decide, y
+   tanto el botón como la grabación preguntan aquí.
+
+   Antes el botón decía «.WEBM» escrito a mano en el HTML. Cuando cambié el
+   orden para preferir MP4, el archivo pasó a salir en .mp4 pero el botón
+   siguió diciendo .WEBM: el mismo tipo de descuido que el del código
+   haciendo de nombre. Si lo decide una función, no pueden discrepar.
+
+   MP4 PRIMERO, y webm solo si el navegador no sabe hacer MP4. Jose: «se
+   sigue quedando, pero creo que fue porque descargué el video y luego lo
+   envié a alguien». Encaja: webm es el formato que NO entienden ni
+   WhatsApp, ni el visor de fotos de iOS, ni muchos reproductores de
+   Android; lo reconvierten al vuelo y ahí se entrecorta. H.264 en MP4 lo
+   reproduce todo.
+
+   La extensión tiene que coincidir con lo grabado: un .webm que por dentro
+   es MP4 no abre en el visor de fotos de iOS. */
+function formatoVideo() {
+  if (typeof MediaRecorder === 'undefined') return null;
+  const formatos = [
+    'video/mp4; codecs=avc1.42E01E',   /* el que entiende todo el mundo */
+    'video/mp4',
+    'video/webm; codecs=vp9',
+    'video/webm; codecs=vp8',
+    'video/webm'
+  ];
+  const mimeType = formatos.find(f => {
+    try { return MediaRecorder.isTypeSupported(f); } catch (e) { return false; }
+  });
+  if (!mimeType) return null;
+  const ext = mimeType.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
+  return { mimeType, ext, tipoBlob: ext === 'mp4' ? 'video/mp4' : 'video/webm' };
+}
+
 const VIDEO_W = 1080, VIDEO_H = 1920;
 /* Cuánto puede durar el video antes de acelerarlo, y cuánto se puede
    acelerar como mucho.
@@ -5764,32 +5841,9 @@ vidBtn.addEventListener('click', async () => {
     const fondo = canvasBg();
     const oscuro = esDark();
 
-    /* MP4 PRIMERO, y webm solo si el navegador no sabe hacer MP4.
-
-       Jose: «se sigue quedando, pero creo que fue porque descargué el video
-       y luego lo envié a alguien». Eso encaja: el archivo salía en webm
-       porque Chrome lo ofrece primero, y webm es el formato que NO entienden
-       ni WhatsApp, ni el visor de fotos de iOS, ni muchos reproductores de
-       Android. Lo que no entienden lo reconvierten, y ahí es donde se
-       entrecorta.
-
-       H.264 dentro de MP4 lo reproduce absolutamente todo. Chrome lo admite
-       desde hace años; el orden de antes era una herencia de cuando no. */
-    const formatos = [
-      'video/mp4; codecs=avc1.42E01E',   /* el que entiende todo el mundo */
-      'video/mp4',
-      'video/webm; codecs=vp9',
-      'video/webm; codecs=vp8',
-      'video/webm'
-    ];
-    const mimeType = formatos.find(f => {
-      try { return MediaRecorder.isTypeSupported(f); } catch (e) { return false; }
-    });
-    if (!mimeType) { toast(t('no_video_support')); _downloading = false; return; }
-    /* La extensión debe coincidir con lo grabado: un .webm que por dentro
-       es MP4 no abre en el visor de fotos de iOS. */
-    const ext = mimeType.indexOf('mp4') !== -1 ? 'mp4' : 'webm';
-    const tipoBlob = ext === 'mp4' ? 'video/mp4' : 'video/webm';
+    const fmt = formatoVideo();
+    if (!fmt) { toast(t('no_video_support')); _downloading = false; return; }
+    const { mimeType, ext, tipoBlob } = fmt;
 
     /* 30 fps y no 60: a 1080x1920 el doble de cuadros dobla el trabajo sin
        que se note en un replay de trazos, y en un teléfono se atraganta. */

@@ -6,6 +6,18 @@
 
 ---
 
+## 📝 Anotado el 2026-11-18, no arreglado todavía
+
+| # | Qué | Por qué no se hizo ahora |
+|---|-----|--------------------------|
+| **N1** | **El numerito del icono mientras la app está CERRADA** sigue saliendo del service worker, que cuenta avisos del sistema sin tocar y nunca encoge | El arreglo de hoy lo corrige **en cuanto abres la app** (la página sí sabe cuántos dibujos hay sin leer), así que ya no se va a 134. Pero con la app cerrada puede seguir inflándose. El arreglo de verdad es que la Cloud Function mande el número real en el aviso, y eso obliga a desplegar funciones otra vez |
+| **N2** | **La firma del video y la de la imagen siguen siendo distintas** | Jose propuso unificarlas y estoy de acuerdo. Falta que decida la posición: arriba a la izquierda en las dos (yo lo prefiero: abajo es donde TikTok pone su propia interfaz), o cada una donde está |
+| **N3** | **El logo de la landing que se queda al recargar** | No consigo reproducirlo. La prueba `test-logo-vivo.js` recarga cinco veces y el logo se mueve en todas, splash y cabecera; en el video de Jose también se mueve. Hacen falta tres datos: cuál de los dos logos, si se queda para siempre o arranca solo, y en qué navegador |
+| **N4** | **Los emojis de la interfaz** | Roger: «I hate the AI emojis/icons». Hay que cambiarlos por SVG (Lucide). Es trabajo mecánico pero largo, y conviene hacerlo de una vez y no a trozos |
+| **N5** | **La inclinación del Apple Pencil** | La presión ya funciona (`e.pressure` con `pointerType === 'pen'`). `tiltX`/`tiltY` no se leen. Safari los da, así que se puede añadir para el efecto «lápiz de lado» |
+
+---
+
 ## 🎯 QUÉ FALTA PARA EL MVP (2026-11-17)
 
 Pregunta de Jose: *«qué más nos falta para que la app sea funcional y esté
