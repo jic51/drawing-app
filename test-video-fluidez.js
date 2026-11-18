@@ -98,6 +98,63 @@ function relojDelVideo(huecos, pasoMax) {
   const peorSin = Math.max(...sin.map((t,i) => i ? t - sin[i-1] : t));
   chk(peorSin > pasoMax, `(sin acotar serían ${peorSin} ms de golpe — el fallo original)`);
 
+  /* ── 3. El arcoíris de la firma gira sin pararse ni saltar ───────── */
+  /* La marca vieja del video usaba UN degradado que se deslizaba por encima
+     del texto. Un degradado de canvas no se repite: fuera de sus límites el
+     color se queda clavado en el del extremo. Así que el texto se iba
+     saliendo por la izquierda, todas las letras se quedaban del mismo color
+     —la animación parecía pararse— y al cerrar el ciclo volvía de golpe.
+
+     Medido en un video que grabó Jose desde su iPad: 0,3 s casi quieto
+     (cambio 0,1 donde lo normal era 4,0) y luego un salto de 10 aumentos,
+     cada 2,47 s.
+
+     Se mide pintando la firma en 60 fases de un ciclo y comparando píxeles
+     entre fases consecutivas, en círculo. Si la animación es continua, el
+     cambio es parecido en todas; si se clava o salta, se ve. */
+  const giro = await p.evaluate(() => {
+    if (typeof dibujarFirma !== 'function') return null;
+    usuario = usuario || 'jose';
+    const N = 60, CICLO = 2500;
+    const fotos = [];
+    const realNow = performance.now.bind(performance);
+    try {
+      for (let i = 0; i < N; i++) {
+        const t = (i / N) * CICLO;
+        performance.now = () => t;      /* congelar el reloj en cada fase */
+        const c = document.createElement('canvas');
+        c.width = 200; c.height = 60;
+        const cx = c.getContext('2d');
+        dibujarFirma(cx, 200, 60, false);
+        fotos.push(cx.getImageData(8, 6, 160, 18).data);
+      }
+    } finally { performance.now = realNow; }
+
+    const ds = [];
+    for (let i = 0; i < N; i++) {
+      const a = fotos[i], b2 = fotos[(i + 1) % N];
+      let suma = 0;
+      for (let j = 0; j < a.length; j++) suma += Math.abs(a[j] - b2[j]);
+      ds.push(suma / a.length);
+    }
+    const orden = [...ds].sort((x, y) => x - y);
+    const mediana = orden[Math.floor(orden.length / 2)];
+    return {
+      mediana: +mediana.toFixed(3),
+      maximo:  +Math.max(...ds).toFixed(3),
+      minimo:  +Math.min(...ds).toFixed(3),
+      quietos: ds.filter(d => d < mediana * 0.25).length,
+      saltos:  ds.filter(d => d > mediana * 3).length
+    };
+  });
+
+  chk(giro !== null, 'se pudo medir la firma');
+  if (giro) {
+    chk(giro.mediana > 0, 'la firma se mueve', giro);
+    chk(giro.saltos === 0,  'el arcoíris NO pega saltos al cerrar el ciclo', giro);
+    chk(giro.quietos === 0, 'el arcoíris NO se queda clavado en ningún tramo', giro);
+  }
+
   const propios = erroresDeLaApp(errs);
   chk(propios.length === 0, 'sin errores de la app', propios);
 
