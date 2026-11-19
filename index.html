@@ -221,6 +221,23 @@ body {
 a { color: var(--accent2); text-decoration: none; }
 img { max-width: 100%; height: auto; display: block; }
 
+/* La pregunta de HOY en el hero. Se parece a la caja que sale sobre el
+   lienzo dentro de la app a propósito: quien entre debe reconocerla. */
+.hero-reto {
+  display: inline-flex; align-items: center; gap: 10px;
+  margin: 4px auto 22px; padding: 10px 18px;
+  border: 1.5px solid var(--accent); border-radius: 999px;
+  background: rgba(124,58,237,0.10);
+  font-size: clamp(0.95rem, 2.4vw, 1.15rem); line-height: 1.35;
+  max-width: min(92vw, 640px); text-align: left;
+}
+.hero-reto[hidden] { display: none; }
+.hero-reto-et {
+  font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  font-size: 0.68em; color: var(--accent2); flex-shrink: 0;
+}
+.hero-reto-txt { font-weight: 600; }
+
 /* ══ LOGO CANÓNICO — idéntico al .titulo de la app ══
    NO modificar sin actualizar .titulo en sketchsendv14.html.
    Todo lugar que muestre "SketchSend ✏️" debe usar .ss-logo. */
@@ -707,6 +724,8 @@ footer {
   details.faq .faq-a { padding: 0 18px 16px; font-size: 0.87rem; }
 }
 </style>
+<!-- Las preguntas del día. El mismo archivo que carga la app: un solo sitio. -->
+<script src="retos.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
@@ -733,6 +752,16 @@ footer {
   <div class="ss-logo hero-logo" style="visibility:hidden;">SketchSend ✏️</div>
   <div class="hero-tagline" data-i18n="hero_tagline">A question a day. You answer it with a drawing.</div>
   <div class="hero-subtitle" data-i18n="hero_subtitle">Draw it in 30 seconds and send it to your people. They watch you draw it. Tomorrow it is gone.</div>
+
+  <!-- La pregunta de HOY, la de verdad, la misma que verá dentro.
+       Es lo que convierte la promesa en algo comprobable: no dice «hay una
+       pregunta al día», enseña la de hoy. Si `retos.js` no cargara, esto se
+       queda vacío y no deja un hueco raro. -->
+  <div class="hero-reto" id="hero-reto" hidden>
+    <span class="hero-reto-et" data-i18n="hero_reto_et">Today</span>
+    <span class="hero-reto-txt" id="hero-reto-txt"></span>
+  </div>
+
   <div class="hero-canvas-wrap">
     <canvas id="hero-canvas" width="400" height="300"></canvas>
   </div>
@@ -970,10 +999,11 @@ const I18N = {
     try_cta: 'Create your account',
     gallery_title: 'Community drawings', gallery_subtitle: 'Shared by our artists',
     reviews_title: 'What people say',
-    lista_titulo: 'A drawing prompt every week',
-    lista_sub: 'One idea to draw, every Monday. No spam, leave whenever you like.',
+    lista_titulo: 'A question to draw, every day',
+    lista_sub: 'We can send you the day\'s question by email. No spam, leave whenever you like.',
+    hero_reto_et: 'Today',
     lista_ph: 'your@email.com', lista_btn: 'Sign me up',
-    lista_enviando: 'Sending…', lista_ok: 'You are in. See you Monday.',
+    lista_enviando: 'Sending…', lista_ok: 'You are in. See you tomorrow.',
     lista_mal: 'That email does not look right.',
     lista_fail: "Couldn't sign you up. Try again in a moment.",
     cifras_titulo: 'SketchSend so far', users_label: 'people drawing', paises_label: 'countries',
@@ -1018,10 +1048,11 @@ const I18N = {
     try_cta: 'Crea tu cuenta',
     gallery_title: 'Dibujos de la comunidad', gallery_subtitle: 'Compartidos por nuestros artistas',
     reviews_title: 'Lo que dicen las personas',
-    lista_titulo: 'Un reto de dibujo cada semana',
-    lista_sub: 'Una idea para dibujar, cada lunes. Sin spam, te sales cuando quieras.',
+    lista_titulo: 'Una pregunta para dibujar, cada día',
+    lista_sub: 'Si quieres, te mandamos la pregunta del día por correo. Sin spam, te sales cuando quieras.',
+    hero_reto_et: 'Hoy',
     lista_ph: 'tu@correo.com', lista_btn: 'Apúntame',
-    lista_enviando: 'Enviando…', lista_ok: 'Listo. Nos vemos el lunes.',
+    lista_enviando: 'Enviando…', lista_ok: 'Listo. Nos vemos mañana.',
     lista_mal: 'Ese correo no parece válido.',
     lista_fail: 'No se pudo apuntar. Inténtalo en un momento.',
     cifras_titulo: 'SketchSend hasta hoy', users_label: 'personas dibujando', paises_label: 'países',
@@ -1061,6 +1092,9 @@ function setLang(l) {
     const key = el.getAttribute('data-i18n-alt');
     if (I18N[l][key]) el.alt = I18N[l][key];
   });
+  /* La pregunta de hoy no lleva `data-i18n` porque su texto no está en
+     I18N: sale de retos.js y cambia cada día. Hay que repintarla a mano. */
+  if (typeof pintarRetoHero === 'function') pintarRetoHero();
 }
 (function initLang() {
   let saved = null;
@@ -1181,6 +1215,22 @@ document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
   };
   arranca();
 })();
+
+/* ── La pregunta de hoy en el hero ──
+   Sale de `retos.js`, el mismo archivo que usa la app, así que no pueden
+   decir cosas distintas. Si el archivo no cargó, la caja se queda oculta
+   en vez de dejar un hueco vacío. */
+function pintarRetoHero() {
+  const caja = document.getElementById('hero-reto');
+  const txt  = document.getElementById('hero-reto-txt');
+  if (!caja || !txt) return;
+  const SS = window.SS;
+  if (!SS || !SS.textoDelDia) { caja.hidden = true; return; }
+  const idioma = (document.documentElement.lang === 'es') ? 'es' : 'en';
+  txt.textContent = SS.textoDelDia(idioma);
+  caja.hidden = false;
+}
+pintarRetoHero();
 
 /* ── Canvas interactivo ── */
 (function() {

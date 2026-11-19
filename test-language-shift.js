@@ -66,8 +66,16 @@ const path = require('path');
   chk(verticales.length === 0,
       'nada se mueve en vertical al cambiar de idioma',
       verticales.slice(0, 8).map(m => m.k + ' dy=' + m.dy + ' dh=' + m.dh));
-  /* Tres líneas de texto centrado que se recentran unos px: tolerable. */
-  chk(soloAncho.length <= 4,
+  /* Unas pocas líneas de texto CENTRADO que se recentran unos píxeles:
+     tolerable, porque la misma frase mide distinto en cada idioma y está
+     centrada. Lo que no se tolera es que algo se mueva en VERTICAL, que es
+     lo que empuja al resto de la página y se ve como un salto.
+
+     Subió de 4 a 5 el 2026-11-19 al añadir la pregunta del día al hero:
+     la píldora cambia de ancho porque la pregunta misma mide distinto en
+     cada idioma («what you had for dinner» / «lo que cenaste anoche»).
+     Eso no tiene arreglo ni hace falta: está centrada. */
+  chk(soloAncho.length <= 5,
       'como mucho unas pocas líneas de texto centrado se recentran',
       { cuantas: soloAncho.length, cuales: soloAncho.map(m => m.k) });
   chk(Object.keys(antes).length > 30, 'se midieron elementos de verdad',

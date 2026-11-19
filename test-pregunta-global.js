@@ -72,7 +72,7 @@ const chk = (cond, msg, dato) => {
     /* Medianoche en RD = 04:00 UTC. */
     const M = Date.UTC(2026, 10, 9, 4, 0, 0);
     return {
-      desfase: RETO_DESFASE_H,
+      desfase: window.SS.DESFASE_H,
       diaAntes: diaActual(M - 60000),
       diaJusto: diaActual(M),
       diaDesp:  diaActual(M + 60000),
@@ -96,11 +96,11 @@ const chk = (cond, msg, dato) => {
   const ciclo = await p.evaluate(() => {
     const L = Date.UTC(2026, 10, 9, 12), DIA = 24 * 3600 * 1000;
     const sec = [];
-    for (let i = 0; i < RETOS.length + 2; i++) sec.push(retoDelDia(L + i * DIA).en);
+    for (let i = 0; i < window.SS.RETOS.length + 2; i++) sec.push(retoDelDia(L + i * DIA).en);
     return {
-      total: RETOS.length,
-      distintos: new Set(sec.slice(0, RETOS.length)).size,
-      reinicia: sec[0] === sec[RETOS.length],
+      total: window.SS.RETOS.length,
+      distintos: new Set(sec.slice(0, window.SS.RETOS.length)).size,
+      reinicia: sec[0] === sec[window.SS.RETOS.length],
       repiteSeguido: sec.some((x, i) => i > 0 && x === sec[i - 1]),
       /* Fechas muy anteriores a la época dan semana negativa: el módulo debe
          seguir cayendo dentro de la lista, no devolver undefined. */

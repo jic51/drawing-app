@@ -54,7 +54,7 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
       cambiaManana: hoy.en !== manana.en,
       distintoEnSemana: hoy.en !== semana.en,
       sinRepetir: n,
-      total: RETOS.length,
+      total: window.SS.RETOS.length,
       mismoDiaMismaPregunta: manana8.en === noche23.en
     };
   });
@@ -125,6 +125,53 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
       'el titular de la landing habla de la pregunta del día', landing.titular);
   chk(/30 seconds|30 segundos/.test(landing.sub) && /gone|desaparece/i.test(landing.sub),
       'y el subtítulo dice los 30 segundos y que desaparece', landing.sub);
+
+  /* ── 5. La landing enseña la pregunta DE HOY, y es la misma ──────── */
+  const hero = await p2.evaluate(() => {
+    const caja = document.getElementById('hero-reto');
+    const txt  = document.getElementById('hero-reto-txt');
+    if (!caja || !txt) return null;
+    const en = txt.textContent.trim();
+    setLang('es');
+    const es = txt.textContent.trim();
+    const etiqueta = document.querySelector('.hero-reto-et').textContent.trim();
+    setLang('en');
+    return {
+      oculta: caja.hidden,
+      en, es, etiqueta,
+      vuelve: txt.textContent.trim(),
+      /* lo que dice el archivo compartido, para comparar */
+      delArchivo: window.SS ? window.SS.textoDelDia('en') : null
+    };
+  });
+
+  chk(hero !== null, 'la landing tiene sitio para la pregunta de hoy');
+  if (hero) {
+    chk(!hero.oculta, 'y se ve', hero.en);
+    chk(hero.en.length > 2, 'con texto de verdad', hero.en);
+    chk(hero.en === hero.delArchivo,
+        'la pregunta de la landing sale del archivo compartido', hero);
+    chk(hero.es !== hero.en && hero.etiqueta === 'Hoy',
+        'se traduce al cambiar de idioma', { es: hero.es, etiqueta: hero.etiqueta });
+    chk(hero.vuelve === hero.en, 'y vuelve bien al idioma anterior');
+  }
+
+  /* Y lo que de verdad importa: que la landing y la APP digan LA MISMA
+     pregunta. Son dos páginas distintas leyendo el mismo archivo; si
+     alguien volviera a copiar la lista, esto lo cazaría. */
+  const enLaApp = await p.evaluate(() => { lang = 'en'; return textoReto(); });
+  const enLaLanding = hero ? hero.en : null;
+  chk(!!enLaApp && enLaApp === enLaLanding,
+      'la app y la landing dicen la MISMA pregunta (en el mismo idioma)',
+      { app: enLaApp, landing: enLaLanding });
+
+  /* Y que ya no quede ningún «cada semana» en la landing. */
+  const semanal = await p2.evaluate(() => {
+    const t = document.body.innerText;
+    return (t.match(/cada semana|every week|every Monday|cada lunes/gi) || []);
+  });
+  chk(semanal.length === 0, 'en la landing no queda ningún «cada semana»', semanal);
+
   await p2.close();
 
   const propios = erroresDeLaApp(errs);
