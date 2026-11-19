@@ -88,6 +88,8 @@
   <!-- Firebase SDK (compat mode — un solo bundle, sin build step) -->
   <!-- Las preguntas del día. Lo carga también la landing: un solo sitio. -->
   <script src="../retos.js"></script>
+  <!-- La animación de las frases. La landing usa la misma. -->
+  <script src="../frase.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
@@ -466,21 +468,10 @@
        los colores del logo y se van saliendo de derecha a izquierda; cuando
        no queda ninguna, entra la nueva. Cada letra es un <span> para poder
        darle su propio color y su propio retardo. */
-    /* La palabra entera no se parte; el corte de línea solo cae en los
-       espacios. */
-    #prompt-text .w { display:inline-block; white-space:nowrap; }
-    #prompt-text .ch {
-      display:inline-block; white-space:pre;
-      transition:opacity .3s ease, transform .3s ease, color .3s ease;
-    }
-    #prompt-text .ch.sale { opacity:0; transform:translateX(-10px) scale(.86); }
-    #prompt-text .ch.entra { opacity:0; transform:translateY(7px); }
-    @media (prefers-reduced-motion: reduce) {
-      /* Sin movimiento, el cambio es directo: nadie se marea leyendo una
-         sugerencia. */
-      #prompt-text .ch { transition:none; }
-      #prompt-text .ch.sale, #prompt-text .ch.entra { opacity:1; transform:none; }
-    }
+    /* El estilo de las letras (.w, .ch, .sale, .entra) lo pone `frase.js`
+       él mismo, con la clase `.ss-frase`. No se copia aquí: si estuviera en
+       los dos sitios acabarían siendo parecidos pero no iguales, y lo que
+       Jose quiere es que la landing y la app se vean EXACTAMENTE igual. */
     #prompt-sub { font-size:0.7rem; color:var(--muted); }
     #drawing-prompts.idea #prompt-sub { display:none; }
     @media (prefers-reduced-motion: reduce) {
@@ -3919,85 +3910,22 @@ function getPrompts() { return lang === 'en' ? PROMPTS_EN : PROMPTS_ES; }
 
 function cajaPrompt() { return document.getElementById('drawing-prompts'); }
 
-/* Los mismos colores del logo, para que el cambio se sienta de la casa. */
-const COLORES_FRASE = ['#ff0000','#ff7f00','#ffff00','#00ff00','#0000ff','#9400d3'];
+/* La animación vive en `frase.js`, que carga también la landing: así las
+   dos enseñan las frases EXACTAMENTE igual, que es lo que Jose pidió para
+   que la gente reconozca dentro lo que vio fuera.
 
-const SALIDA_LETRA = 32;   /* ms entre letra y letra al salir */
-const ENTRADA_LETRA = 22;
-
-function letrasDe(txt, clase) {
-  const frag = document.createDocumentFragment();
-  /* Cada letra va en su propio inline-block para poder darle color y
-     retardo propios. Pero eso deja que el navegador corte la línea entre
-     dos letras cualesquiera, y el texto salía partido a mitad de palabra
-     ("Challenge of th / e week"). Así que las letras de una palabra van
-     dentro de una envoltura que no se parte, y el corte solo puede caer en
-     los espacios, como en cualquier texto. */
-  const trozos = txt.split(/(\s+)/);
-  for (const trozo of trozos) {
-    if (!trozo) continue;
-    if (/^\s+$/.test(trozo)) {
-      const sp = document.createElement('span');
-      sp.className = 'ch' + (clase ? ' ' + clase : '');
-      sp.textContent = trozo;
-      frag.appendChild(sp);
-      continue;
-    }
-    const palabra = document.createElement('span');
-    palabra.className = 'w';
-    for (const c of trozo) {
-      const sp = document.createElement('span');
-      sp.className = 'ch' + (clase ? ' ' + clase : '');
-      sp.textContent = c;
-      palabra.appendChild(sp);
-    }
-    frag.appendChild(palabra);
-  }
-  return frag;
-}
+   Aquí solo quedan los envoltorios, que saben a qué elemento aplicarla. */
+let cambioEnCurso = { timer: null };
 
 function pintarFrase(txt) {
   const el = document.getElementById('prompt-text');
-  if (!el) return;
-  el.innerHTML = '';
-  el.appendChild(letrasDe(txt, ''));
+  if (el && window.SS && window.SS.frase) window.SS.frase.pintar(el, txt);
 }
 
-let cambioEnCurso = null;
-
-/* Cambia la frase con el barrido de color. Devuelve cuánto tarda, para que
-   quien la llame sepa cuándo queda libre. */
 function cambiarFrase(nuevo) {
   const el = document.getElementById('prompt-text');
-  if (!el) return 0;
-  const viejas = [...el.querySelectorAll('.ch')];
-  if (!viejas.length) { pintarFrase(nuevo); return 0; }
-
-  /* De derecha a izquierda: la última letra es la primera en irse. */
-  viejas.forEach((sp, i) => {
-    const desdeElFinal = viejas.length - 1 - i;
-    setTimeout(() => {
-      /* El color recorre la frase: cada letra toma el siguiente del logo. */
-      sp.style.color = COLORES_FRASE[desdeElFinal % COLORES_FRASE.length];
-      /* Un respiro con el color puesto antes de desaparecer, si no el
-         arcoíris no llega a verse. */
-      setTimeout(() => sp.classList.add('sale'), 130);
-    }, desdeElFinal * SALIDA_LETRA);
-  });
-
-  const msSalida = (viejas.length - 1) * SALIDA_LETRA + 130 + 300;
-  clearTimeout(cambioEnCurso);
-  cambioEnCurso = setTimeout(() => {
-    el.innerHTML = '';
-    el.appendChild(letrasDe(nuevo, 'entra'));
-    const nuevas = [...el.querySelectorAll('.ch')];
-    requestAnimationFrame(() => {
-      nuevas.forEach((sp, i) => {
-        setTimeout(() => sp.classList.remove('entra'), i * ENTRADA_LETRA);
-      });
-    });
-  }, msSalida);
-  return msSalida + nuevo.length * ENTRADA_LETRA + 300;
+  if (!el || !window.SS || !window.SS.frase) return 0;
+  return window.SS.frase.cambiar(el, nuevo, cambioEnCurso);
 }
 
 function mostrarReto() {
@@ -4032,7 +3960,7 @@ function mostrarIdea() {
 function ocultarPrompt() {
   const el = cajaPrompt();
   clearTimeout(ideasTimer); ideasTimer = null;
-  clearTimeout(cambioEnCurso);
+  clearTimeout(cambioEnCurso.timer);
   if (!el) return;
   el.style.opacity = '0';
   promptVisible = false;

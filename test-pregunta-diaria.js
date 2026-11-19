@@ -165,6 +165,48 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
       'la app y la landing dicen la MISMA pregunta (en el mismo idioma)',
       { app: enLaApp, landing: enLaLanding });
 
+  /* ── 6. La sección de preguntas: la MISMA animación que la app ───── */
+  await p2.evaluate(() => document.getElementById('preguntas-section').scrollIntoView());
+  await p2.waitForTimeout(700);
+  const sec = await p2.evaluate(() => {
+    const el = document.getElementById('preguntas-frase');
+    if (!el) return null;
+    return {
+      primera: el.textContent.trim(),
+      letras: el.querySelectorAll('.ch').length,
+      palabras: el.querySelectorAll('.w').length,
+      /* la clase que `frase.js` pone y de la que cuelga su CSS */
+      marcada: el.classList.contains('ss-frase'),
+      /* y que el estilo lo haya inyectado el archivo, no la página */
+      estiloInyectado: !!document.querySelector('style[data-ss="frase"]')
+    };
+  });
+  chk(sec !== null, 'la landing tiene la sección de preguntas');
+  if (sec) {
+    chk(sec.letras > 5, 'la frase está partida en letras, como en la app',
+        { letras: sec.letras, palabras: sec.palabras });
+    chk(sec.marcada && sec.estiloInyectado,
+        'el estilo lo pone frase.js, no una copia en la landing', sec);
+  }
+
+  await p2.waitForTimeout(5400);
+  const despues = await p2.evaluate(() =>
+    document.getElementById('preguntas-frase').textContent.trim());
+  chk(sec && despues !== sec.primera, 'las preguntas van cambiando solas',
+      { antes: sec && sec.primera, despues });
+
+  /* Y que la app use EXACTAMENTE la misma animación, no una copia. */
+  const mismaAnimacion = await p.evaluate(() => {
+    const src = [...document.querySelectorAll('script')].map(x => x.textContent).join('\n');
+    return {
+      usaElArchivo: /window\.SS\.frase\.(pintar|cambiar)/.test(src),
+      sinCopiaLocal: !/function letrasDe\s*\(/.test(src),
+      estiloInyectado: !!document.querySelector('style[data-ss="frase"]')
+    };
+  });
+  chk(mismaAnimacion.usaElArchivo && mismaAnimacion.sinCopiaLocal,
+      'la app usa frase.js y ya no tiene su propia copia', mismaAnimacion);
+
   /* Y que ya no quede ningún «cada semana» en la landing. */
   const semanal = await p2.evaluate(() => {
     const t = document.body.innerText;

@@ -1,0 +1,11 @@
+# SketchSend — qué puede recorrer un buscador.
+#
+# Todo abierto salvo la página de moderar, que además lleva su propio
+# noindex. Lo de `Disallow` aquí NO es seguridad —cualquiera puede abrir el
+# archivo igual—: solo evita que salga en los resultados de búsqueda.
+
+User-agent: *
+Allow: /
+Disallow: /admin.html
+
+Sitemap: https://sketch-send.com/sitemap.xml

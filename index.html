@@ -221,6 +221,35 @@ body {
 a { color: var(--accent2); text-decoration: none; }
 img { max-width: 100%; height: auto; display: block; }
 
+/* La sección de las preguntas. El marco imita la caja que sale sobre el
+   lienzo dentro de la app: el mismo borde de acento, el mismo redondeo.
+   Quien la vea aquí la reconocerá allí, que es de lo que se trata. */
+.preguntas-section { padding: 70px 20px 80px; text-align: center; }
+.preguntas-marco {
+  max-width: min(92vw, 680px); margin: 0 auto;
+  border: 2px solid var(--accent); border-radius: 18px;
+  background: rgba(124,58,237,0.08);
+  padding: 30px 26px 32px;
+  min-height: 150px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px;
+}
+.preguntas-et {
+  font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+  font-size: 0.72rem; color: var(--accent2);
+  /* «TODAY» y «HOY» no miden igual, y al estar centrada la etiqueta se
+     recolocaba al cambiar de idioma. Con un ancho mínimo la caja mide lo
+     mismo en los dos y solo se mueve el texto DENTRO de ella, que no
+     empuja a nadie. */
+  display: inline-block; min-width: 72px; text-align: center;
+}
+.preguntas-frase {
+  font-size: clamp(1.25rem, 4.2vw, 2rem); font-weight: 700; line-height: 1.3;
+  min-height: 2.6em;        /* sitio para dos líneas: así no salta al cambiar */
+  display: flex; align-items: center; justify-content: center;
+}
+.preguntas-pie { margin-top: 18px; color: var(--muted); font-size: 0.95rem; }
+
 /* La pregunta de HOY en el hero. Se parece a la caja que sale sobre el
    lienzo dentro de la app a propósito: quien entre debe reconocerla. */
 .hero-reto {
@@ -480,7 +509,19 @@ section {
 .try-canvas-wrap { display: inline-block; position: relative; margin-bottom: 16px; }
 #try-canvas {
   border-radius: 14px; border: 2px solid var(--border);
-  background: #fff; cursor: crosshair; touch-action: none; max-width: 90vw;
+  background: #fff; touch-action: none; max-width: 90vw;
+  /* El cursor del sistema se perdía sobre el lienzo blanco: en modo oscuro
+     macOS lo pinta casi blanco, y `crosshair` ahí no se ve. Este es un
+     punto con aro blanco y borde oscuro, así que se ve sobre CUALQUIER
+     fondo, claro u oscuro. Va en SVG dentro del propio CSS: no es un
+     archivo que pueda faltar. El `crosshair` del final es el respaldo si
+     el navegador no admite cursores propios. */
+  cursor: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='22' height='22'>\
+<circle cx='11' cy='11' r='7' fill='none' stroke='%23ffffff' stroke-width='4'/>\
+<circle cx='11' cy='11' r='7' fill='none' stroke='%231a1a2e' stroke-width='2'/>\
+<circle cx='11' cy='11' r='1.5' fill='%231a1a2e'/>\
+</svg>") 11 11, crosshair;
 }
 .try-controls { display: flex; justify-content: center; gap: 12px; margin-bottom: 14px; }
 .try-controls button {
@@ -726,6 +767,8 @@ footer {
 </style>
 <!-- Las preguntas del día. El mismo archivo que carga la app: un solo sitio. -->
 <script src="retos.js"></script>
+<!-- La animación de las frases. La app usa la misma. -->
+<script src="frase.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 </head>
@@ -886,6 +929,25 @@ footer {
   </div>
 </section>
 
+<!-- ══ LAS PREGUNTAS ══
+     Jose: «sería bueno que el usuario vea las frases que aparecen de la
+     misma forma en que aparecen en la app, así se acostumbran y saben qué
+     buscar». Aquí no se DESCRIBE la pregunta del día: se enseña, con la
+     misma animación que verá dentro, letra a letra. -->
+<section class="preguntas-section reveal" id="preguntas-section">
+  <div class="section-head">
+    <h2 class="section-title" data-i18n="preg_titulo">A question a day</h2>
+    <p class="section-sub" data-i18n="preg_sub">This is exactly how it looks inside the app.</p>
+  </div>
+
+  <div class="preguntas-marco">
+    <div class="preguntas-et" data-i18n="preg_hoy">Today</div>
+    <div class="preguntas-frase ss-frase" id="preguntas-frase"></div>
+  </div>
+
+  <p class="preguntas-pie" data-i18n="preg_pie">And a new one tomorrow.</p>
+</section>
+
 <!-- ══ GALERÍA ══ -->
 <section class="gallery-section" id="gallery-section">
   <div class="section-head">
@@ -1002,6 +1064,10 @@ const I18N = {
     lista_titulo: 'A question to draw, every day',
     lista_sub: 'We can send you the day\'s question by email. No spam, leave whenever you like.',
     hero_reto_et: 'Today',
+    preg_titulo: 'A question a day',
+    preg_sub: 'This is exactly how it looks inside the app.',
+    preg_hoy: 'Today',
+    preg_pie: 'And a new one tomorrow. The same one for everybody.',
     lista_ph: 'your@email.com', lista_btn: 'Sign me up',
     lista_enviando: 'Sending…', lista_ok: 'You are in. See you tomorrow.',
     lista_mal: 'That email does not look right.',
@@ -1051,6 +1117,10 @@ const I18N = {
     lista_titulo: 'Una pregunta para dibujar, cada día',
     lista_sub: 'Si quieres, te mandamos la pregunta del día por correo. Sin spam, te sales cuando quieras.',
     hero_reto_et: 'Hoy',
+    preg_titulo: 'Una pregunta al día',
+    preg_sub: 'Así es exactamente como se ve dentro de la app.',
+    preg_hoy: 'Hoy',
+    preg_pie: 'Y mañana otra. La misma para todo el mundo.',
     lista_ph: 'tu@correo.com', lista_btn: 'Apúntame',
     lista_enviando: 'Enviando…', lista_ok: 'Listo. Nos vemos mañana.',
     lista_mal: 'Ese correo no parece válido.',
@@ -1095,6 +1165,7 @@ function setLang(l) {
   /* La pregunta de hoy no lleva `data-i18n` porque su texto no está en
      I18N: sale de retos.js y cambia cada día. Hay que repintarla a mano. */
   if (typeof pintarRetoHero === 'function') pintarRetoHero();
+  if (typeof window.__reiniciarPreguntas === 'function') window.__reiniciarPreguntas();
 }
 (function initLang() {
   let saved = null;
@@ -1214,6 +1285,44 @@ document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
     setTimeout(arranca, 120);
   };
   arranca();
+})();
+
+/* ── Las preguntas, girando como dentro de la app ──
+   Empieza por la de HOY —la de verdad, la que verá al entrar— y sigue con
+   las de los días siguientes. Se para cuando la sección no se ve: animar
+   letras fuera de pantalla es trabajo del hilo principal a cambio de nada,
+   y en esta página eso se nota (el logo del arcoíris se repinta ahí). */
+(function () {
+  const el = document.getElementById('preguntas-frase');
+  if (!el || !window.SS || !window.SS.frase || !window.SS.RETOS) return;
+
+  let parar = null;
+  const idioma = () => (document.documentElement.lang === 'es') ? 'es' : 'en';
+
+  function arrancar() {
+    if (parar) return;
+    const l = idioma();
+    const hoy = window.SS.diaActual();
+    const n = window.SS.RETOS.length;
+    /* Hoy primero, luego los días que vienen: lo que de verdad va a ver. */
+    const textos = [];
+    for (let i = 0; i < 8; i++) {
+      textos.push(window.SS.RETOS[((hoy + i) % n + n) % n][l] || window.SS.RETOS[((hoy + i) % n + n) % n].en);
+    }
+    parar = window.SS.frase.rotar(el, textos, { cada: 3800 });
+  }
+  function detener() { if (parar) { parar(); parar = null; } }
+
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(es => {
+      es.forEach(e => e.isIntersecting ? arrancar() : detener());
+    }, { threshold: 0.25 }).observe(el);
+  } else {
+    arrancar();
+  }
+
+  /* Al cambiar de idioma hay que rehacer la lista. */
+  window.__reiniciarPreguntas = () => { detener(); arrancar(); };
 })();
 
 /* ── La pregunta de hoy en el hero ──
