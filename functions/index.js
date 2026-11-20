@@ -6,6 +6,26 @@ const { getMessaging } = require('firebase-admin/messaging');
 
 initializeApp();
 
+/* Cuántos dibujos sin ver y sin caducar le quedan a alguien.
+
+   Se cuentan con `count()`, que NO se baja los documentos: un dibujo pesa
+   cientos de kilobytes porque los trazos viven dentro, y traerse diez para
+   contarlos sería absurdo. `count()` cobra una lectura por cada 1.000. */
+async function contarPendientes(db, uid) {
+  try {
+    const snap = await db.collection('sketches')
+      .where('to', '==', uid)
+      .where('viewed', '==', false)
+      .count().get();
+    return snap.data().count || 0;
+  } catch (e) {
+    /* Si falta el índice compuesto, no se rompe el aviso: se manda sin
+       número y el service worker se las apaña como antes. */
+    console.error('contarPendientes:', e.message);
+    return 0;
+  }
+}
+
 exports.sendSketchNotification = onDocumentCreated('sketches/{sketchId}', async (event) => {
   const sketch = event.data.data();
   const { to, fromName } = sketch;
@@ -27,7 +47,17 @@ exports.sendSketchNotification = onDocumentCreated('sketches/{sketchId}', async 
       title: `${fromName || 'Alguien'} te envió un dibujo ✏️`,
       body: 'Toca para verlo antes de que desaparezca',
       fromName: String(fromName || ''),
-      sketchId: String(event.params.sketchId || '')
+      sketchId: String(event.params.sketchId || ''),
+      /* EL NÚMERO REAL de dibujos sin leer, contado aquí.
+
+         Antes el service worker lo deducía sumando los avisos del sistema
+         que seguían sin tocar, y eso no encoge nunca si no los tocas: a
+         Jose le llegó a marcar 134 con UN dibujo sin leer. Contaba
+         notificaciones, no dibujos.
+
+         La app ya lo corrige al abrirla, pero con la app cerrada el único
+         que puede saberlo es el servidor, que es donde está el dato. */
+      pendientes: String(await contarPendientes(db, to))
     },
     webpush: {
       fcmOptions: { link: 'https://sketch-send.com/app/' }
@@ -148,7 +178,65 @@ exports.emparejarConCreador = onDocumentCreated('users/{uid}', async (event) => 
       createdAt: FieldValue.serverTimestamp(),
       acceptedAt: FieldValue.serverTimestamp(),
     });
+
+    await mandarBienvenida(db, creador, nuevo, snap.docs[0].data());
   } catch (e) {
     console.error('emparejarConCreador:', e.message);
   }
 });
+
+/* ══════════════════════════════════════════════════════
+   EL DIBUJO DE BIENVENIDA
+   ────────────────────────────────────────────────────
+   Idea de Jose: «al crear una cuenta nueva, yo aparezco como amigo, pero
+   el usuario no sabe por qué o quién soy; deberíamos enviar un primer
+   dibujo y un mensaje del creador dando la bienvenida».
+
+   Además de presentarse, hace algo más importante: **enseña para qué sirve
+   la app en vez de explicarlo**. Quien entra se encuentra un dibujo
+   esperando y lo ve reproducirse. Eso es la app entera en diez segundos.
+
+   El dibujo lo graba Jose desde la propia app (Ajustes → Guardar como
+   bienvenida) y queda en `config/bienvenida`. Uno generado por código se
+   notaría y haría justo lo contrario de lo que se busca.
+
+   DURA 7 DÍAS, no 24 horas. Decisión de Jose, y es la correcta: es lo
+   único que tiene alguien que acaba de entrar, y si desaparece al día
+   siguiente se queda otra vez con la bandeja vacía, que es el problema que
+   este dibujo viene a tapar.
+
+   Si no hay dibujo guardado, no pasa nada: la amistad se crea igual y esto
+   no se ejecuta. Así la función ya sirve aunque Jose aún no lo haya
+   dibujado.
+   ══════════════════════════════════════════════════════ */
+const BIENVENIDA_DIAS = 7;
+
+async function mandarBienvenida(db, creador, nuevo, datosCreador) {
+  try {
+    const doc = await db.collection('config').doc('bienvenida').get();
+    if (!doc.exists) return;
+    const d = doc.data() || {};
+    if (!Array.isArray(d.strokes) || !d.strokes.length) return;
+
+    const ahora = Date.now();
+    await db.collection('sketches').add({
+      from: creador,
+      fromName: (datosCreador && datosCreador.username) || USUARIO_CREADOR,
+      to: nuevo,
+      toName: null,
+      strokes: d.strokes,
+      /* El único dibujo de la app que lleva texto. No es que los dibujos
+         pasen a tener mensajes: es que una presentación necesita decir
+         quién eres, y todo lo demás de la app es justamente NO escribir. */
+      mensaje: String(d.mensaje || '').slice(0, 280) || null,
+      esBienvenida: true,
+      createdAt: FieldValue.serverTimestamp(),
+      expiresAt: new Date(ahora + BIENVENIDA_DIAS * 24 * 3600 * 1000),
+      viewed: false,
+      reto: null
+    });
+  } catch (e) {
+    /* Que falle la bienvenida no puede impedir que se cree la amistad. */
+    console.error('mandarBienvenida:', e.message);
+  }
+}

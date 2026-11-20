@@ -24,6 +24,29 @@ service cloud.firestore {
        abre a nadie, ni siquiera a ti desde el navegador. */
     function ADMIN_UID() { return 'PON_AQUI_TU_UID'; }
 
+    /* ── ¿ME BLOQUEÓ? ────────────────────────────────────────────────
+       Se mira SU lista, que vive en su documento de usuario. `get()` dentro
+       de una regla no pasa por las reglas de lectura, así que esto funciona
+       aunque la lista no sea pública: nadie puede ver a quién has bloqueado,
+       pero el servidor sí lo tiene en cuenta.
+
+       Va declarada AQUÍ arriba, no dentro de un bloque, para que la vean
+       tanto `sketches` como `friendships`.
+
+       El `exists()` no sobra: si la cuenta del otro fue borrada, `get()`
+       devuelve nulo y la regla reventaría. Reventar deniega, así que sin
+       esto no se podría enviar a nadie cuyo documento haya desaparecido.
+
+       Cuesta una o dos lecturas por envío. Con los números de hoy —301
+       dibujos en total y 50.000 lecturas gratis al día— no se nota. */
+    function meBloqueo(otro) {
+      return request.auth != null
+             && exists(/databases/$(database)/documents/users/$(otro))
+             && (request.auth.uid in
+                 get(/databases/$(database)/documents/users/$(otro))
+                   .data.get('bloqueados', []));
+    }
+
     /* ── USUARIOS ─────────────────────────────────────────────────────
        Leer exige sesión (ya lo cambiaste; antes era `if true` y cualquiera
        podía descargarse el correo de todo el mundo con una URL).
@@ -54,7 +77,13 @@ service cloud.firestore {
       /* Crear = PEDIR. Tienes que ser uno de los dos, tienes que figurar
          como quien lo pide, y nace pendiente. Así nadie puede inventar una
          amistad ya hecha, ni entre otras dos personas. */
+      /* CAMBIO: tampoco puedes volver a AGREGAR a quien te bloqueó. Sin
+         esto, bloquear solo servía hasta que el otro te pidiera amistad
+         otra vez. */
       allow create: if seraMia()
+                    && !meBloqueo(request.resource.data.users[0] == request.auth.uid
+                                  ? request.resource.data.users[1]
+                                  : request.resource.data.users[0])
                     && request.resource.data.users.size() == 2
                     && request.resource.data.users[0] != request.resource.data.users[1]
                     && request.resource.data.requestedBy == request.auth.uid
@@ -85,9 +114,13 @@ service cloud.firestore {
                   && (resource.data.to == request.auth.uid
                    || resource.data.from == request.auth.uid);
 
+      /* CAMBIO: no puedes enviarle a quien te bloqueó. Esto SÍ es
+         seguridad, no cosmética: el cliente también lo comprueba, pero el
+         cliente se puede saltar. */
       allow create: if request.auth != null
                     && request.resource.data.from == request.auth.uid
-                    && request.resource.size() < 900000;
+                    && request.resource.size() < 900000
+                    && !meBloqueo(request.resource.data.to);
 
       /* CAMBIO: el destinatario solo puede marcarlo como visto. Antes podía
          cambiar CUALQUIER campo, incluidos los trazos: podía reescribir el
@@ -204,6 +237,18 @@ service cloud.firestore {
       allow create, update: if request.resource.data.email is string
                             && request.resource.data.email.size() < 200;
       allow delete: if false;
+    }
+
+    /* ── CONFIGURACIÓN ───────────────────────────────────────────────
+       Hoy solo guarda `bienvenida`: el dibujo y el mensaje que recibe cada
+       cuenta nueva. Lo escribe Jose desde Ajustes y lo lee la Cloud
+       Function, que va con permisos de administrador y no pasa por aquí.
+
+       Cerrado a todo el mundo salvo a él. Nadie más necesita leerlo: lo que
+       llega a la bandeja es un `sketch` normal, creado por el servidor. */
+    match /config/{doc} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == ADMIN_UID();
     }
 
     /* ── ERRORES ─────────────────────────────────────────────────────

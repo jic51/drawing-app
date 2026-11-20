@@ -40,6 +40,24 @@ vea al abrir, los textos vacíos y el titular de la landing.
 
 ---
 
+## ✅ HECHO EL 2026-11-20 — los bloqueantes de riesgo bajo
+
+| | Qué | Estado |
+|---|-----|--------|
+| **F-b** | **Bloquear a alguien.** Deshace la amistad, borra lo que te mandó, y las reglas le impiden volver a escribirte O a agregarte. Lista de bloqueados en Ajustes con Desbloquear —bloquear sin poder deshacerlo es una trampa | ✅ |
+| **B1** | **Dibujo de bienvenida.** La Cloud Function lo manda a cada cuenta nueva junto con la amistad. **Dura 7 días**, no 24 h. El único dibujo de la app que lleva texto, y a propósito: una presentación necesita decir quién eres, todo lo demás existe para NO escribir | ⬜ **falta que Jose lo dibuje** |
+| **N6** | **La presión y la velocidad ya no se pelean.** Quién manda se decide UNA VEZ por trazo; los puntos sin presión reutilizan la última buena en vez de caer a la velocidad. La prueba lo midió: antes saltaba de 6,72 a 4 a 6,72 a 2 dentro del mismo trazo | ✅ |
+| **N5** | **Inclinación del Apple Pencil.** tiltX/tiltY ensanchan el trazo hasta un 60%, como el lápiz de lado. Solo afecta al lápiz | ✅ |
+| **N1** | **El numerito del icono con la app cerrada.** Ahora el número REAL lo cuenta el servidor y viaja en el aviso; el service worker ya no suma notificaciones sin tocar | ⬜ **falta desplegar funciones** |
+| **D2** | **Bandeja agrupada por día.** Hoy / Ayer / Hace N días, contados desde la misma medianoche que la pregunta | ✅ |
+
+**Lo que falta de esto, y no lo puedo hacer yo:**
+1. Jose dibuja el saludo y lo guarda (Ajustes → Guardar como bienvenida).
+2. `firebase deploy --only functions` — para B1 y N1.
+3. Republicar las reglas — para F-b y para `config`.
+
+---
+
 ## 📝 Anotado el 2026-11-18, no arreglado todavía
 
 | # | Qué | Por qué no se hizo ahora |
@@ -101,7 +119,7 @@ enseñársela a desconocidos sin que se vuelva en tu contra.**
 | # | Qué | Por qué bloquea |
 |---|-----|-----------------|
 | **E1** | **La amistad no se comprueba al enviar** (solo en el cliente) | Cualquiera con tu uid puede mandarte un dibujo sin ser nada tuyo, saltándose el navegador. En una app de mensajes con desconocidos dentro, eso **no es un detalle**. Pide IDs `uidA_uidB` y migrar los datos vivos |
-| **F-b** | **No se puede bloquear a nadie** | Hoy solo puedes eliminar, y la persona te vuelve a agregar. La primera vez que alguien reciba algo desagradable, esto es lo primero que va a buscar, y no está |
+| ~~F-b~~ | ~~No se puede bloquear a nadie~~ | ✅ **HECHO el 2026-11-20.** Falta republicar las reglas |
 | **R1** | **No se sabe para qué es la app** | Roger lo preguntó tres veces. Si no se entiende, nadie se queda, y todo lo demás da igual |
 | **R2 / B1** | **Quien llega solo no tiene nada que hacer** | Entras, no tienes amigos, y el lienzo está en blanco. El dibujo de bienvenida (B1) tapa la mitad del agujero; poder dibujar sin cuenta tapa la otra mitad |
 

@@ -773,6 +773,23 @@
       animation:mover 2.5s linear infinite;
     }
     .inbox-card-sub { font-size:0.75rem; color:var(--muted); margin-top:2px; }
+    /* El separador de día. Discreto: ordena sin competir con los dibujos. */
+    .inbox-dia {
+      font-size:0.68rem; font-weight:800; letter-spacing:.09em;
+      text-transform:uppercase; color:var(--muted);
+      margin:16px 0 8px; display:flex; align-items:center; gap:10px;
+    }
+    .inbox-dia::after {
+      content:''; flex:1; height:1px; background:var(--border);
+    }
+    .inbox-body > .inbox-dia:first-child { margin-top:2px; }
+    /* El mensaje del dibujo de bienvenida. Se lee, pero no compite con el
+       dibujo: lo que hay que mirar es el dibujo. */
+    .inbox-card-msg {
+      font-size:0.8rem; color:var(--text); margin-top:6px; line-height:1.4;
+      border-left:2px solid var(--accent); padding-left:8px;
+      max-width:30ch; overflow-wrap:anywhere;
+    }
     .inbox-card-timer {
       font-size:0.72rem; font-weight:600; color:#ef4444;
       background:rgba(239,68,68,0.1); padding:4px 10px;
@@ -1670,6 +1687,21 @@
       <div class="settings-friends" id="settings-friends">
         <!-- generado por JS -->
       </div>
+      <!-- Bloqueados. Solo aparece si hay alguno: una sección vacía
+           permanente solo recuerda algo desagradable que no pasó. -->
+      <!-- Solo para @jose: guardar el dibujo que recibe cada cuenta nueva.
+           Va aquí y no en una pantalla aparte porque es una cosa que se
+           hace dos veces en la vida. -->
+      <div id="settings-bienvenida-caja" hidden style="margin-top:16px">
+        <div class="settings-label" id="lbl-bienvenida">Dibujo de bienvenida</div>
+        <div style="font-size:0.74rem;color:var(--muted);margin:4px 0 8px" id="lbl-bienvenida-sub"></div>
+        <button class="btn btn-s" id="guardar-bienvenida" style="width:100%">Guardar</button>
+      </div>
+
+      <div id="settings-bloqueados-caja" hidden style="margin-top:16px">
+        <div class="settings-label" id="lbl-block-section">Bloqueados</div>
+        <div class="settings-friends" id="settings-bloqueados"></div>
+      </div>
       <div style="margin-top:14px;">
         <div class="settings-row-label" id="lbl-invite">Invitar amigos</div>
         <div class="settings-row-sub" id="lbl-invite-sub">Comparte tu código o QR para que te agreguen</div>
@@ -1922,6 +1954,7 @@ const I18N = {
     save_plain: 'Guardar',
     inbox_title: '✉️ Dibujos recibidos', inbox_close: 'Cerrar',
     inbox_empty: 'Nada nuevo por ahora', inbox_sent_you: 'Te envió un dibujo',
+    dia_hoy: 'Hoy', dia_ayer: 'Ayer', dia_hace: 'Hace {n} días',
     inbox_del: 'Borrar sin verlo',
     inbox_del_warn: '¿Borrar el dibujo de <b>{name}</b> sin verlo?<br><br>No se puede recuperar.',
     inbox_empty_hint: 'Dibuja la pregunta de hoy y mándasela a alguien. Lo que te respondan sale aquí.',
@@ -1940,6 +1973,20 @@ const I18N = {
     del_relogin: 'Por seguridad, vuelve a entrar y repite el borrado. Te llevamos al inicio.',
     prof_open: 'Ver perfil', prof_share: '🔗 Compartir su perfil',
     prof_report: '⚑ Denunciar', prof_remove: '✕ Eliminar amigo',
+    prof_block: '🚫 Bloquear',
+    block_confirm: '¿Bloquear a <b>{u}</b>?<br><br>Dejará de ser tu amigo, no podrá volver a escribirte ni a agregarte, y se borrarán los dibujos que te mandó.',
+    block_done: 'Bloqueaste a {u}',
+    block_section: 'Bloqueados', block_none: 'No has bloqueado a nadie',
+    bienv_titulo: 'Dibujo de bienvenida',
+    bienv_vacio: 'Dibuja algo en el lienzo y vuelve aquí para guardarlo.',
+    bienv_listo: 'Se guardará el dibujo que tienes ahora ({n} trazos).',
+    bienv_guardar: 'Guardar como bienvenida',
+    bienv_mensaje: '¿Qué le dices a quien acaba de entrar?',
+    bienv_ph: 'Hola, soy Jose. Hice esto para…',
+    bienv_ok: 'Guardado. Cada cuenta nueva lo recibirá.',
+    bienv_fail: 'No se pudo guardar el dibujo de bienvenida.',
+    bienv_grande: 'Ese dibujo es demasiado largo ({kb} KB). Haz uno más corto.',
+    block_undo: 'Desbloquear', block_undone: 'Desbloqueaste a {u}',
     settings_title: '⚙️ Configuración',
     profile: 'Perfil', friends: 'Amigos', store: 'Tienda', app_section: 'App',
     change_name: 'Nombre', change_name_sub: 'Lo que ven tus amigos al recibir dibujos',
@@ -2098,6 +2145,7 @@ const I18N = {
     save_plain: 'Save',
     inbox_title: '✉️ Received drawings', inbox_close: 'Close',
     inbox_empty: 'Nothing new yet', inbox_sent_you: 'sent you a drawing',
+    dia_hoy: 'Today', dia_ayer: 'Yesterday', dia_hace: '{n} days ago',
     inbox_del: 'Delete without viewing',
     inbox_del_warn: 'Delete <b>{name}</b>\'s drawing without seeing it?<br><br>It cannot be recovered.',
     inbox_empty_hint: "Draw today's question and send it to someone. Their replies land here.",
@@ -2116,6 +2164,20 @@ const I18N = {
     del_relogin: 'For security, sign in again and repeat the deletion. Taking you to the start.',
     prof_open: 'View profile', prof_share: '🔗 Share their profile',
     prof_report: '⚑ Report', prof_remove: '✕ Remove friend',
+    prof_block: '🚫 Block',
+    block_confirm: 'Block <b>{u}</b>?<br><br>They stop being your friend, they cannot message you or add you again, and the drawings they sent you are deleted.',
+    block_done: 'You blocked {u}',
+    block_section: 'Blocked', block_none: 'You have not blocked anyone',
+    bienv_titulo: 'Welcome drawing',
+    bienv_vacio: 'Draw something on the canvas, then come back here to save it.',
+    bienv_listo: 'It will save the drawing you have now ({n} strokes).',
+    bienv_guardar: 'Save as welcome',
+    bienv_mensaje: 'What do you say to someone who just arrived?',
+    bienv_ph: "Hi, I'm Jose. I made this so…",
+    bienv_ok: 'Saved. Every new account will get it.',
+    bienv_fail: "Couldn't save the welcome drawing.",
+    bienv_grande: 'That drawing is too long ({kb} KB). Make a shorter one.',
+    block_undo: 'Unblock', block_undone: 'You unblocked {u}',
     settings_title: '⚙️ Settings',
     profile: 'Profile', friends: 'Friends', store: 'Store', app_section: 'App',
     change_name: 'Name', change_name_sub: 'What your friends see when they receive drawings',
@@ -2352,6 +2414,12 @@ function applyLang() {
   // Labels en settings con IDs del HTML
   set('lbl-profile', 'profile');
   set('lbl-friends-section', 'friends');
+  set('lbl-block-section', 'block_section');
+  set('lbl-bienvenida', 'bienv_titulo');
+  /* También el botón: si solo se traduce al abrir Ajustes, se queda en
+     castellano con la app en inglés hasta que alguien lo abre. Lo cazó
+     `test-idioma-mezclado`. */
+  set('guardar-bienvenida', 'bienv_guardar');
   set('lbl-app-section', 'app_section');
   set('lbl-change-name', 'change_name');
   set('lbl-change-name-sub', 'change_name_sub');
@@ -3564,15 +3632,59 @@ window.addEventListener('resize', () => {
 let lastDrawTime = 0;
 let lastDrawX = 0, lastDrawY = 0;
 
+/* QUIÉN MANDA EN EL GROSOR: SE DECIDE UNA VEZ POR TRAZO.
+
+   Lo encontró Jose probando con el Apple Pencil: «la presión y la velocidad
+   a veces se pelean por el control».
+
+   La causa: antes esto se decidía en CADA punto. El Pencil no reporta
+   presión en todos los eventos —un roce flojo puede dar `pressure` 0, y
+   algunos eventos intermedios vienen sin ella—, así que dentro de un mismo
+   trazo el grosor saltaba de un sistema al otro y salían escalones.
+
+   Ahora: en cuanto un trazo ve una presión de verdad, ESE TRAZO ENTERO va
+   por presión, y los puntos que lleguen sin ella reutilizan la última
+   buena en vez de caerse a la velocidad.
+
+   Es invisible con el dedo y con el ratón, que es como se prueba siempre.
+   Solo se ve con lápiz — y si esto llega a una clase de dibujo, lo van a
+   usar todos con lápiz. */
+let trazoEsLapiz = false;     /* ¿este trazo lo manda la presión? */
+let ultimaPresion = 0;        /* la última presión buena del trazo */
+
+function empezarTrazo(e) {
+  trazoEsLapiz = (e.pointerType === 'pen');
+  ultimaPresion = (e.pressure > 0 && e.pressure < 1) ? e.pressure : 0;
+}
+
+/* Cuánto se inclina el lápiz: 0 perpendicular, 1 casi tumbado.
+
+   `tiltX`/`tiltY` son los grados de inclinación en cada eje, de -90 a 90.
+   Safari los da con el Apple Pencil; con dedo y ratón vienen a 0, así que
+   esto no afecta a nadie más. Sirve para el efecto «lápiz de lado»: cuanto
+   más tumbado, más ancho el trazo, como con un lápiz de verdad. */
+function inclinacionDe(e) {
+  const tx = e.tiltX || 0, ty = e.tiltY || 0;
+  if (!tx && !ty) return 0;
+  return Math.min(1, Math.hypot(tx, ty) / 85);
+}
+
 function coords(e) {
   const r = cv.getBoundingClientRect();
   const x = e.clientX - r.left, y = e.clientY - r.top;
+
   /* La presión solo es de fiar viniendo de un lápiz. Un dedo reporta un
      valor fijo (0.5 o 1.0) o el área de contacto, que cambia según cómo se
      aplasta el dedo y no según la intención: por eso antes el grosor salía
      constante o tembloroso en el teléfono. Con dedo y ratón usamos velocidad. */
-  const p = (e.pointerType === 'pen' && e.pressure > 0) ? e.pressure : 0;
-  return { x, y, p };
+  let p = 0;
+  if (trazoEsLapiz) {
+    /* Un lápiz que reporta exactamente 1.0 casi siempre es «no lo sé»:
+       es el valor por defecto de la especificación cuando no hay sensor. */
+    if (e.pressure > 0 && e.pressure < 1) { ultimaPresion = e.pressure; }
+    p = ultimaPresion;
+  }
+  return { x, y, p, inc: trazoEsLapiz ? inclinacionDe(e) : 0 };
 }
 
 /* Velocidad a la que el trazo llega a su punto más fino, en fracción de
@@ -3582,10 +3694,12 @@ function coords(e) {
 const VEL_FINA = 0.0012;
 let velSuave = 0;
 
-function grosor(p, x, y) {
-  /* Lápiz con presión real: la presión manda. */
+function grosor(p, x, y, inc) {
+  /* Lápiz con presión real: la presión manda, de principio a fin del trazo.
+     La inclinación ensancha hasta un 60% más, como el lápiz de lado. */
   if (p > 0.01) {
-    return Math.max(1, Math.min(tamBase * p * 2.8, tamBase * 3));
+    const ancho = 1 + (inc || 0) * 0.6;
+    return Math.max(1, Math.min(tamBase * p * 2.8 * ancho, tamBase * 3.2));
   }
 
   const now = performance.now();
@@ -3664,6 +3778,7 @@ function iniciarDibujo(e) {
   /* Capturar el puntero: sin esto el navegador deja de mandar eventos en
      cuanto el dedo sale del lienzo y no hay forma de saber que volvió. */
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  empezarTrazo(e);          /* quién manda en el grosor: se decide AQUÍ */
   const { x, y } = coords(e);
   abrirTramo(x, y);
   actualizarBotones();
@@ -3672,7 +3787,7 @@ function iniciarDibujo(e) {
 function dibujar(e) {
   if (!dibujando) return; e.preventDefault();
   if (limiteAlcanzado()) return;
-  const { x, y, p } = coords(e);
+  const { x, y, p, inc } = coords(e);
 
   /* El dedo sigue abajo pero salió del lienzo: se cierra el tramo donde
      salió y se deja de pintar, sin terminar el trazo. Al volver a entrar
@@ -3687,7 +3802,7 @@ function dibujar(e) {
   }
   if (fuera) { fuera = false; abrirTramo(x, y); return; }
 
-  const gw = grosor(p, x, y);
+  const gw = grosor(p, x, y, inc);
   let color;
   if (herramienta==='borrador') { color=canvasBg(); }
   else if (colorSeleccionado==='rainbow') { hue=(hue+1.2)%360; color=`hsl(${hue},100%,55%)`; }
@@ -4822,10 +4937,14 @@ function pintarCarrusel() {
     return el;
   };
 
+  /* A quien bloqueaste no se le enseña, ni como amigo ni como solicitud.
+     Las reglas ya le impiden escribirte; esto es para que tú no le veas. */
+  const visible = c => !estaBloqueado(c.id);
+
   /* Primero lo que pide una decisión, después lo nuevo, después el resto. */
-  solicitudesCache.forEach(c => carouselEl.appendChild(circulo(c, 'pendiente')));
-  const nuevos = amigosCache.filter(a => !vistas.has(a.docId));
-  const resto  = amigosCache.filter(a =>  vistas.has(a.docId));
+  solicitudesCache.filter(visible).forEach(c => carouselEl.appendChild(circulo(c, 'pendiente')));
+  const nuevos = amigosCache.filter(a => visible(a) && !vistas.has(a.docId));
+  const resto  = amigosCache.filter(a => visible(a) &&  vistas.has(a.docId));
   nuevos.forEach(c => carouselEl.appendChild(circulo(c, 'amigo')));
   resto.forEach(c => carouselEl.appendChild(circulo(c, 'amigo')));
   /* Todas las enviadas en UN círculo, no uno por persona: son cosas sobre
@@ -4856,7 +4975,23 @@ function pintarCarrusel() {
    solo asegura que la escucha esté en pie y repinta. */
 async function buildCarousel() {
   vigilarAmistades();
+  vigilarBloqueados();
   pintarCarrusel();
+}
+
+/* La lista de bloqueados, en vivo. En vivo y no leída una vez porque si
+   bloqueas desde el teléfono, el portátil tiene que enterarse: si no,
+   seguiría enseñándote a esa persona en el carrusel. */
+let _bloqueadosSuelta = null;
+function vigilarBloqueados() {
+  const { db, auth, listo } = contextoFirebase();
+  if (!listo || !auth?.currentUser || _bloqueadosSuelta) return;
+  _bloqueadosSuelta = db.collection('users').doc(auth.currentUser.uid)
+    .onSnapshot(doc => {
+      const d = doc.exists ? doc.data() : {};
+      bloqueadosCache = Array.isArray(d.bloqueados) ? d.bloqueados : [];
+      pintarCarrusel();
+    }, e => console.warn('vigilarBloqueados:', e.message));
 }
 
 /* ══════════════════════════════════════════════════════
@@ -4915,6 +5050,82 @@ enviarBtn.addEventListener('click', async () => {
   selCount.textContent = '';
 });
 
+/* ══════════════════════════════════════════════════════
+   BLOQUEAR A ALGUIEN
+   ────────────────────────────────────────────────────
+   Hasta ahora lo único que se podía hacer era ELIMINAR a alguien, y esa
+   persona te volvía a agregar al minuto. En una app donde se le puede
+   escribir a desconocidos, eso no basta: la primera vez que alguien reciba
+   algo desagradable, bloquear es lo primero que va a buscar.
+
+   La lista vive en TU documento de usuario (`bloqueados`), que es el único
+   que puedes escribir. Las reglas la consultan con `get()` al crear un
+   dibujo o una amistad, así que bloquear se cumple de verdad en el
+   servidor, no solo en la pantalla.
+
+   Bloquear hace cuatro cosas a la vez, y las cuatro hacen falta:
+     1. deshace la amistad
+     2. mete a esa persona en tu lista
+     3. borra de tu bandeja lo que te había mandado
+     4. le impide volver a mandarte o a agregarte (eso lo hacen las reglas)
+   ══════════════════════════════════════════════════════ */
+let bloqueadosCache = [];
+
+function estaBloqueado(uid) {
+  return Array.isArray(bloqueadosCache) && bloqueadosCache.indexOf(uid) !== -1;
+}
+
+async function bloquear(otroUid) {
+  const { db, auth, listo } = contextoFirebase();
+  if (!listo || !auth?.currentUser) { toast(t('need_login')); return false; }
+  const uid = auth.currentUser.uid;
+  if (otroUid === uid) return false;
+  try {
+    /* 1 y 2: la lista primero. Si algo falla después, al menos ya no te
+       puede escribir —que es lo urgente. */
+    await db.collection('users').doc(uid).update({
+      bloqueados: firebase.firestore.FieldValue.arrayUnion(otroUid)
+    });
+    bloqueadosCache = bloqueadosCache.concat([otroUid]);
+
+    /* 3: la amistad, si la había. */
+    const snap = await db.collection('friendships')
+      .where('users', 'array-contains', uid).get();
+    await Promise.all(snap.docs
+      .filter(d => (d.data().users || []).includes(otroUid))
+      .map(d => d.ref.delete().catch(() => {})));
+
+    /* 4: lo que te mandó deja de estar en tu bandeja. Se borran de verdad:
+       las reglas dejan borrar lo que has recibido. */
+    const suyos = bandejaEntrada.filter(m => m.senderId === otroUid);
+    bandejaEntrada = bandejaEntrada.filter(m => m.senderId !== otroUid);
+    await Promise.all(suyos.map(m =>
+      db.collection('sketches').doc(m.id).delete().catch(() => {})));
+
+    renderInbox();
+    buildCarousel();
+    return true;
+  } catch (e) {
+    fallo('bloquear', e);
+    return false;
+  }
+}
+
+async function desbloquear(otroUid) {
+  const { db, auth, listo } = contextoFirebase();
+  if (!listo || !auth?.currentUser) return false;
+  try {
+    await db.collection('users').doc(auth.currentUser.uid).update({
+      bloqueados: firebase.firestore.FieldValue.arrayRemove(otroUid)
+    });
+    bloqueadosCache = bloqueadosCache.filter(u => u !== otroUid);
+    return true;
+  } catch (e) {
+    fallo('desbloquear', e);
+    return false;
+  }
+}
+
 /* ¿Sigue siendo amigo? Devuelve true también cuando NO se sabe todavía.
    Fallar abierto es a propósito: `amigosCache` empieza en null y se llena
    con la escucha viva, así que fallar cerrado dejaría sin enviar a quien
@@ -4933,6 +5144,15 @@ function sigueSiendoAmigo(toUid) {
 }
 
 async function enviarSketchFirestore(toUid) {
+  /* El bloqueo se mira ANTES que nada: no hace falta sesión ni nada del
+     servidor para saber que no quieres mandarle a esta persona. */
+  if (estaBloqueado(toUid)) {
+    /* Tú lo bloqueaste: no tiene sentido mandarle nada. Las reglas no lo
+       impiden en este sentido —solo en el contrario— así que esto sí lo
+       decide el cliente, y está bien que así sea. */
+    toast('🚫 ' + (lang === 'es' ? 'Lo bloqueaste' : 'You blocked them'));
+    return;
+  }
   const uid = auth.currentUser.uid;
   if (!sigueSiendoAmigo(toUid)) {
     toast(lang === 'es'
@@ -5013,6 +5233,12 @@ function cargarBandeja() {
             strokes: d.strokes,
             receivedAt: d.createdAt?.toMillis() || Date.now(),
             expiresAt: d.expiresAt?.toMillis() || (Date.now() + 24*3600*1000),
+            /* El único dibujo que lleva texto es el de bienvenida. No es
+               que los dibujos pasen a tener mensajes —toda la app existe
+               para NO escribir—: es que una presentación necesita decir
+               quién eres. */
+            mensaje: d.mensaje || null,
+            esBienvenida: !!d.esBienvenida,
             viewed: d.viewed || false,
             visto: false
           };
@@ -5171,7 +5397,32 @@ function renderInbox() {
   /* El último que llega, arriba. Antes era al revés y un dibujo nuevo
      aparecía al final de la lista, debajo de los que ya habías visto. */
   bandejaEntrada.sort((a, b) => b.receivedAt - a.receivedAt);
+
+  /* AGRUPADA POR DÍA. Desde que hay una pregunta al día, lo que llega son
+     respuestas a la pregunta de ese día: verlas juntas es lo natural, y
+     con cuatro o cinco en la lista se agradece saber cuáles son de hoy.
+
+     El día se cuenta igual que la pregunta —desde medianoche en RD— para
+     que «hoy» signifique lo mismo en los dos sitios. Si no, podrías ver
+     «ayer» encima de una respuesta a la pregunta de hoy. */
+  let ultimoDia = null;
+  const diaDe = ms => (window.SS && window.SS.diaActual)
+    ? window.SS.diaActual(ms)
+    : Math.floor(ms / 86400000);
+  const hoyEs = diaDe(Date.now());
+
   bandejaEntrada.forEach(msg => {
+    const dia = diaDe(msg.receivedAt);
+    if (dia !== ultimoDia) {
+      ultimoDia = dia;
+      const sep = document.createElement('div');
+      sep.className = 'inbox-dia';
+      const dif = hoyEs - dia;
+      sep.textContent = dif === 0 ? t('dia_hoy')
+                      : dif === 1 ? t('dia_ayer')
+                      : t('dia_hace').replace('{n}', dif);
+      inboxBody.appendChild(sep);
+    }
     const card = document.createElement('div');
     card.className = 'inbox-card' + (idsRecien.has(msg.id) ? ' nueva' : '');
     /* Se anima una sola vez: si no, cada repintado la volvería a mover. */
@@ -5196,6 +5447,7 @@ function renderInbox() {
           <div class="inbox-card-info">
             <div class="inbox-card-name">${esc(etiquetaDe(msg.sender))}</div>
             <div class="inbox-card-sub">${esc(t('inbox_sent_you'))} · ${esc(agoText)}</div>
+            ${msg.mensaje ? '<div class="inbox-card-msg">' + esc(msg.mensaje) + '</div>' : ''}
           </div>
         </div>
       </div>
@@ -6340,6 +6592,117 @@ const settingsInvite  = document.getElementById('settings-invite');
 const settingsLogout  = document.getElementById('settings-logout');
 const settingsFriends = document.getElementById('settings-friends');
 
+/* ══════════════════════════════════════════════════════
+   GUARDAR EL DIBUJO DE BIENVENIDA (solo @jose)
+   ────────────────────────────────────────────────────
+   Jose dibuja un saludo en el lienzo normal y lo guarda desde aquí. A
+   partir de ese momento, cada cuenta nueva lo recibe en su bandeja junto
+   con la amistad —lo hace la Cloud Function, que lee `config/bienvenida`.
+
+   Lo dibuja ÉL y no se genera por código a propósito: un saludo hecho por
+   una máquina se nota a la legua y hace justo lo contrario de lo que se
+   busca.
+   ══════════════════════════════════════════════════════ */
+function pintarCajaBienvenida() {
+  const caja = document.getElementById('settings-bienvenida-caja');
+  if (!caja) return;
+  /* Solo el creador la ve. No es seguridad —las reglas son las que mandan—,
+     es que a nadie más le sirve de nada. */
+  if (!esCreador(usuario)) { caja.hidden = true; return; }
+  caja.hidden = false;
+  const sub = document.getElementById('lbl-bienvenida-sub');
+  const btn = document.getElementById('guardar-bienvenida');
+  const n = trazos.filter(x => x.tipo === 'seg').length;
+  if (sub) sub.textContent = n
+    ? t('bienv_listo').replace('{n}', n)
+    : t('bienv_vacio');
+  if (btn) { btn.textContent = t('bienv_guardar'); btn.disabled = !n; }
+}
+
+async function guardarBienvenida() {
+  const { db, auth, listo } = contextoFirebase();
+  if (!listo || !auth?.currentUser) { toast(t('need_login')); return; }
+  const segs = trazos.filter(x => x.tipo === 'seg');
+  if (!segs.length) { toast(t('draw_first')); return; }
+
+  /* Un documento de Firestore no puede pasar de 1 MB, y un dibujo largo
+     los roza: los trazos viven dentro. Mejor decirlo antes que fallar con
+     un error del servidor después de escribir el mensaje. */
+  const bytes = new Blob([JSON.stringify(trazos)]).size;
+  if (bytes > 800000) {
+    toast('⚠️ ' + t('bienv_grande').replace('{kb}', Math.round(bytes / 1024)));
+    return;
+  }
+
+  const texto = await ssPromptLargo(t('bienv_mensaje'), t('bienv_ph'),
+    { maxlength: 280, ok: t('bienv_guardar') });
+  if (texto === null) return;   /* canceló */
+
+  try {
+    await db.collection('config').doc('bienvenida').set({
+      strokes: trazos,
+      mensaje: (texto || '').trim().slice(0, 280),
+      actualizado: firebase.firestore.FieldValue.serverTimestamp(),
+      porUid: auth.currentUser.uid
+    });
+    toast('✅ ' + t('bienv_ok'));
+  } catch (e) {
+    fallo('guardarBienvenida', e, t('bienv_fail'));
+  }
+}
+
+/* La lista de bloqueados en Ajustes. Poder bloquear sin poder desbloquear
+   es una trampa: un toque mal dado se vuelve permanente. */
+async function pintarBloqueados() {
+  const caja = document.getElementById('settings-bloqueados-caja');
+  const lista = document.getElementById('settings-bloqueados');
+  if (!caja || !lista) return;
+  const uids = Array.isArray(bloqueadosCache) ? bloqueadosCache : [];
+  if (!uids.length) { caja.hidden = true; lista.innerHTML = ''; return; }
+  caja.hidden = false;
+  lista.innerHTML = '';
+
+  const { db } = contextoFirebase();
+  for (const uid of uids) {
+    const chip = document.createElement('div');
+    chip.className = 'settings-friend-chip';
+    /* El nombre sale del caché de perfiles si está; si no, se lee. Una
+       lectura por bloqueado y solo al abrir Ajustes: son pocos. */
+    let perfil = perfilesCache.get(uid);
+    if (!perfil) {
+      try {
+        const d = await db.collection('users').doc(uid).get();
+        perfil = d.exists ? { id: uid, username: d.data().username,
+                              nombre: d.data().username || d.data().displayName,
+                              photoURL: d.data().photoURL } : { id: uid, nombre: '?' };
+      } catch (e) { perfil = { id: uid, nombre: '?' }; }
+    }
+    const avWrap = document.createElement('span');
+    avWrap.className = 'settings-friend-av-wrap';
+    const avImg = document.createElement('img');
+    avImg.className = 'settings-friend-av';
+    avImg.src = safeUrl(perfil.photoURL) || genAvatar(identidad(perfil).nombre);
+    avImg.alt = '';
+    avImg.style.filter = 'grayscale(1)';
+    avWrap.appendChild(avImg);
+
+    const quitar = document.createElement('button');
+    quitar.textContent = t('block_undo');
+    quitar.style.cssText = 'margin-left:6px;background:transparent;border:1px solid var(--border);' +
+      'border-radius:7px;color:var(--accent2);font-size:0.7rem;padding:2px 7px;cursor:pointer';
+    quitar.addEventListener('click', async () => {
+      quitar.disabled = true;
+      if (await desbloquear(uid)) {
+        toast(t('block_undone').replace('{u}', etiquetaDe(perfil)));
+        pintarBloqueados();
+      } else { quitar.disabled = false; }
+    });
+
+    chip.append(avWrap, document.createTextNode(etiquetaDe(perfil)), quitar);
+    lista.appendChild(chip);
+  }
+}
+
 function pintarAmigosAjustes(amigos) {
   settingsFriends.innerHTML = '';
   if (!amigos.length) {
@@ -6396,6 +6759,8 @@ function pintarAmigosAjustes(amigos) {
 }
 
 function abrirSettings() {
+  pintarBloqueados();
+  pintarCajaBienvenida();
   /* Actualizar datos del perfil */
   document.getElementById('settings-avatar').src = genAvatar(usuario || '?');
   /* Cuentas creadas antes de que el @usuario fuera obligatorio pueden no
@@ -6663,7 +7028,22 @@ function abrirPerfilAmigo(amigo, alEliminar) {
     cerrar(); denunciar('perfil', amigo.id, amigo.username || amigo.nombre);
   });
 
-  acciones.append(bQuitar, bDenunciar);
+  /* Bloquear: entre eliminar y denunciar. Más fuerte que eliminar, menos
+     que denunciar —esto no avisa a nadie, solo te quita a esa persona de
+     encima. Pide confirmación porque borra lo que te había mandado. */
+  const bBloquear = document.createElement('button');
+  bBloquear.textContent = t('prof_block');
+  bBloquear.style.cssText = 'width:100%;padding:9px;border-radius:10px;cursor:pointer;' +
+    'background:transparent;border:1px solid var(--danger);color:var(--danger);' +
+    'font-family:var(--sans);font-size:0.82rem;font-weight:600';
+  bBloquear.addEventListener('click', async () => {
+    const quien = esc(etiquetaDe(amigo));
+    if (!await ssConfirm(t('block_confirm').replace('{u}', quien))) return;
+    cerrar();
+    if (await bloquear(amigo.id)) toast('🚫 ' + t('block_done').replace('{u}', quien));
+  });
+
+  acciones.append(bQuitar, bBloquear, bDenunciar);
   caja.appendChild(acciones);
 
   capa.appendChild(caja);
@@ -6680,6 +7060,9 @@ avatarEl.style.cursor = 'pointer';
 avatarEl.addEventListener('click', abrirSettings);
 avMob.style.cursor = 'pointer';
 avMob.addEventListener('click', abrirSettings);
+
+document.getElementById('guardar-bienvenida')
+  ?.addEventListener('click', guardarBienvenida);
 
 settingsClose.addEventListener('click', cerrarSettings);
 settingsOverlay.addEventListener('click', e => { if (e.target === settingsOverlay) cerrarSettings(); });

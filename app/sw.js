@@ -112,16 +112,27 @@ self.addEventListener('push', e => {
 
     /* El numerito sobre el icono de la app, como las apps nativas.
        Solo funciona si está INSTALADA (añadida a la pantalla de inicio): en
-       una pestaña del navegador no hay icono donde ponerlo. En Android y
-       escritorio va; en iOS todavía no, así que si no existe no pasa nada.
+       una pestaña del navegador no hay icono donde ponerlo.
 
-       Se cuenta el total de avisos pendientes de TODAS las personas, no solo
-       de esta: el icono es uno. */
+       EL NÚMERO VIENE DEL SERVIDOR (`pendientes`), que es el único que sabe
+       cuántos dibujos sin leer hay de verdad.
+
+       Antes se deducía sumando los avisos del sistema que seguían sin
+       tocar, y eso no encoge nunca si no los tocas: a Jose le llegó a
+       marcar 134 con UN dibujo sin leer. Contaba notificaciones, no
+       dibujos.
+
+       Si el servidor no lo manda —una versión vieja de las funciones—, se
+       vuelve a la cuenta de antes en vez de quedarse sin numerito. */
     try {
       if (self.navigator.setAppBadge) {
-        const todas = await self.registration.getNotifications();
-        const total = todas.reduce((t, p) => t + ((p.data && p.data.cuantos) || 1), 0);
-        await self.navigator.setAppBadge(total || 1);
+        let total = parseInt((extra && extra.pendientes) || '', 10);
+        if (!(total >= 0)) {
+          const todas = await self.registration.getNotifications();
+          total = todas.reduce((t, p) => t + ((p.data && p.data.cuantos) || 1), 0);
+        }
+        if (total > 0) await self.navigator.setAppBadge(total);
+        else await self.navigator.clearAppBadge();
       }
     } catch (_) { /* el navegador no lo admite: no es un fallo */ }
   })());
