@@ -73,6 +73,10 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
     usuario = 'jose';
     setupCanvas();
     trazos.length = 0;
+    /* Esta prueba NO es sobre la pantalla de primera vez: se marca como
+       vista para que no tape las sugerencias. Un navegador de pruebas
+       siempre es un usuario nuevo, así que sin esto la taparía SIEMPRE. */
+    try { localStorage.setItem('ss_primera_vez_v1', '1'); } catch (e) {}
     promptsInicializados = false;
     iniciarPromptsCanvas();
     await new Promise(r => setTimeout(r, 1400));

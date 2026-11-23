@@ -38,6 +38,10 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
     setupCanvas();
     /* En la app esto se lanza al iniciar sesión; aquí hay que llamarlo a
        mano o no se programa el reto ni se registran los escuchadores. */
+    /* Esta prueba NO es sobre la pantalla de primera vez: se marca como
+       vista para que no tape las sugerencias. Un navegador de pruebas
+       siempre es un usuario nuevo, así que sin esto la taparía SIEMPRE. */
+    try { localStorage.setItem('ss_primera_vez_v1', '1'); } catch (e) {}
     iniciarPromptsCanvas();
   });
   await p.waitForTimeout(1200);

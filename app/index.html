@@ -1977,6 +1977,10 @@ const I18N = {
     block_confirm: '¿Bloquear a <b>{u}</b>?<br><br>Dejará de ser tu amigo, no podrá volver a escribirte ni a agregarte, y se borrarán los dibujos que te mandó.',
     block_done: 'Bloqueaste a {u}',
     block_section: 'Bloqueados', block_none: 'No has bloqueado a nadie',
+    pv1_t: 'Aquí no se escribe', pv1_d: 'Cada mensaje es un dibujo. Hazlo en 30 segundos, no tiene que quedar bien.',
+    pv2_t: 'Te ven dibujarlo', pv2_d: 'Quien lo recibe no ve una imagen terminada: ve cómo lo dibujaste, trazo a trazo. Mañana desaparece.',
+    pv3_t: 'Una pregunta al día', pv3_d: 'La misma para todo el mundo. Dibújala y mándasela a tu gente.',
+    pv_seguir: 'Siguiente', pv_empezar: 'Empezar a dibujar', pv_saltar: 'Saltar',
     bienv_titulo: 'Dibujo de bienvenida',
     bienv_vacio: 'Dibuja algo en el lienzo y vuelve aquí para guardarlo.',
     bienv_listo: 'Se guardará el dibujo que tienes ahora ({n} trazos).',
@@ -2168,6 +2172,10 @@ const I18N = {
     block_confirm: 'Block <b>{u}</b>?<br><br>They stop being your friend, they cannot message you or add you again, and the drawings they sent you are deleted.',
     block_done: 'You blocked {u}',
     block_section: 'Blocked', block_none: 'You have not blocked anyone',
+    pv1_t: 'No typing here', pv1_d: 'Every message is a drawing. Thirty seconds is plenty — it does not have to be good.',
+    pv2_t: 'They watch you draw it', pv2_d: 'Whoever gets it does not see a finished picture: they watch it being drawn, stroke by stroke. Tomorrow it is gone.',
+    pv3_t: 'A question a day', pv3_d: 'The same one for everybody. Draw it and send it to your people.',
+    pv_seguir: 'Next', pv_empezar: 'Start drawing', pv_saltar: 'Skip',
     bienv_titulo: 'Welcome drawing',
     bienv_vacio: 'Draw something on the canvas, then come back here to save it.',
     bienv_listo: 'It will save the drawing you have now ({n} strokes).',
@@ -2481,6 +2489,27 @@ function applyLang() {
   document.documentElement.lang = lang;
   if (typeof applySeason === 'function') applySeason();
   if (typeof pintarReto === 'function') pintarReto();
+}
+
+/* TU ENLACE DE INVITACIÓN — un solo sitio lo decide.
+
+   Había dos formatos conviviendo: `?add=CÓDIGO` en tres sitios y
+   `?u=usuario` en uno. Los dos funcionan, pero no hay motivo para tener
+   dos, y el de usuario es mejor por una razón práctica: se lee, se dicta
+   por teléfono, y es el MISMO nombre que la persona ve en toda la app.
+   «sketch-send.com/?u=jose» se entiende; «?add=XK9P2M» no dice nada.
+
+   `?add=` se sigue aceptando al abrir, y para siempre: hay enlaces y
+   códigos QR de antes circulando por ahí. Lo que cambia es lo que se
+   GENERA de ahora en adelante. */
+function enlaceInvitacion() {
+  if (usuario && RE_USERNAME.test(String(usuario).toLowerCase())) {
+    return getBaseUrl() + '?u=' + encodeURIComponent(String(usuario).toLowerCase());
+  }
+  /* Sin nombre de usuario todavía: el código sirve igual. */
+  const code = (document.getElementById('user-shortcode')?.textContent || '').trim();
+  if (code && code !== '——') return getBaseUrl() + '?add=' + code;
+  return getBaseUrl();
 }
 
 function getBaseUrl() {
@@ -3578,15 +3607,42 @@ function setupCanvas() {
   const r = carea.getBoundingClientRect();
   const pad = window.innerWidth <= 768 ? 12 : 28;
 
-  /* Misma proporción en todos los dispositivos: 9:16, la del teléfono y la
-     del video compartible. Antes el escritorio dibujaba en 16:10 apaisado,
-     así que ese dibujo no cabía en un marco vertical sin recortarlo o
-     encogerlo. Con una sola proporción, lo que dibujes donde sea encaja
-     tal cual. Se ajusta al hueco disponible sin deformarse. */
-  const RATIO = 9 / 16;
+  /* LA FORMA DEL LIENZO, Y POR QUÉ CAMBIÓ.
+
+     Era 9:16 en todas partes, la del teléfono y la del video. La idea era
+     buena —lo que dibujas donde sea encaja igual— pero el precio, medido,
+     era absurdo:
+
+       portátil 1512 px .... el lienzo usaba el 32% del ancho
+       monitor 1920 px ..... el 28%
+       iPad horizontal ..... el 38%
+       teléfono ............ el 92%
+
+     O sea: en un ordenador, dos tercios de la pantalla eran negro. Jose:
+     «en tablet y en computadora los usuarios tienen más espacio, que puedan
+     crear más y mejores dibujos».
+
+     Ahora el lienzo se ENSANCHA cuando sobra sitio, hasta 4:5 —vertical
+     todavía, el formato de retrato de Instagram—, y en un teléfono se queda
+     en 9:16 como siempre. Un 4:5 da un 42% más de ancho que un 9:16 con la
+     misma altura.
+
+     El tope es 4:5 y no apaisado a propósito: el video que se comparte sigue
+     siendo 1080x1920, y un dibujo apaisado ahí deja dos franjas enormes
+     arriba y abajo. Con 4:5 las franjas son estrechas y el dibujo sigue
+     mandando. Un lienzo apaisado de verdad pide que el video también cambie
+     de forma, y eso es otra decisión (anotado como L1). */
+  const RATIO_ALTO  = 9 / 16;   /* lo más estrecho: el teléfono */
+  const RATIO_ANCHO = 4 / 5;    /* lo más ancho: cuando sobra sitio */
+
   const dispW = r.width - pad, dispH = r.height - pad;
-  let w = dispH * RATIO, h = dispH;
-  if (w > dispW) { w = dispW; h = w / RATIO; }
+
+  /* Se parte de la altura disponible y se ensancha hasta donde quepa, sin
+     pasar del tope. Si ni siquiera cabe el estrecho, manda el ancho. */
+  let w, h = dispH;
+  const ratio = Math.max(RATIO_ALTO, Math.min(RATIO_ANCHO, dispW / dispH));
+  w = h * ratio;
+  if (w > dispW) { w = dispW; h = w / RATIO_ALTO; }
 
   const cw = Math.floor(w), ch = Math.floor(h);
   cv.style.width  = cw + 'px';
@@ -4093,8 +4149,17 @@ function iniciarPromptsCanvas() {
   if (promptsInicializados) return;
   promptsInicializados = true;
 
-  /* Al abrir con el lienzo vacío, el reto. Es lo primero que se lee. */
-  setTimeout(() => { if (!trazos.length) mostrarReto(); }, 900);
+  /* La primera vez de todas, las tres pantallas. Solo entonces: en
+     cualquier otra apertura va directo al lienzo.
+
+     Si sale, ELLA se encarga de enseñar la pregunta al cerrarse; si no, la
+     enseña este temporizador. Las dos cosas a la vez pondrían la pregunta
+     detrás de la ventana, donde no se ve. */
+  if (!yaVioLaPrimeraVez()) {
+    setTimeout(mostrarPrimeraVez, 600);
+  } else {
+    setTimeout(() => { if (!trazos.length) mostrarReto(); }, 900);
+  }
   resetPromptTimer();
 
   /* Al primer trazo se va, y deja de contar: mientras dibujas no estorba. */
@@ -4395,10 +4460,48 @@ const perfilesCache = new Map();  /* uid -> datos de la persona */
 let _amistadesSuelta = null;      /* para cortar la escucha al salir */
 
 const CLAVE_VISTOS_AMIGOS = 'ss_amistades_vistas';
+const CLAVE_CARRUSEL_VISTO = 'ss_carrusel_visto';
+
 /* El NEW se va al tocarlo, que es la señal de "ya me enteré". Pero quien
    nunca lo toca lo tendría ahí para siempre, y entonces deja de querer
    decir nada. A los 7 días se cae solo. */
 const NUEVO_CADUCA = 7 * 24 * 60 * 60 * 1000;
+
+/* ══════════════════════════════════════════════════════
+   QUÉ ES «NUEVO» — y por qué cambió
+   ────────────────────────────────────────────────────
+   Jose: «al volver a entrar a la app, luego de varias horas de no usar o
+   del update de la app, vuelven a aparecer los contactos como nuevos».
+
+   Tenía razón y el diseño estaba mal. El NEW se quitaba SOLO al tocar cada
+   contacto, uno por uno. Con dieciséis amigos, eso significa dieciséis
+   toques; quien no los diera los tenía todos marcados para siempre. Y lo
+   peor: si se perdía lo guardado —borrar datos del sitio, otro navegador,
+   un perfil distinto—, el fallo era hacia el lado MALO: TODO volvía a
+   salir como nuevo.
+
+   Ahora «nuevo» significa lo que significa en cualquier app: **apareció
+   desde la última vez que abriste esto**. Se guarda UNA marca de tiempo,
+   no una lista.
+
+   Y si esa marca se pierde, se pone a AHORA, así que no sale nada nuevo.
+   Fallar por defecto hacia «nada es nuevo» es lo correcto: perderse un
+   aviso molesta una vez; dieciséis etiquetas rojas falsas hacen que la
+   etiqueta deje de significar nada para siempre.
+   ══════════════════════════════════════════════════════ */
+
+/* La marca de la visita ANTERIOR, congelada al arrancar: durante toda la
+   sesión «nuevo» quiere decir lo mismo. La de ahora se guarda enseguida,
+   para que la próxima vez se compare contra este momento. */
+let _vistoDesde = null;
+function carruselVistoDesde() {
+  if (_vistoDesde !== null) return _vistoDesde;
+  const guardado = parseInt(ls.get(CLAVE_CARRUSEL_VISTO) || '', 10);
+  /* Sin marca guardada: se empieza ahora y no hay nada nuevo. */
+  _vistoDesde = (guardado > 0) ? guardado : Date.now();
+  try { ls.set(CLAVE_CARRUSEL_VISTO, String(Date.now())); } catch (e) {}
+  return _vistoDesde;
+}
 
 function amistadesYaVistas() {
   try { return new Set(JSON.parse(ls.get(CLAVE_VISTOS_AMIGOS) || '[]')); }
@@ -4407,6 +4510,17 @@ function amistadesYaVistas() {
 function marcarAmistadVista(id) {
   const v = amistadesYaVistas(); v.add(id);
   try { ls.set(CLAVE_VISTOS_AMIGOS, JSON.stringify([...v].slice(-300))); } catch (e) {}
+}
+
+/* ¿Sale con etiqueta NEW? Tres condiciones, y las tres hacen falta:
+     - apareció después de tu última visita
+     - no lo has tocado (tocarlo es decir "ya lo vi")
+     - y no hace más de una semana, por si nunca abres la app */
+function esAmistadNueva(c, vistas) {
+  if (!c || !c.creadoEn) return false;
+  if (vistas.has(c.docId)) return false;
+  if (Date.now() - c.creadoEn >= NUEVO_CADUCA) return false;
+  return c.creadoEn > carruselVistoDesde();
 }
 
 async function perfilDe(uid) {
@@ -4539,6 +4653,123 @@ async function rechazarSolicitud(docId) {
   /* Se borra en vez de guardarse como 'rechazada': guardar un rechazo no
      sirve para nada y deja un rastro incómodo de quién dijo que no. */
   await db.collection('friendships').doc(docId).delete();
+}
+
+/* ══════════════════════════════════════════════════════
+   LA PRIMERA VEZ
+   ────────────────────────────────────────────────────
+   Tres pantallas, una sola vez en la vida de la cuenta.
+
+   Hasta ahora quien entraba se encontraba un lienzo en blanco y nada que
+   le dijera qué era esto. El amigo de Jose preguntó TRES veces «¿para
+   quién es?» y no era tontería suya: la app no lo decía en ninguna parte.
+
+   Son tres y no cinco a propósito. Y la tercera no explica nada: enseña la
+   pregunta de hoy, que es lo que va a ver al cerrar esto. Lo mejor que
+   puede hacer una pantalla de bienvenida es desaparecer rápido dejándote
+   con algo que hacer.
+
+   Se puede saltar desde la primera. Obligar a alguien a leer tres
+   pantallas para poder dibujar es la forma más rápida de perderlo.
+   ══════════════════════════════════════════════════════ */
+const CLAVE_PRIMERA_VEZ = 'ss_primera_vez_v1';
+
+function yaVioLaPrimeraVez() {
+  return ls.get(CLAVE_PRIMERA_VEZ) === '1';
+}
+
+function mostrarPrimeraVez() {
+  if (yaVioLaPrimeraVez()) return;
+  /* Se marca ANTES de enseñarla: si algo falla a media pantalla, es
+     preferible que no vuelva a salir nunca a que salga cada vez. */
+  try { ls.set(CLAVE_PRIMERA_VEZ, '1'); } catch (e) {}
+
+  const pasos = [
+    { emoji: '✏️', titulo: t('pv1_t'), texto: t('pv1_d') },
+    { emoji: '👀', titulo: t('pv2_t'), texto: t('pv2_d') },
+    { emoji: '🎯', titulo: t('pv3_t'), texto: t('pv3_d'), pregunta: true },
+  ];
+
+  let i = 0;
+  const capa = document.createElement('div');
+  /* Con id, no buscándola por su `z-index`: el navegador normaliza los
+     estilos en línea («z-index: 99998» con espacio) y el selector falla.
+     Ya me pasó una vez con los modales; no hace falta repetirlo. */
+  capa.id = 'primera-vez';
+  capa.style.cssText = 'position:fixed;inset:0;z-index:99998;display:flex;' +
+    'align-items:center;justify-content:center;background:rgba(0,0,0,0.72);' +
+    'backdrop-filter:blur(6px);animation:ssmFadeIn .25s ease;padding:18px';
+
+  const caja = document.createElement('div');
+  caja.style.cssText = 'background:var(--surface);border:1px solid var(--border);' +
+    'border-radius:20px;padding:30px 24px 22px;max-width:340px;width:100%;' +
+    'text-align:center;box-shadow:0 24px 70px rgba(0,0,0,0.5);' +
+    'animation:ssmSlideUp .3s ease';
+
+  const emo = document.createElement('div');
+  emo.style.cssText = 'font-size:2.6rem;line-height:1;margin-bottom:14px';
+  const tit = document.createElement('div');
+  tit.style.cssText = 'font-family:var(--display);font-weight:800;font-size:1.25rem;margin-bottom:10px';
+  const txt = document.createElement('div');
+  txt.style.cssText = 'color:var(--muted);font-size:0.93rem;line-height:1.5;margin-bottom:6px';
+  /* La pregunta de hoy, con la misma pinta que tendrá en el lienzo. */
+  const preg = document.createElement('div');
+  preg.style.cssText = 'margin:14px 0 2px;padding:10px 14px;border:1.5px solid var(--accent);' +
+    'border-radius:999px;font-weight:700;font-size:0.95rem;display:none';
+
+  const puntos = document.createElement('div');
+  puntos.style.cssText = 'display:flex;gap:6px;justify-content:center;margin:18px 0 14px';
+  const bolas = pasos.map(() => {
+    const d = document.createElement('span');
+    d.style.cssText = 'width:7px;height:7px;border-radius:50%;background:var(--border);transition:background .2s';
+    puntos.appendChild(d); return d;
+  });
+
+  const seguir = document.createElement('button');
+  seguir.style.cssText = 'width:100%;padding:12px;border-radius:12px;border:0;cursor:pointer;' +
+    'background:linear-gradient(135deg,var(--accent),#6366f1);color:#fff;' +
+    'font-family:var(--sans);font-size:0.95rem;font-weight:700;box-shadow:0 6px 20px var(--glow)';
+
+  const saltar = document.createElement('button');
+  saltar.textContent = t('pv_saltar');
+  saltar.style.cssText = 'margin-top:10px;background:transparent;border:0;color:var(--muted);' +
+    'font-family:var(--sans);font-size:0.8rem;cursor:pointer;padding:6px';
+
+  const cerrar = () => {
+    capa.style.opacity = '0';
+    capa.style.transition = 'opacity .2s';
+    setTimeout(() => capa.remove(), 200);
+    /* Al cerrar, la pregunta del día sale sola sobre el lienzo. */
+    if (typeof mostrarReto === 'function' && !trazos.length) setTimeout(mostrarReto, 250);
+  };
+
+  const pintar = () => {
+    const pa = pasos[i];
+    emo.textContent = pa.emoji;
+    tit.textContent = pa.titulo;
+    txt.textContent = pa.texto;
+    if (pa.pregunta) {
+      const hoy = (typeof textoReto === 'function') ? textoReto() : '';
+      preg.textContent = hoy ? (t('reto_hoy') + hoy) : '';
+      preg.style.display = hoy ? 'block' : 'none';
+    } else {
+      preg.style.display = 'none';
+    }
+    bolas.forEach((d, n) => { d.style.background = n === i ? 'var(--accent2)' : 'var(--border)'; });
+    seguir.textContent = (i === pasos.length - 1) ? t('pv_empezar') : t('pv_seguir');
+    saltar.style.display = (i === pasos.length - 1) ? 'none' : 'block';
+  };
+
+  seguir.addEventListener('click', () => {
+    if (i < pasos.length - 1) { i++; pintar(); } else cerrar();
+  });
+  saltar.addEventListener('click', cerrar);
+
+  caja.append(emo, tit, txt, preg, puntos, seguir, saltar);
+  capa.appendChild(caja);
+  document.body.appendChild(capa);
+  pintar();
+  seguir.focus();
 }
 
 /* ══════════════════════════════════════════════════════
@@ -4901,10 +5132,9 @@ function pintarCarrusel() {
     const chk = document.createElement('div'); chk.className = 'ccheck'; chk.textContent = '✓';
     wrap.appendChild(imgEl); wrap.appendChild(chk);
 
-    /* Nuevo si no lo has tocado Y la amistad es reciente. */
-    const edad = c.creadoEn ? Date.now() - c.creadoEn : 0;
-    const esNuevo = tipo === 'pendiente'
-      || (!vistas.has(c.docId) && edad < NUEVO_CADUCA);
+    /* Una solicitud SIN CONTESTAR siempre lleva etiqueta: ahí no es un
+       "mira esto", es un "tienes que decidir algo". */
+    const esNuevo = tipo === 'pendiente' || esAmistadNueva(c, vistas);
     if (tipo !== 'enviada' && esNuevo) {
       const et = document.createElement('span');
       et.className = 'etiqueta-nuevo'; et.textContent = t('sol_nueva');
@@ -4943,8 +5173,10 @@ function pintarCarrusel() {
 
   /* Primero lo que pide una decisión, después lo nuevo, después el resto. */
   solicitudesCache.filter(visible).forEach(c => carouselEl.appendChild(circulo(c, 'pendiente')));
-  const nuevos = amigosCache.filter(a => visible(a) && !vistas.has(a.docId));
-  const resto  = amigosCache.filter(a => visible(a) &&  vistas.has(a.docId));
+  /* Los nuevos primero. Antes esto NO miraba la antigüedad, así que un
+     amigo de hace meses que nunca tocaste seguía saliendo el primero. */
+  const nuevos = amigosCache.filter(a => visible(a) &&  esAmistadNueva(a, vistas));
+  const resto  = amigosCache.filter(a => visible(a) && !esAmistadNueva(a, vistas));
   nuevos.forEach(c => carouselEl.appendChild(circulo(c, 'amigo')));
   resto.forEach(c => carouselEl.appendChild(circulo(c, 'amigo')));
   /* Todas las enviadas en UN círculo, no uno por persona: son cosas sobre
@@ -6794,7 +7026,7 @@ function abrirSettings() {
         document.getElementById('settings-name').textContent = d.displayName || usuario || '';
         document.getElementById('settings-username-display').textContent =
           d.username ? '@' + d.username : (mail.split('@')[0] || '—');
-        const invUrl = getBaseUrl() + '?add=' + code;
+        const invUrl = enlaceInvitacion();
         document.getElementById('invite-link-text').textContent = invUrl;
         if (window._reloadShareQR) window._reloadShareQR();
       }
@@ -7154,11 +7386,7 @@ document.getElementById('uname-save-btn').addEventListener('click', async () => 
 document.getElementById('uname-inp').addEventListener('keydown', e => { if (e.key==='Enter') document.getElementById('uname-save-btn').click(); if (e.key==='Escape') document.getElementById('uname-cancel-btn').click(); });
 
 settingsInvite.addEventListener('click', () => {
-  const code = document.getElementById('user-shortcode').textContent;
-  const inviteUrl = code && code !== '——'
-    ? getBaseUrl() + '?add=' + code
-    : getBaseUrl();
-  compartirEnlace(t('share_together'), inviteUrl);
+  compartirEnlace(t('share_together'), enlaceInvitacion());
 });
 
 document.getElementById('shortcode-copy-btn').addEventListener('click', () => {
@@ -7182,7 +7410,7 @@ document.getElementById('invite-copy-btn').addEventListener('click', () => {
     const code = document.getElementById('user-shortcode').textContent.trim();
     if (!code || code === '——') return; /* shortcode not loaded yet — _reloadShareQR called again when settings opens */
     qrLoaded = true;
-    const appUrl = encodeURIComponent(getBaseUrl() + '?add=' + code);
+    const appUrl = encodeURIComponent(enlaceInvitacion());
     const img = document.getElementById('share-qr-img');
     if (!img) return;
     /* Se pide al doble de tamaño del que se muestra para que se vea nítido

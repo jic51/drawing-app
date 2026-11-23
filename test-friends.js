@@ -151,11 +151,22 @@ const STUB = () => {
   console.log('\n— El carrusel distingue los tres estados —');
   const car = await p.evaluate(async () => {
     try { localStorage.removeItem('ss_amistades_vistas'); } catch (e) {}
+    /* REGLA NUEVA (2026-11-23): «nuevo» ya no es «no lo has tocado», es
+       «apareció DESDE TU ÚLTIMA VISITA». Así que hace falta decir cuándo
+       fue esa visita y cuándo nació cada amistad; antes bastaba con no
+       haberla tocado, y por eso a Jose le salían los dieciséis contactos
+       marcados cada vez que entraba. */
+    const DIA = 86400000, ahora = Date.now();
+    try { localStorage.setItem('ss_carrusel_visto', String(ahora - 2*DIA)); } catch (e) {}
+    _vistoDesde = null;
     /* Se alimenta a mano lo que normalmente trae la escucha viva. */
-    const per = n => ({ id:n, docId:'d'+n, nombre:n, username:n, photoURL:'' });
-    amigosCache = [per('ana'), per('luis')];
-    solicitudesCache = [per('marta')];
-    enviadasCache = [per('pedro')];
+    const per = (n, creadoEn) => ({ id:n, docId:'d'+n, nombre:n, username:n,
+                                    photoURL:'', creadoEn: creadoEn });
+    /* ana llegó DESPUÉS de la última visita → nueva.
+       luis llegó mucho antes → no. */
+    amigosCache = [per('ana', ahora - 60*60*1000), per('luis', ahora - 10*DIA)];
+    solicitudesCache = [per('marta', ahora - 30*DIA)];
+    enviadasCache = [per('pedro', ahora - 1000)];
     pintarCarrusel();
     const items = [...document.querySelectorAll('#carousel .citem')];
     return {
@@ -177,7 +188,11 @@ const STUB = () => {
   const share = await p.evaluate(() => !!document.querySelector('#carousel .sharebtn'));
   chk(!share, 'el botón de compartir ya no duplica el de Ajustes');
   chk(car.conEtiqueta.includes('marta') && car.conEtiqueta.includes('ana'),
-      'la solicitud y los amigos sin ver sí la llevan', car.conEtiqueta);
+      'la solicitud (aunque sea vieja) y el amigo llegado DESPUÉS de tu última visita sí la llevan',
+      car.conEtiqueta);
+  chk(!car.conEtiqueta.includes('luis'),
+      'pero un amigo de hace diez días NO, aunque no lo hayas tocado nunca',
+      car.conEtiqueta);
 
   console.log('\n— Tocar un amigo le quita la etiqueta —');
   const trasTocar = await p.evaluate(() => {

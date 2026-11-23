@@ -110,11 +110,21 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   /* ── 4. La bandeja se agrupa por día ──────────────────────────────── */
   const dias = await p.evaluate(() => {
     const DIA = 86400000, ahora = Date.now();
+
+    /* Los instantes se calculan DESDE la misma función que agrupa, no
+       restando días a ojo. Restar «un día y dos horas» caía en ayer o en
+       anteayer según la hora a la que se ejecutara la prueba: el corte del
+       día está a medianoche en RD, no cuando se lanza el test. Una prueba
+       que depende de la hora falla sola algún día y nadie sabe por qué. */
+    const d0 = SS.diaActual(ahora);
+    /* El mediodía de un día concreto, en milisegundos. */
+    const medioDiaDe = n => (n * DIA) - (SS.DESFASE_H * 3600000) + DIA / 2;
+
     bandejaEntrada = [
-      { id:'a', sender:'ana',  senderId:'u1', strokes:[], receivedAt: ahora - 1000,       expiresAt: ahora + DIA },
-      { id:'b', sender:'luis', senderId:'u9', strokes:[], receivedAt: ahora - 2000,       expiresAt: ahora + DIA },
-      { id:'c', sender:'eva',  senderId:'u8', strokes:[], receivedAt: ahora - DIA - 7200000, expiresAt: ahora + DIA },
-      { id:'d', sender:'ivan', senderId:'u7', strokes:[], receivedAt: ahora - 3*DIA - 7200000, expiresAt: ahora + DIA },
+      { id:'a', sender:'ana',  senderId:'u1', strokes:[], receivedAt: ahora - 1000, expiresAt: ahora + DIA },
+      { id:'b', sender:'luis', senderId:'u9', strokes:[], receivedAt: ahora - 2000, expiresAt: ahora + DIA },
+      { id:'c', sender:'eva',  senderId:'u8', strokes:[], receivedAt: medioDiaDe(d0 - 1), expiresAt: ahora + DIA },
+      { id:'d', sender:'ivan', senderId:'u7', strokes:[], receivedAt: medioDiaDe(d0 - 3), expiresAt: ahora + DIA },
     ];
     idsRecien.clear();
     renderInbox();

@@ -1,6 +1,22 @@
-/* Prueba: el lienzo es vertical 9:16 en TODOS los dispositivos, cabe siempre
-   dentro de su área, y los dibujos antiguos (hechos cuando el escritorio era
-   16:10 apaisado) se siguen viendo completos, sin recortes ni deformación.
+/* Prueba: la forma del lienzo.
+
+   REGLA NUEVA (2026-11-23). Antes era 9:16 clavado en todos los aparatos.
+   Medido, eso dejaba el 68% de la pantalla en negro en un portátil y el
+   72% en un monitor. Jose: «en tablet y en computadora los usuarios tienen
+   más espacio, que puedan crear más y mejores dibujos».
+
+   Ahora el lienzo se ensancha cuando sobra sitio, entre 9:16 (0.5625) y
+   4:5 (0.8). Lo que esta prueba vigila:
+
+     - NUNCA apaisado. El tope es 4:5 y sigue siendo vertical, porque el
+       video que se comparte es 1080x1920 y un dibujo apaisado ahí deja dos
+       franjas enormes.
+     - Nunca se sale de su área.
+     - El búfer interno tiene la misma forma que la caja, si no el trazo
+       sale ovalado.
+     - Aprovecha el sitio: con pantalla ancha, se ensancha de verdad.
+     - Y los dibujos hechos en OTRA forma —los viejos apaisados, los de un
+       teléfono— se siguen viendo enteros, sin recortes ni deformación.
 
    Ejecutar:  node test-canvas-ratio.js
 */
@@ -13,7 +29,8 @@ const { servir, erroresDeLaApp } = require('./test-server');
 let SITIO;
 const path = require('path');
 
-const RATIO = 9 / 16;
+const RATIO_ALTO  = 9 / 16;   /* 0.5625 — lo más estrecho */
+const RATIO_ANCHO = 4 / 5;    /* 0.8    — lo más ancho */
 let ARCHIVO;   /* se rellena cuando el servidor está en pie */
 
 const TAMANOS = [
@@ -68,7 +85,12 @@ async function pruebaProporcion(b) {
     if (m.cw > m.aw + 1) fallas.push('DESBORDA-ANCHO');
     if (m.ch > m.ah + 1) fallas.push('DESBORDA-ALTO');
     if (ratio >= 1) fallas.push('NO-VERTICAL');
-    if (Math.abs(ratio - RATIO) > 0.01) fallas.push('NO-9:16');
+    if (ratio < RATIO_ALTO - 0.01)  fallas.push('MAS-ESTRECHO-QUE-9:16');
+    if (ratio > RATIO_ANCHO + 0.01) fallas.push('MAS-ANCHO-QUE-4:5');
+    /* Y que de verdad aproveche: si cabría más ancho y no lo usa, es que
+       se quedó clavado en 9:16 otra vez. */
+    const cabriaMas = (m.ah * RATIO_ANCHO) < m.aw - 30;
+    if (cabriaMas && ratio < RATIO_ANCHO - 0.02) fallas.push('DESAPROVECHA-ANCHO');
     /* El búfer interno debe tener la misma forma que la caja CSS, si no el
        trazo sale ovalado. */
     if (Math.abs(m.bw / m.bh - ratio) > 0.01) fallas.push('BUFER-DEFORME');

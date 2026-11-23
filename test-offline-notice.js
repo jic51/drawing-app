@@ -17,7 +17,12 @@ let SITIO;
 const path = require('path');
 
 let ARCHIVO;   /* se rellena cuando el servidor está en pie */
-const RATIO = 9 / 16;
+/* La forma del lienzo dejó de ser 9:16 clavado el 2026-11-23: ahora se
+   ensancha hasta 4:5 cuando sobra sitio. Lo que esta prueba vigila sigue
+   siendo lo mismo —que al aparecer la franja de "sin conexión" el lienzo
+   se re-encaje y NO se deforme—, así que se comprueba el rango, no un
+   número exacto. */
+const RATIO_ALTO = 9 / 16, RATIO_ANCHO = 4 / 5;
 
 const MOSTRAR_APP = () => {
   document.querySelectorAll('#splash-screen,#auth-screen')
@@ -83,7 +88,8 @@ const MOSTRAR_APP = () => {
       'sin red: el lienzo se re-encaja más bajo', { antes: lienzoConRed, ahora: e.lienzo });
   chk(e.lienzo <= e.area,
       'sin red: el lienzo no desborda su área', { lienzo: e.lienzo, area: e.area });
-  chk(Math.abs(e.ratio - RATIO) < 0.01, 'sin red: sigue 9:16', +e.ratio.toFixed(4));
+  chk(e.ratio >= RATIO_ALTO - 0.01 && e.ratio <= RATIO_ANCHO + 0.01,
+      'sin red: el lienzo sigue vertical y sin deformarse', +e.ratio.toFixed(4));
 
   // ── Vuelve la red ────────────────────────────────────────────────────
   await ctx.setOffline(false);
