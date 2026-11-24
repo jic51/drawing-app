@@ -15,7 +15,7 @@
    - el mismo reto en husos horarios opuestos,
    - el cambio ocurre en el mismo instante para todos (lunes 00:00 UTC),
    - la lista se recorre entera sin repetir ni saltarse ninguno,
-   - la insignia se ve y se traduce.
+   - la insignia se ve, se traduce, y no lleva emoji.
 
    Ejecutar:  node test-weekly-challenge.js
 */
@@ -124,8 +124,13 @@ const chk = (cond, msg, dato) => {
     lang = 'en'; applyLang();
     return { en, es, vuelve: b.textContent };
   });
-  chk(ins.en.startsWith('🎯 ') && ins.en.length > 5, 'muestra el reto', ins.en);
-  chk(ins.es !== ins.en && ins.es.startsWith('🎯 '), 'se traduce', ins);
+  /* Sin emoji desde el 2026-11-24: lo pidió Jose, y además un emoji lo
+     pinta el sistema operativo, así que se ve distinto en cada aparato y
+     nunca pega con el diseño. */
+  chk(/^(Today|Hoy):/.test(ins.en) && ins.en.length > 8, 'muestra la pregunta de hoy', ins.en);
+  chk(ins.es !== ins.en && /^Hoy:/.test(ins.es), 'se traduce', ins);
+  chk(!/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u.test(ins.en + ins.es),
+      'y sin emoji', ins);
   chk(ins.vuelve === ins.en, 'y vuelve bien al idioma anterior');
   await ctx.close();
 

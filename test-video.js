@@ -143,13 +143,21 @@ const chk = (c, m, d) => { if (!c) f++; console.log((c?'✅':'❌')+' '+m+(d!==u
   const firma = await p.evaluate(() => {
     const src = [...document.querySelectorAll('script')].map(x => x.textContent).join('\n');
     return {
-      unaSolaFuncion: /function pintarFirmaVideo[\s\S]{0,900}dibujarFirma\(/.test(src),
+      /* La firma sigue saliendo de `dibujarFirma`, la misma que la
+         imagen .png. Desde el 2026-11-23 se genera UNA vez por fase
+         antes de grabar, en `prepararFirmaVideo`, en vez de rehacerla
+         en cada cuadro: eso costaba un atasco de 3,3 s al empezar. */
+      unaSolaFuncion: /function prepararFirmaVideo[\s\S]{0,1400}dibujarFirma\(/.test(src),
+      preGenerada: /function pintarFirmaVideo[\s\S]{0,400}drawImage\(/.test(src)
+                   && !/function pintarFirmaVideo[\s\S]{0,400}dibujarFirma\(/.test(src),
       sinMarcaVieja: !/function pintarMarcaVideo/.test(src),
       escala: typeof VIDEO_FIRMA_ESCALA !== 'undefined' ? VIDEO_FIRMA_ESCALA : null,
       margen: typeof VIDEO_MARGEN !== 'undefined' ? VIDEO_MARGEN : null
     };
   });
   chk(firma.unaSolaFuncion, 'la firma del video sale de dibujarFirma, la misma que la imagen', firma);
+  chk(firma.preGenerada,
+      'y se pega ya hecha en cada cuadro, no se vuelve a dibujar', firma);
   chk(firma.sinMarcaVieja, 'la marca vieja del video ya no existe');
   chk(firma.escala > 1 && firma.escala * 190 < marco.W,
       'la firma se lee pero no se come el ancho del cuadro',

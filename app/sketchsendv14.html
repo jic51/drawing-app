@@ -696,6 +696,54 @@
     #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 
     /* ══════════════════════════════════════════════════════
+       LA BARRA DE DESCARGA
+       ────────────────────────────────────────────────────
+       Jose: «aparece el toast de descargando pero desaparece a los 2 o 3
+       segundos, luego simplemente no hay nada que diga que se está
+       descargando algo».
+
+       Tenía razón y era lo peor que podía pasar: grabar un video de medio
+       minuto sin UNA señal de que algo está ocurriendo. La gente vuelve a
+       darle al botón, o cierra la pestaña.
+
+       Esto no es un toast: no se va solo. Se queda hasta que termina, con
+       el porcentaje de verdad, y entonces se pone verde con un ✓ y SÍ se
+       va solo. Va arriba para no pelearse con el toast, que vive abajo.
+       ══════════════════════════════════════════════════════ */
+    #descarga {
+      position:fixed; top:14px; left:50%; transform:translateX(-50%) translateY(-12px);
+      background:var(--surface); border:1px solid var(--border); border-radius:14px;
+      padding:10px 16px 11px; min-width:230px; max-width:min(90vw,320px);
+      box-shadow:0 10px 34px rgba(0,0,0,0.38); z-index:99990;
+      opacity:0; pointer-events:none; transition:opacity .22s, transform .22s;
+    }
+    #descarga.ver { opacity:1; transform:translateX(-50%) translateY(0); }
+    #descarga-fila { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+    #descarga-icono { font-size:1rem; line-height:1; flex-shrink:0; }
+    #descarga-txt {
+      font-size:0.82rem; color:var(--text); flex:1; overflow:hidden;
+      text-overflow:ellipsis; white-space:nowrap;
+    }
+    #descarga-pct {
+      font-size:0.76rem; color:var(--muted); font-variant-numeric:tabular-nums; flex-shrink:0;
+    }
+    #descarga-pista {
+      height:5px; border-radius:3px; background:var(--surface2); overflow:hidden;
+    }
+    #descarga-barra {
+      height:100%; width:0%; border-radius:3px;
+      background:linear-gradient(90deg,var(--accent),var(--accent2));
+      transition:width .18s linear;
+    }
+    #descarga.hecho #descarga-barra { background:var(--ok); width:100% !important; }
+    #descarga.hecho { border-color:var(--ok); }
+    #descarga.falla #descarga-barra { background:var(--danger); }
+    #descarga.falla { border-color:var(--danger); }
+    @media (prefers-reduced-motion: reduce) {
+      #descarga, #descarga-barra { transition:none; }
+    }
+
+    /* ══════════════════════════════════════════════════════
        BADGE DE NOTIFICACIÓN EN BANDEJA
     ══════════════════════════════════════════════════════ */
     .inbox-btn { position:relative; }
@@ -773,6 +821,36 @@
       animation:mover 2.5s linear infinite;
     }
     .inbox-card-sub { font-size:0.75rem; color:var(--muted); margin-top:2px; }
+
+    /* Las dos pestañas de la bandeja. */
+    .inbox-tabs {
+      display:flex; gap:6px; padding:0 16px 10px; flex-shrink:0;
+      border-bottom:1px solid var(--border);
+    }
+    .inbox-tab {
+      flex:1; padding:8px 10px; border-radius:10px; cursor:pointer;
+      background:transparent; border:1px solid transparent; color:var(--muted);
+      font-family:var(--sans); font-size:0.84rem; font-weight:600;
+      transition:background .15s, color .15s;
+    }
+    .inbox-tab.activo { background:var(--surface2); color:var(--text); border-color:var(--border); }
+    .inbox-tab:hover:not(.activo) { color:var(--text); }
+
+    /* Lo enviado: una cuadrícula de miniaturas. Es un vistazo, no una
+       lista de la que haya que leer nada. */
+    .outbox-grid {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr));
+      gap:12px; padding:14px 16px 20px;
+    }
+    .outbox-item { display:flex; flex-direction:column; gap:5px; }
+    .outbox-mini {
+      width:100%; aspect-ratio:9/16; object-fit:cover; border-radius:10px;
+      border:1px solid var(--border); background:var(--surface2); display:block;
+    }
+    .outbox-para { font-size:0.72rem; color:var(--text); font-weight:600;
+                   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .outbox-estado { font-size:0.66rem; color:var(--muted); display:flex; align-items:center; gap:4px; }
+    .outbox-estado.visto { color:var(--ok); }
     /* El separador de día. Discreto: ordena sin competir con los dibujos. */
     .inbox-dia {
       font-size:0.68rem; font-weight:800; letter-spacing:.09em;
@@ -1594,11 +1672,21 @@
 <!-- BANDEJA DE ENTRADA -->
 <div id="inbox-overlay">
   <div class="inbox-hdr">
-    <span class="inbox-title">✉️ Dibujos recibidos</span>
+    <span class="inbox-title">Dibujos</span>
     <button class="inbox-close" id="inbox-close">Cerrar</button>
+  </div>
+  <!-- Dos pestañas: lo que te llega y lo que mandaste. Lo enviado
+       desaparecía de tu vista en cuanto lo enviabas y la gente lo daba por
+       perdido. -->
+  <div class="inbox-tabs" role="tablist">
+    <button class="inbox-tab activo" id="tab-recibidos" role="tab">Recibidos</button>
+    <button class="inbox-tab" id="tab-enviados" role="tab">Enviados</button>
   </div>
   <div class="inbox-body" id="inbox-body">
     <!-- Cards de dibujos recibidos se generan por JS -->
+  </div>
+  <div class="inbox-body" id="outbox-body" hidden>
+    <!-- Miniaturas de lo enviado -->
   </div>
 </div>
 
@@ -1866,6 +1954,16 @@
 <!-- TOAST NOTIFICATIONS -->
 <div id="toast"></div>
 
+<!-- La barra de descarga. No es un toast: se queda hasta que termina. -->
+<div id="descarga" role="status" aria-live="polite">
+  <div id="descarga-fila">
+    <span id="descarga-icono">⏳</span>
+    <span id="descarga-txt"></span>
+    <span id="descarga-pct"></span>
+  </div>
+  <div id="descarga-pista"><div id="descarga-barra"></div></div>
+</div>
+
 <!-- MediaRecorder API nativo — no necesita librerías externas -->
 
 <script>
@@ -1954,6 +2052,9 @@ const I18N = {
     save_plain: 'Guardar',
     inbox_title: '✉️ Dibujos recibidos', inbox_close: 'Cerrar',
     inbox_empty: 'Nada nuevo por ahora', inbox_sent_you: 'Te envió un dibujo',
+    tab_recibidos: 'Recibidos', tab_enviados: 'Enviados',
+    outbox_vacio: 'Todavía no has enviado nada. Dibuja la pregunta de hoy y mándasela a alguien.',
+    outbox_visto: 'Lo vio', outbox_sin_ver: 'Sin ver', cargando: 'Cargando…',
     dia_hoy: 'Hoy', dia_ayer: 'Ayer', dia_hace: 'Hace {n} días',
     inbox_del: 'Borrar sin verlo',
     inbox_del_warn: '¿Borrar el dibujo de <b>{name}</b> sin verlo?<br><br>No se puede recuperar.',
@@ -1970,6 +2071,7 @@ const I18N = {
     del_working: 'Borrando tu cuenta…',
     del_done: 'Cuenta borrada. Gracias por haber dibujado con nosotros.',
     del_fail: 'No se pudo borrar la cuenta',
+    del_parcial: 'Tu cuenta se borró, pero algo no se pudo eliminar ({q}). Escríbenos a hello@sketch-send.com y lo quitamos a mano.',
     del_relogin: 'Por seguridad, vuelve a entrar y repite el borrado. Te llevamos al inicio.',
     prof_open: 'Ver perfil', prof_share: '🔗 Compartir su perfil',
     prof_report: '⚑ Denunciar', prof_remove: '✕ Eliminar amigo',
@@ -2065,7 +2167,12 @@ const I18N = {
     photo_updated: '✅ Foto actualizada',
     err_upload_photo: '❌ Error al subir foto: ',
     photo_too_large: '⚠️ La imagen debe pesar menos de 5 MB',
-    downloading_img: '🖼️ Descargando imagen...',
+    downloading_img: 'Preparando la imagen…',
+    desc_grabando: 'Grabando el video… ({s}s)',
+    desc_guardando: 'Guardando el archivo…',
+    desc_lista: 'Tu descarga está lista',
+    desc_lista_img: 'Imagen descargada',
+    desc_lista_video: 'Video descargado ({kb} KB)',
     anonymous: 'Anónimo',
     notif_label: 'Avisos',
     notif_sub_off: 'Cuando te llega un dibujo',
@@ -2149,6 +2256,9 @@ const I18N = {
     save_plain: 'Save',
     inbox_title: '✉️ Received drawings', inbox_close: 'Close',
     inbox_empty: 'Nothing new yet', inbox_sent_you: 'sent you a drawing',
+    tab_recibidos: 'Received', tab_enviados: 'Sent',
+    outbox_vacio: "You haven't sent anything yet. Draw today's question and send it to someone.",
+    outbox_visto: 'Seen', outbox_sin_ver: 'Not seen yet', cargando: 'Loading…',
     dia_hoy: 'Today', dia_ayer: 'Yesterday', dia_hace: '{n} days ago',
     inbox_del: 'Delete without viewing',
     inbox_del_warn: 'Delete <b>{name}</b>\'s drawing without seeing it?<br><br>It cannot be recovered.',
@@ -2165,6 +2275,7 @@ const I18N = {
     del_working: 'Deleting your account…',
     del_done: 'Account deleted. Thanks for drawing with us.',
     del_fail: "Couldn't delete the account",
+    del_parcial: 'Your account was deleted, but something could not be removed ({q}). Email hello@sketch-send.com and we will delete it by hand.',
     del_relogin: 'For security, sign in again and repeat the deletion. Taking you to the start.',
     prof_open: 'View profile', prof_share: '🔗 Share their profile',
     prof_report: '⚑ Report', prof_remove: '✕ Remove friend',
@@ -2253,7 +2364,12 @@ const I18N = {
     photo_updated: '✅ Photo updated',
     err_upload_photo: '❌ Error uploading photo: ',
     photo_too_large: '⚠️ Image must be under 5 MB',
-    downloading_img: '🖼️ Downloading image...',
+    downloading_img: 'Preparing the image…',
+    desc_grabando: 'Recording the video… ({s}s)',
+    desc_guardando: 'Saving the file…',
+    desc_lista: 'Your download is ready',
+    desc_lista_img: 'Image downloaded',
+    desc_lista_video: 'Video downloaded ({kb} KB)',
     anonymous: 'Anonymous',
     notif_label: 'Alerts',
     notif_sub_off: 'When a drawing arrives',
@@ -2407,6 +2523,8 @@ function applyLang() {
   const inboxTitle = document.querySelector('.inbox-title');
   if (inboxTitle) inboxTitle.textContent = t('inbox_title');
   set('inbox-close', 'inbox_close');
+  set('tab-recibidos', 'tab_recibidos');
+  if (typeof pintarContadorEnviados === 'function') pintarContadorEnviados();
 
   // ── Settings ──
   const settingsH = document.querySelector('.settings-header h3');
@@ -2712,7 +2830,10 @@ function pintarReto() {
   const b = document.getElementById('reto-badge');
   if (!b) return;
   const hoy = textoReto();
-  b.textContent = hoy ? '🎯 ' + t('reto_hoy') + hoy : '';
+  /* Sin emoji: lo pidió Jose, y además un emoji lo pinta el sistema
+     operativo, así que se ve distinto en cada aparato y nunca pega
+     con el diseño. */
+  b.textContent = hoy ? t('reto_hoy') + hoy : '';
   b.title = t('reto_titulo');
 }
 
@@ -4029,28 +4150,28 @@ function redibujar() {
 
 /* ══ PROMPTS DE DIBUJO ══ */
 const PROMPTS_ES = [
-  '¿Cómo te sientes ahora? 😊',
-  'Dibuja tu comida favorita 🍕',
-  'Dibuja el clima de hoy ☀️',
-  '¿Dónde estás ahora mismo? 📍',
-  'Dibuja algo que te haga reír 😄',
-  'Tu animal favorito 🐶',
-  'Dibuja un sueño que tuviste 💭',
+  '¿Cómo te sientes ahora?',
+  'Dibuja tu comida favorita',
+  'Dibuja el clima de hoy',
+  '¿Dónde estás ahora mismo?',
+  'Dibuja algo que te haga reír',
+  'Tu animal favorito',
+  'Dibuja un sueño que tuviste',
   '¿Qué quieres hacer este fin de semana?',
-  'Dibuja tu lugar favorito 🌎',
-  'Un mensaje sin palabras ✨',
+  'Dibuja tu lugar favorito',
+  'Un mensaje sin palabras',
 ];
 const PROMPTS_EN = [
-  'How are you feeling? 😊',
-  'Draw your favorite food 🍕',
-  "Draw today's weather ☀️",
-  'Where are you right now? 📍',
-  'Draw something that makes you laugh 😄',
-  'Your favorite animal 🐶',
-  'Draw a dream you had 💭',
+  'How are you feeling?',
+  'Draw your favorite food',
+  "Draw today's weather",
+  'Where are you right now?',
+  'Draw something that makes you laugh',
+  'Your favorite animal',
+  'Draw a dream you had',
   'What do you want to do this weekend?',
-  'Draw your favorite place 🌎',
-  'A message without words ✨',
+  'Draw your favorite place',
+  'A message without words',
 ];
 
 /* ══════════════════════════════════════════════════════
@@ -4985,7 +5106,7 @@ function marcarPresencia() {
   if (document.visibilityState !== 'visible') return;
   db.collection('users').doc(auth.currentUser.uid)
     .update({ lastSeen: firebase.firestore.FieldValue.serverTimestamp() })
-    .catch(() => {});   /* que falle no rompe nada: solo no se ve el punto */
+    .catch(daIgual('presencia'));   /* que falle no rompe nada: solo no se ve el punto */
 }
 
 function arrancarPresencia() {
@@ -5083,6 +5204,21 @@ function etiquetaDe(p) { return identidad(p).etiqueta; }
 
    La regla: a la persona se le dice algo que entienda; el mensaje de
    verdad va a la consola y al registro. */
+/* «Esto puede fallar y da igual» — pero que quede rastro.
+
+   Había 27 sitios con `.catch(() => {})`. Muchos son correctos: guardas de
+   APIs del navegador que puede no haber (localStorage en modo privado,
+   wakeLock, setPointerCapture). Pero mirándolos no se distinguía «da
+   igual» de «se me olvidó», y había unos cuantos de los que sí importan:
+   borrar tu cuenta fallaba en silencio y te quedabas creyendo que se
+   había borrado todo.
+
+   Ahora lo que de verdad da igual lo dice en voz alta: no molesta a nadie,
+   pero deja traza en la consola y se distingue de un descuido. */
+function daIgual(donde) {
+  return e => console.warn('(no importa) ' + donde + ':', (e && (e.message || e)) || e);
+}
+
 function fallo(donde, e, textoHumano) {
   const code = String((e && e.code) || '').replace(/^[a-z-]+\//, '');
   console.warn(donde + ':', (e && (e.message || e)) || 'sin detalle');
@@ -5265,7 +5401,7 @@ enviarBtn.addEventListener('click', async () => {
   /* Modo respuesta: enviando directamente a quien nos escribió */
   if (replyingTo) {
     if (firebaseReady && auth.currentUser) {
-      enviarSketchFirestore(replyingTo.uid).catch(() => {});
+      enviarSketchFirestore(replyingTo.uid).catch(daIgual('enviarRespuesta'));
     }
     salirModoRespuesta();
   } else {
@@ -5273,7 +5409,7 @@ enviarBtn.addEventListener('click', async () => {
     if (!seleccionados.size) { enviarBtn.disabled = false; return; }
     if (firebaseReady && auth.currentUser) {
       const uids = [...seleccionados];
-      Promise.all(uids.map(uid => enviarSketchFirestore(uid))).catch(() => {});
+      Promise.all(uids.map(uid => enviarSketchFirestore(uid))).catch(daIgual('enviarVarios'));
     }
   }
 
@@ -5325,14 +5461,14 @@ async function bloquear(otroUid) {
       .where('users', 'array-contains', uid).get();
     await Promise.all(snap.docs
       .filter(d => (d.data().users || []).includes(otroUid))
-      .map(d => d.ref.delete().catch(() => {})));
+      .map(d => d.ref.delete().catch(daIgual('bloquear/amistad'))));
 
     /* 4: lo que te mandó deja de estar en tu bandeja. Se borran de verdad:
        las reglas dejan borrar lo que has recibido. */
     const suyos = bandejaEntrada.filter(m => m.senderId === otroUid);
     bandejaEntrada = bandejaEntrada.filter(m => m.senderId !== otroUid);
     await Promise.all(suyos.map(m =>
-      db.collection('sketches').doc(m.id).delete().catch(() => {})));
+      db.collection('sketches').doc(m.id).delete().catch(daIgual('bloquear/dibujo'))));
 
     renderInbox();
     buildCarousel();
@@ -5375,6 +5511,68 @@ function sigueSiendoAmigo(toUid) {
   return amigosCache.some(a => a.id === toUid);
 }
 
+/* ══════════════════════════════════════════════════════
+   LO QUE ENVIASTE — y por qué es una miniatura y no el dibujo
+   ────────────────────────────────────────────────────
+   Hasta ahora mandabas un dibujo y desaparecía de tu vista. La gente lo da
+   por perdido y no sabe si llegó, si lo vieron, ni qué mandó.
+
+   Lo obvio sería listar `sketches` donde `from` eres tú. No se puede: los
+   trazos viven DENTRO del mismo documento, así que listar diez dibujos
+   enviados son más de un mega bajado para enseñar diez cuadraditos.
+
+   Por eso una miniatura aparte. Medido con un dibujo de 900 trazos:
+
+     los trazos ................ 148 KB
+     miniatura WebP de 160 px ..   7 KB
+
+   Veintiuna veces menos. WebP si el navegador sabe; si no, JPEG, que pesa
+   lo mismo y lo entiende todo. PNG no: el mismo dibujo son 45 KB.
+   ══════════════════════════════════════════════════════ */
+const MINI_LADO = 160;
+
+function miniaturaDeTrazos(trazosDibujo) {
+  try {
+    const segs = (trazosDibujo || []).filter(x => x.tipo === 'seg');
+    if (!segs.length) return null;
+
+    const meta = trazosDibujo.find(e => e.tipo === 'inicio' && e.origW);
+    const ow = (meta && meta.origW) || Math.round(cv.width / DPR);
+    const oh = (meta && meta.origH) || Math.round(cv.height / DPR);
+
+    const k = Math.min(MINI_LADO / ow, MINI_LADO / oh);
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(ow * k));
+    c.height = Math.max(1, Math.round(oh * k));
+    const cx = c.getContext('2d');
+    cx.fillStyle = canvasBg();
+    cx.fillRect(0, 0, c.width, c.height);
+    cx.lineCap = 'round'; cx.lineJoin = 'round';
+
+    /* El mismo encuadre que el video y el replay: si un trazo se salió del
+       lienzo declarado, aquí tampoco se recorta. */
+    const e = encuadrar(segs, ow, oh, c.width, c.height, 0);
+    cx.setTransform(e.scale, 0, 0, e.scale, e.ox, e.oy);
+    for (const sg of segs) {
+      cx.beginPath();
+      cx.moveTo(sg.de.x, sg.de.y);
+      cx.lineTo(sg.a.x, sg.a.y);
+      cx.strokeStyle = sg.color;
+      cx.lineWidth = sg.gw;
+      cx.stroke();
+    }
+
+    /* WebP primero; si el navegador no sabe, `toDataURL` devuelve PNG en
+       vez de fallar, así que hay que COMPROBARLO y caer a JPEG. */
+    let d = c.toDataURL('image/webp', 0.72);
+    if (d.indexOf('data:image/webp') !== 0) d = c.toDataURL('image/jpeg', 0.72);
+    return d;
+  } catch (err) {
+    console.warn('miniaturaDeTrazos:', err.message);
+    return null;
+  }
+}
+
 async function enviarSketchFirestore(toUid) {
   /* El bloqueo se mira ANTES que nada: no hace falta sesión ni nada del
      servidor para saber que no quieres mandarle a esta persona. */
@@ -5407,14 +5605,15 @@ async function enviarSketchFirestore(toUid) {
     const destino = (Array.isArray(amigosCache) ? amigosCache : [])
       .find(a => a.id === toUid);
 
-    await db.collection('sketches').add({
+    const caduca = new Date(Date.now() + 24*3600*1000);
+    const ref = await db.collection('sketches').add({
       from: uid,
       fromName: senderName,
       to: toUid,
       toName: (destino && (destino.username || destino.nombre)) || null,
       strokes: trazos,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      expiresAt: new Date(Date.now() + 24*3600*1000),
+      expiresAt: caduca,
       viewed: false,
       /* Número de semana del reto, no su texto: el texto cambia con el
          idioma de quien lo envía y así no se podría agrupar. Las reglas de
@@ -5422,6 +5621,23 @@ async function enviarSketchFirestore(toUid) {
          los envíos — comprobado contra las reglas de 2026-11-11. */
       reto: semanaActual()
     });
+
+    /* Y la copia para TI, con miniatura, en `enviados`. Mismo id que el
+       dibujo para que la función del servidor pueda marcarla como vista sin
+       buscar nada.
+
+       Va con catch mudo a propósito: si esto falla, el dibujo YA se envió y
+       llegó. Perder la miniatura es molesto; no enviar es un fallo. */
+    db.collection('enviados').doc(ref.id).set({
+      de: uid,
+      para: toUid,
+      paraNombre: (destino && (destino.username || destino.nombre)) || null,
+      miniatura: miniaturaDeTrazos(trazos),
+      trazos: trazos.filter(x => x.tipo === 'seg').length,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      expiresAt: caduca,
+      viewed: false
+    }).catch(e => console.warn('enviados:', e.message));
     db.collection('stats').doc('global').set({ sketchesSent: firebase.firestore.FieldValue.increment(1) }, { merge: true }).catch(() => {});
     if (window.posthog) posthog.capture('sketch_sent', { strokeCount: trazos.length });
   } catch(e) {
@@ -5595,8 +5811,115 @@ function marcarVisto(msg) {
   db.collection('sketches').doc(msg.id).update({
     viewed: true,
     viewedAt: firebase.firestore.FieldValue.serverTimestamp()
-  }).catch(() => {});
+  }).catch(daIgual('marcarVisto'));
   return true;
+}
+
+/* ══════════════════════════════════════════════════════
+   LA PESTAÑA DE ENVIADOS
+   ══════════════════════════════════════════════════════ */
+let enviadosCacheItems = null;
+let _enviadosSuelta = null;
+
+function vigilarEnviados() {
+  const { db, auth, listo } = contextoFirebase();
+  if (!listo || !auth?.currentUser || _enviadosSuelta) return;
+  _enviadosSuelta = db.collection('enviados')
+    .where('de', '==', auth.currentUser.uid)
+    .onSnapshot(snap => {
+      const ahora = Date.now();
+      enviadosCacheItems = snap.docs.map(d => {
+        const x = d.data();
+        return {
+          id: d.id,
+          para: x.para,
+          paraNombre: x.paraNombre,
+          miniatura: x.miniatura || null,
+          trazos: x.trazos || 0,
+          viewed: !!x.viewed,
+          createdAt: x.createdAt?.toMillis?.() || ahora,
+          expiresAt: x.expiresAt?.toMillis?.() || (ahora + 24*3600*1000)
+        };
+      }).filter(m => m.expiresAt > ahora)
+        .sort((a, b) => b.createdAt - a.createdAt);
+      if (pestanaActual === 'enviados') pintarEnviados();
+      pintarContadorEnviados();
+    }, e => console.warn('vigilarEnviados:', e.message));
+}
+
+function pintarContadorEnviados() {
+  const b = document.getElementById('tab-enviados');
+  if (!b) return;
+  const n = (enviadosCacheItems || []).length;
+  b.textContent = t('tab_enviados') + (n ? ' (' + n + ')' : '');
+}
+
+function pintarEnviados() {
+  const cuerpo = document.getElementById('outbox-body');
+  if (!cuerpo) return;
+  cuerpo.innerHTML = '';
+  const items = enviadosCacheItems;
+
+  if (items === null) {
+    const cargando = document.createElement('div');
+    cargando.style.cssText = 'padding:26px;text-align:center;color:var(--muted);font-size:0.85rem';
+    cargando.textContent = t('cargando');
+    cuerpo.appendChild(cargando);
+    return;
+  }
+  if (!items.length) {
+    const vacio = document.createElement('div');
+    vacio.style.cssText = 'padding:30px 24px;text-align:center;color:var(--muted);font-size:0.88rem;line-height:1.5';
+    vacio.textContent = t('outbox_vacio');
+    cuerpo.appendChild(vacio);
+    return;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'outbox-grid';
+  items.forEach(m => {
+    const it = document.createElement('div');
+    it.className = 'outbox-item';
+
+    const img = document.createElement('img');
+    img.className = 'outbox-mini';
+    img.alt = '';
+    if (m.miniatura) img.src = m.miniatura;
+    it.appendChild(img);
+
+    const para = document.createElement('div');
+    para.className = 'outbox-para';
+    para.textContent = etiquetaDe({ username: m.paraNombre, nombre: m.paraNombre });
+    it.appendChild(para);
+
+    /* Lo que de verdad quiere saber quien envió: ¿lo vieron? */
+    const est = document.createElement('div');
+    est.className = 'outbox-estado' + (m.viewed ? ' visto' : '');
+    est.textContent = m.viewed ? '✓ ' + t('outbox_visto') : t('outbox_sin_ver');
+    it.appendChild(est);
+
+    grid.appendChild(it);
+  });
+  cuerpo.appendChild(grid);
+}
+
+let pestanaActual = 'recibidos';
+function cambiarPestana(cual) {
+  pestanaActual = cual;
+  const ib = document.getElementById('inbox-body');
+  const ob = document.getElementById('outbox-body');
+  const tr = document.getElementById('tab-recibidos');
+  const te = document.getElementById('tab-enviados');
+  if (!ib || !ob) return;
+  const enviados = cual === 'enviados';
+  ib.hidden = enviados;
+  ob.hidden = !enviados;
+  tr && tr.classList.toggle('activo', !enviados);
+  te && te.classList.toggle('activo', enviados);
+  if (enviados) { vigilarEnviados(); pintarEnviados(); }
+  /* El contador se repinta siempre, no solo cuando llega algo nuevo: al
+     cambiar de pestaña o de idioma también tiene que estar al día. */
+  pintarContadorEnviados();
 }
 
 function renderInbox() {
@@ -5752,6 +6075,12 @@ function renderInbox() {
 
 function abrirInbox() {
   renderInbox();
+  /* Siempre se abre en Recibidos: es lo que la gente viene a ver. Y se
+     pone en marcha la escucha de enviados para que el contador de la
+     pestaña esté al día sin tener que entrar en ella. */
+  cambiarPestana('recibidos');
+  vigilarEnviados();
+  pintarContadorEnviados();
   inboxOverlay.classList.add('activo');
 }
 function cerrarInbox() {
@@ -5853,6 +6182,78 @@ modalEl.addEventListener('click', e => { if (e.target === modalEl) modalEl.class
   abre el archivo en una nueva pestaña para que el usuario
   lo guarde manualmente.
 */
+/* ══════════════════════════════════════════════════════
+   AVISAR DE QUE ALGO SE ESTÁ DESCARGANDO
+   ────────────────────────────────────────────────────
+   Un toast se va a los tres segundos. Grabar un video tarda bastante más,
+   y durante ese rato no había NADA en pantalla: ni que estuviera pasando
+   algo, ni cuánto faltaba. Jose lo describió exacto: «luego simplemente no
+   hay nada que diga que se está descargando algo, y cuando ya está listo
+   simplemente aparece el archivo».
+
+   Esto se queda hasta el final. Al terminar se pone verde con un ✓ y
+   entonces sí desaparece solo.
+   ══════════════════════════════════════════════════════ */
+const descarga = (() => {
+  const caja  = () => document.getElementById('descarga');
+  const txt   = () => document.getElementById('descarga-txt');
+  const pct   = () => document.getElementById('descarga-pct');
+  const barra = () => document.getElementById('descarga-barra');
+  const icono = () => document.getElementById('descarga-icono');
+  let irse = null;
+
+  function abrir(texto) {
+    const c = caja(); if (!c) return;
+    clearTimeout(irse);
+    c.classList.remove('hecho', 'falla');
+    icono().textContent = '⏳';
+    txt().textContent = texto || '';
+    pct().textContent = '';
+    barra().style.width = '0%';
+    c.classList.add('ver');
+  }
+
+  /* `fraccion` de 0 a 1. Sin número, la barra no se mueve pero la caja
+     sigue ahí: hay descargas cuyo avance no se puede saber. */
+  function poner(fraccion, texto) {
+    const c = caja(); if (!c || !c.classList.contains('ver')) return;
+    if (texto) txt().textContent = texto;
+    if (typeof fraccion === 'number') {
+      const n = Math.max(0, Math.min(100, Math.round(fraccion * 100)));
+      barra().style.width = n + '%';
+      pct().textContent = n + '%';
+    }
+  }
+
+  function listo(texto) {
+    const c = caja(); if (!c) return;
+    c.classList.add('ver', 'hecho');
+    icono().textContent = '✅';
+    txt().textContent = texto || t('desc_lista');
+    pct().textContent = '';
+    clearTimeout(irse);
+    irse = setTimeout(cerrar, 4000);
+  }
+
+  function fallo(texto) {
+    const c = caja(); if (!c) return;
+    c.classList.add('ver', 'falla');
+    icono().textContent = '⚠️';
+    txt().textContent = texto || '';
+    pct().textContent = '';
+    clearTimeout(irse);
+    irse = setTimeout(cerrar, 5000);
+  }
+
+  function cerrar() {
+    const c = caja(); if (!c) return;
+    c.classList.remove('ver');
+    clearTimeout(irse);
+  }
+
+  return { abrir, poner, listo, fallo, cerrar };
+})();
+
 function descargar(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -6025,9 +6426,12 @@ pngBtn.addEventListener('click', () => {
   tc.fillStyle = canvasBg(); tc.fillRect(0, 0, tmp.width, tmp.height);
   tc.drawImage(cv, 0, 0);
   dibujarFirma(tc, tmp.width, tmp.height, false);
+  modalEl.classList.remove('open');
+  descarga.abrir(t('downloading_img'));
   descargarDataURL(tmp.toDataURL('image/png'), `sketchsend_${Date.now()}.png`);
-  modalEl.classList.remove('open'); toast(t('downloading_img'));
-  setTimeout(() => { _downloading = false; }, 1000);
+  /* El PNG es instantáneo: no hay porcentaje que enseñar, solo el final. */
+  descarga.poner(1);
+  setTimeout(() => { descarga.listo(t('desc_lista_img')); _downloading = false; }, 400);
 });
 
 /* ══════════════════════════════════════════════════════
@@ -6141,19 +6545,61 @@ const ARCOIRIS = ['#ff0000','#ff7f00','#ffff00','#00ff00','#0000ff','#9400d3','#
    Arriba a la izquierda en las dos. Abajo es donde TikTok e Instagram
    ponen SU interfaz —el texto, el usuario, los botones—, así que una marca
    ahí acaba tapada justo en el sitio donde más se comparte. */
-function pintarFirmaVideo(tc, escala) {
-  if (!usuario) return;
-  /* La firma se dibuja a su tamaño nativo en un lienzo aparte y se amplía
-     al pegarla. Así `dibujarFirma` no tiene que saber nada del video, y
-     sigue siendo la misma función que usa la imagen. */
+/* LA FIRMA, PRE-GENERADA — y por qué.
+
+   Antes esto se hacía en CADA cuadro: dos lienzos nuevos, un `measureText`
+   con una fuente web, y un degradado de tres repeticiones construido desde
+   cero. Treinta veces por segundo.
+
+   Medido en un video que grabó Jose: un atasco de 3,3 SEGUNDOS justo al
+   empezar, y otro de 152 ms. El reloj acotado impidió que se perdieran
+   trazos —por eso no se saltó nada—, pero el parón se veía.
+
+   El primero es el caro de verdad: la primera vez que un lienzo nuevo pinta
+   texto con una fuente web, el navegador tiene que resolverla. Dentro de la
+   grabación, eso es un parón grabado.
+
+   Ahora la firma se dibuja UNA vez por cada fase del arcoíris, ANTES de
+   empezar a grabar. Durante el video solo se pega la que toca: un
+   `drawImage` y nada más. Y de paso el trabajo de las fuentes queda fuera
+   de la grabación, que es donde tiene que estar.
+
+   24 fases para un ciclo de 2,5 s son ~10 por segundo. Más no se nota en
+   un arcoíris que se desplaza. */
+const VIDEO_FIRMA_FASES = 24;
+
+function prepararFirmaVideo(escala) {
+  if (!usuario) return null;
   const W = 190, H = 60;
-  const off = document.createElement('canvas');
-  off.width = Math.ceil(W * DPR); off.height = Math.ceil(H * DPR);
-  const oc = off.getContext('2d');
-  oc.scale(DPR, DPR);
-  dibujarFirma(oc, W, H, false);
-  tc.drawImage(off, 0, 0, off.width, off.height,
-               VIDEO_MARGEN, VIDEO_MARGEN, W * escala, H * escala);
+  const anchoFinal = Math.round(W * escala), altoFinal = Math.round(H * escala);
+  const fotos = [];
+  const realNow = performance.now.bind(performance);
+  try {
+    for (let i = 0; i < VIDEO_FIRMA_FASES; i++) {
+      /* `dibujarFirma` saca la fase del reloj. Se le congela para poder
+         pedirle una concreta sin tocar la función, que es la misma que usa
+         la imagen .png y no debe saber nada del video. */
+      const t = (i / VIDEO_FIRMA_FASES) * 2500;
+      performance.now = () => t;
+      const off = document.createElement('canvas');
+      off.width = anchoFinal; off.height = altoFinal;
+      const oc = off.getContext('2d');
+      /* Se dibuja directamente al tamaño final: así el pegado de cada
+         cuadro no tiene que escalar nada. */
+      oc.scale(escala, escala);
+      dibujarFirma(oc, W, H, false);
+      fotos.push(off);
+    }
+  } finally {
+    performance.now = realNow;
+  }
+  return fotos;
+}
+
+function pintarFirmaVideo(tc, fotos, ahora) {
+  if (!fotos || !fotos.length) return;
+  const i = Math.floor(((ahora % 2500) / 2500) * fotos.length) % fotos.length;
+  tc.drawImage(fotos[i], VIDEO_MARGEN, VIDEO_MARGEN);
 }
 
 /* ── VIDEO — 1080x1920, duración acotada, marca abajo ── */
@@ -6219,6 +6665,20 @@ vidBtn.addEventListener('click', async () => {
     if (!fmt) { toast(t('no_video_support')); _downloading = false; return; }
     const { mimeType, ext, tipoBlob } = fmt;
 
+    /* TODO EL TRABAJO CARO, ANTES DE EMPEZAR A GRABAR.
+
+       Las 24 firmas se generan aquí, con el lienzo del fondo ya pintado y
+       un cuadro de prueba hecho. Lo que pase antes de `recorder.start()`
+       no sale en el video; lo que pase después, sí. */
+    const firmas = prepararFirmaVideo(VIDEO_FIRMA_ESCALA);
+
+    /* Un cuadro en vacío para que el navegador tenga el lienzo caliente:
+       la primera composición de un lienzo de 1080x1920 también cuesta. */
+    tc.fillStyle = fondo;
+    tc.fillRect(0, 0, VIDEO_W, VIDEO_H);
+    tc.drawImage(capa, 0, 0);
+    pintarFirmaVideo(tc, firmas, 0);
+
     /* 30 fps y no 60: a 1080x1920 el doble de cuadros dobla el trabajo sin
        que se note en un replay de trazos, y en un teléfono se atraganta. */
     const stream = tmp.captureStream(30);
@@ -6229,16 +6689,18 @@ vidBtn.addEventListener('click', async () => {
     /* Si hubo que acelerarlo, se dice. Que un video no vaya a la velocidad
        a la que dibujaste es información, no un detalle de implementación. */
     const veces = acelerado ? ' ×' + (1 / factor).toFixed(1) : '';
-    toast(`⏳ ${lang === 'es' ? 'Grabando video' : 'Recording video'} (${durSec}s${veces})...`);
+    descarga.abrir(t('desc_grabando').replace('{s}', durSec) + veces);
 
     return new Promise(resolve => {
-      let raf = 0, siguiente = 0, tPrev = 0, transcurrido = 0, finEn = 0;
+      let raf = 0, siguiente = 0, tPrev = 0, transcurrido = 0, finEn = 0, ultimoPct = 0;
 
       recorder.onstop = () => {
         cancelAnimationFrame(raf);
         const blob = new Blob(chunks, { type: tipoBlob });
+        descarga.poner(1, t('desc_guardando'));
         descargar(blob, `sketchsend_${Date.now()}.${ext}`);
-        toast('🎬 ' + (lang === 'es' ? 'Video descargado' : 'Video downloaded'));
+        const kb = Math.round(blob.size / 1024);
+        descarga.listo(t('desc_lista_video').replace('{kb}', kb));
         _downloading = false;
         resolve();
       };
@@ -6274,7 +6736,18 @@ vidBtn.addEventListener('click', async () => {
         tc.fillRect(0, 0, VIDEO_W, VIDEO_H);
         tc.drawImage(capa, 0, 0);
 
-        pintarFirmaVideo(tc, VIDEO_FIRMA_ESCALA);
+        pintarFirmaVideo(tc, firmas, ahora);
+
+        /* El porcentaje sale del avance REAL por los trazos, no de un
+           temporizador: si el navegador se atasca, la barra se para con
+           él, que es lo honesto. La cola del final cuenta como el último
+           tramo para que no se quede clavada en 100 sin terminar. */
+        if (ahora - ultimoPct > 120) {
+          ultimoPct = ahora;
+          const porTrazos = comp.length ? siguiente / comp.length : 1;
+          const enCola = finEn ? Math.min(1, (ahora - finEn) / VIDEO_COLA_MS) : 0;
+          descarga.poner(Math.min(0.99, porTrazos * 0.9 + enCola * 0.1));
+        }
 
         if (siguiente >= comp.length) {
           if (!finEn) finEn = ahora;
@@ -6289,7 +6762,8 @@ vidBtn.addEventListener('click', async () => {
 
   } catch (err) {
     console.error('Video export error:', err);
-    toast(lang === 'en' ? '⚠️ Error recording video — try again' : '⚠️ Error al grabar video — intenta de nuevo');
+    descarga.fallo(lang === 'en' ? 'Error recording video — try again'
+                                 : 'Error al grabar video — intenta de nuevo');
     _downloading = false;
   }
 });
@@ -7104,25 +7578,52 @@ async function borrarCuenta() {
   toast(t('del_working'));
 
   try {
+    /* AQUÍ LOS FALLOS SÍ IMPORTAN, y antes se tragaban todos.
+
+       Cada paso iba con `.catch(() => {})`, así que si Firestore denegaba
+       cualquiera de ellos la persona veía «cuenta borrada» igual y se
+       quedaba creyendo que no quedaba nada suyo. En algo irreversible y
+       con datos personales de por medio, eso es lo peor que puede pasar:
+       no es que falle, es que mientes al decir que no falló.
+
+       Ahora se cuenta lo que no se pudo borrar y se dice. La cuenta se
+       borra igual —no tiene sentido dejarla a medias—, pero quien la borra
+       se entera de que hay que revisar. */
+    const noPudo = [];
+    const anota = donde => e => {
+      noPudo.push(donde);
+      console.warn('borrarCuenta/' + donde + ':', (e && e.message) || e);
+    };
+
     /* 1. Amistades: hay que leerlas para saber cuáles le tocan. */
     const amis = await db.collection('friendships')
       .where('users', 'array-contains', uid).get();
-    await Promise.all(amis.docs.map(d => d.ref.delete().catch(() => {})));
+    await Promise.all(amis.docs.map(d => d.ref.delete().catch(anota('amistades'))));
 
     /* 2. Dibujos que envió y los que recibió. */
     for (const campo of ['from', 'to']) {
       const snap = await db.collection('sketches').where(campo, '==', uid).get();
-      await Promise.all(snap.docs.map(d => d.ref.delete().catch(() => {})));
+      await Promise.all(snap.docs.map(d => d.ref.delete().catch(anota('dibujos'))));
     }
 
+    /* 2b. Y su bandeja de salida: las miniaturas de lo que envió. */
+    const envi = await db.collection('enviados').where('de', '==', uid).get();
+    await Promise.all(envi.docs.map(d => d.ref.delete().catch(anota('enviados'))));
+
     /* 3. Su documento, con el token de notificaciones dentro. */
-    await db.collection('users').doc(uid).delete().catch(() => {});
+    await db.collection('users').doc(uid).delete().catch(anota('perfil'));
 
     /* 4. La cuenta de autenticación, al final. */
     await user.delete();
 
     ls.del('ss_user');
-    toast(t('del_done'));
+    if (noPudo.length) {
+      /* Sin toast: esto hay que leerlo, y un toast se va solo. */
+      const cuales = [...new Set(noPudo)].join(', ');
+      await ssAlert(t('del_parcial').replace('{q}', esc(cuales)));
+    } else {
+      toast(t('del_done'));
+    }
     setTimeout(() => location.href = getBaseUrl(), 1200);
 
   } catch (e) {
@@ -7295,6 +7796,9 @@ avMob.addEventListener('click', abrirSettings);
 
 document.getElementById('guardar-bienvenida')
   ?.addEventListener('click', guardarBienvenida);
+
+document.getElementById('tab-recibidos')?.addEventListener('click', () => cambiarPestana('recibidos'));
+document.getElementById('tab-enviados')?.addEventListener('click', () => cambiarPestana('enviados'));
 
 settingsClose.addEventListener('click', cerrarSettings);
 settingsOverlay.addEventListener('click', e => { if (e.target === settingsOverlay) cerrarSettings(); });

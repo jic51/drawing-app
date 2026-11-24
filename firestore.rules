@@ -135,6 +135,26 @@ service cloud.firestore {
                      || resource.data.to == request.auth.uid);
     }
 
+    /* ── LO QUE ENVIASTE ─────────────────────────────────────────────
+       Una copia pequeña de cada dibujo que mandas, con una miniatura de
+       unos 7 KB. No se listan los `sketches` donde `from` eres tú porque
+       los trazos viven dentro del mismo documento: diez dibujos enviados
+       serían más de un mega bajado para enseñar diez cuadraditos.
+
+       Solo tuyos, y solo tú los ves. El `viewed` lo pone el servidor
+       cuando el otro lo abre, no el cliente: el id es el mismo que el del
+       dibujo, así que la función lo encuentra sin buscar. */
+    match /enviados/{id} {
+      allow read: if request.auth != null && resource.data.de == request.auth.uid;
+      allow create: if request.auth != null
+                    && request.resource.data.de == request.auth.uid
+                    && request.resource.size() < 60000;
+      /* Nadie desde el navegador: lo escribe la función con permisos de
+         administrador, que no pasa por aquí. */
+      allow update: if false;
+      allow delete: if request.auth != null && resource.data.de == request.auth.uid;
+    }
+
     /* ── CONTADORES DE LA LANDING ────────────────────────────────────
        CAMBIO: antes cualquiera con cuenta podía escribir lo que quisiera y
        dejar el contador en lo que le apeteciera. Ahora solo se admiten

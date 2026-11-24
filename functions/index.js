@@ -103,6 +103,12 @@ exports.notifySketchViewed = onDocumentUpdated('sketches/{sketchId}', async (eve
   if (!autor || autor === destinatario) return;   /* verse uno mismo no avisa */
 
   const db = getFirestore();
+
+  /* Primero lo de la bandeja de salida: eso hay que hacerlo SIEMPRE, tenga
+     o no activados los avisos quien lo mandó. Si fuera después del `return`
+     de abajo, quien no tiene notificaciones no vería nunca el «lo vio». */
+  await marcarEnviadoVisto(db, event.params.sketchId);
+
   const [autorDoc, quienDoc] = await Promise.all([
     db.collection('users').doc(autor).get(),
     destinatario ? db.collection('users').doc(destinatario).get() : Promise.resolve(null),
@@ -149,6 +155,25 @@ exports.notifySketchViewed = onDocumentUpdated('sketches/{sketchId}', async (eve
    app, no de quien se registra.
 ══════════════════════════════════════════════════════ */
 const USUARIO_CREADOR = 'jose';
+
+/* Y de paso, marcar en TU bandeja de salida que ya lo vieron.
+
+   El documento de `enviados` tiene el MISMO id que el dibujo, así que no
+   hay que buscar nada. Va aparte del aviso y con su propio catch: que
+   falle no puede impedir que llegue la notificación, que es lo que la
+   persona está esperando. */
+async function marcarEnviadoVisto(db, sketchId) {
+  try {
+    await db.collection('enviados').doc(String(sketchId))
+      .update({ viewed: true, viewedAt: FieldValue.serverTimestamp() });
+  } catch (e) {
+    /* Lo normal es que no exista: los dibujos de antes de que esto
+       existiera no tienen copia en `enviados`. */
+    if (e.code !== 5 && !/NOT_FOUND|No document to update/i.test(e.message || '')) {
+      console.error('marcarEnviadoVisto:', e.message);
+    }
+  }
+}
 
 exports.emparejarConCreador = onDocumentCreated('users/{uid}', async (event) => {
   const nuevo = event.params.uid;
